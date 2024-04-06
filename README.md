@@ -7,7 +7,7 @@ The supermarket would like to be able to predict the likely amount customers in 
 
 This will help them to predict the likely profit at the end of the year.
 
-#Task 1
+# Task 1
 Before you fit any models, you will need to make sure the data is clean.
 The table below shows what the data should look like.
 Create a cleaned version of the dataframe.
