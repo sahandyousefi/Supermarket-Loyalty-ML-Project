@@ -1,4 +1,4 @@
-# Data-Camp-Supermarket-Loyalty-ML-Project
+# Supermarket-Loyalty-ML-Project
 International Essentials is an international supermarket chain.
 
 Shoppers at their supermarkets can sign up for a loyalty program that provides rewards each year to customers based on their spending. The more you spend the bigger the rewards.
