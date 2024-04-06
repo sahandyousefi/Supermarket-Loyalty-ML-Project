@@ -7,30 +7,15 @@ The supermarket would like to be able to predict the likely amount customers in 
 
 This will help them to predict the likely profit at the end of the year.
 
-Data
-The dataset contains records of customers for their last full year of the loyalty program.
+Task 1
+Before you fit any models, you will need to make sure the data is clean.
 
-Column Name	Criteria
-customer_id	Unique identifier for the customer.
-Missing values are not possible due to the database structure.
-spend	Continuous.
-The total spend of the customer in their last full year. This can be any positive value to two decimal places.
-Missing values should be replaced with 0.
-first_month	Continuous.
-The amount spent by the customer in their first month of the year. This can be any positive value, rounded to two decimal places.
-Missing values should be replaced with 0.
-items_in_first_month	Discrete.
-The number of items purchased in the first month. Any integer value greater than or equal to zero.
-Missing values should be replaced by 0.
-region	Nominal.
-The geographic region that the customer is based in. One of four values Americas, Asia/Pacific, Europe, Middle East/Africa.
-Missing values should be replaced with "Unknown".
-loyalty_years	Oridinal.
-The number of years the customer has been a part of the loyalty program. One of five ordered categories, '0-1', '1-3', '3-5', '5-10', '10+'.
-Missing values should be replaced with '0-1'.
-joining_month	Nominal.
-The month the customer joined the loyalty program. One of 12 values "Jan", "Feb", "Mar", "Apr", etc.
-Missing values should be replaced with "Unknown".
-promotion	Nominal.
-Did the customer join the loyalty program as part of a promotion? Either 'Yes' or 'No'.
-Missing values should be replaced with 'No'.
+The table below shows what the data should look like.
+
+Create a cleaned version of the dataframe.
+
+You should start with the data in the file "loyalty.csv".
+
+Your output should be a dataframe named clean_data.
+
+All column names and values should match the table below.
