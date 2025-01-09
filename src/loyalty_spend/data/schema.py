@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 ID = "customer_id"
 TARGET = "spend"
 NUMERIC = ["first_month", "items_in_first_month"]
@@ -50,3 +52,17 @@ def allowed_values(column: str) -> list[str]:
     if FILL_VALUES.get(column) == "Unknown":
         levels.append("Unknown")
     return levels
+
+
+@dataclass
+class ValidationReport:
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
+    def raise_for_errors(self) -> None:
+        if self.errors:
+            raise ValueError("validation failed:\n- " + "\n- ".join(self.errors))
