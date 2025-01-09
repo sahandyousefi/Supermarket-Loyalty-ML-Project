@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import pandas as pd
+
 ID = "customer_id"
 TARGET = "spend"
 NUMERIC = ["first_month", "items_in_first_month"]
@@ -66,3 +68,43 @@ class ValidationReport:
     def raise_for_errors(self) -> None:
         if self.errors:
             raise ValueError("validation failed:\n- " + "\n- ".join(self.errors))
+
+
+def validate(df: pd.DataFrame, require_target: bool = True) -> ValidationReport:
+    """Check a cleaned frame against the data dictionary.
+
+    Missing columns, missing or duplicated ids, negative amounts and unknown
+    category levels are errors. Missing feature values are warnings, since the
+    modeling pipeline can impute them.
+    """
+    report = ValidationReport()
+    expected = [c for c in COLUMNS if require_target or c != TARGET]
+    missing = [c for c in expected if c not in df.columns]
+    if missing:
+        report.errors.append(f"missing columns: {missing}")
+        return report
+
+    if df[ID].isna().any():
+        report.errors.append(f"{ID}: missing values")
+    n_dup = int(df[ID].duplicated().sum())
+    if n_dup:
+        report.errors.append(f"{ID}: {n_dup} duplicated ids")
+
+    for col in NUMERIC + ([TARGET] if require_target else []):
+        values = pd.to_numeric(df[col], errors="coerce")
+        n_bad = int((values < 0).sum())
+        if n_bad:
+            report.errors.append(f"{col}: {n_bad} negative values")
+        n_na = int(values.isna().sum())
+        if n_na:
+            report.warnings.append(f"{col}: {n_na} missing or non-numeric values")
+
+    for col in CATEGORICAL:
+        observed = set(df[col].dropna().astype(str))
+        unknown = sorted(observed - set(allowed_values(col)))
+        if unknown:
+            report.errors.append(f"{col}: unexpected levels {unknown}")
+        n_na = int(df[col].isna().sum())
+        if n_na:
+            report.warnings.append(f"{col}: {n_na} missing values")
+    return report
