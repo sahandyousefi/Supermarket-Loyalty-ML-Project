@@ -31,3 +31,22 @@ CATEGORIES: dict[str, list[str]] = {
 CATEGORICAL = list(CATEGORIES)
 FEATURES = NUMERIC + CATEGORICAL
 COLUMNS = [ID, TARGET, *FEATURES]
+
+# Replacement values for missing entries, as stated in the data dictionary.
+FILL_VALUES: dict[str, object] = {
+    "spend": 0.0,
+    "first_month": 0.0,
+    "items_in_first_month": 0,
+    "region": "Unknown",
+    "loyalty_years": "0-1",
+    "joining_month": "Unknown",
+    "promotion": "No",
+}
+
+
+def allowed_values(column: str) -> list[str]:
+    """Valid levels of a categorical column after cleaning."""
+    levels = list(CATEGORIES[column])
+    if FILL_VALUES.get(column) == "Unknown":
+        levels.append("Unknown")
+    return levels
