@@ -23,3 +23,17 @@ class CleaningReport:
     def to_frame(self) -> pd.DataFrame:
         rows = [{"column": c, "rule": r, "n": n} for (c, r), n in self.counts.items()]
         return pd.DataFrame(rows, columns=["column", "rule", "n"])
+
+
+def coerce_numeric(series: pd.Series) -> tuple[pd.Series, int, int]:
+    """Convert to float, treating placeholder strings such as '.' as missing.
+
+    Returns the converted series, the number of placeholders and the number
+    of other non-empty entries that could not be parsed.
+    """
+    text = series.astype("string").str.strip()
+    is_placeholder = text.str.lower().isin(PLACEHOLDERS).fillna(False)
+    text = text.mask(is_placeholder)
+    values = pd.to_numeric(text, errors="coerce")
+    n_invalid = int((values.isna() & text.notna()).sum())
+    return values.astype(float), int(is_placeholder.sum()), n_invalid
