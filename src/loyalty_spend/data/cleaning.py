@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import numpy as np
 import pandas as pd
 
 PLACEHOLDERS = {"", ".", "-", "na", "n/a", "nan", "null", "none", "?"}
@@ -37,3 +38,17 @@ def coerce_numeric(series: pd.Series) -> tuple[pd.Series, int, int]:
     values = pd.to_numeric(text, errors="coerce")
     n_invalid = int((values.isna() & text.notna()).sum())
     return values.astype(float), int(is_placeholder.sum()), n_invalid
+
+
+def normalize_category(series: pd.Series, levels: list[str]) -> tuple[pd.Series, int]:
+    """Map case and whitespace variants (for example 'YES') to the canonical level.
+
+    Values that match no level after normalization become missing. Returns the
+    cleaned series and the number of values that were rewritten.
+    """
+    lookup = {level.lower(): level for level in levels}
+    text = series.astype("string").str.strip()
+    text = text.mask(text.str.lower().isin(PLACEHOLDERS))
+    mapped = text.str.lower().map(lookup)
+    changed = int((mapped.notna() & (mapped != text)).sum())
+    return mapped.astype(object).where(mapped.notna(), np.nan), changed
