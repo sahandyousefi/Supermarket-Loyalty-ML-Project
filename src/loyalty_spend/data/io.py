@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from loyalty_spend.data.cleaning import CleaningReport, clean_loyalty
+from loyalty_spend.data.schema import validate
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,3 +20,20 @@ def read_raw(path: str | Path) -> pd.DataFrame:
         raise FileNotFoundError(f"{path} not found; see data/README.md")
     df = pd.read_csv(path, dtype=str, keep_default_na=False, na_values=[""])
     return df.loc[:, ~df.columns.str.startswith("Unnamed")]
+
+
+def load_clean(
+    path: str | Path, impute: bool = True, require_target: bool = True
+) -> tuple[pd.DataFrame, CleaningReport]:
+    """Read, clean and validate one file.
+
+    Validation errors raise; warnings are logged.
+    """
+    clean, report = clean_loyalty(
+        read_raw(path), impute=impute, require_target=require_target
+    )
+    result = validate(clean, require_target=require_target)
+    for warning in result.warnings:
+        logger.warning("%s: %s", Path(path).name, warning)
+    result.raise_for_errors()
+    return clean, report
