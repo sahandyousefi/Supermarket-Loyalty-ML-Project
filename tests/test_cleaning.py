@@ -1,11 +1,12 @@
 import pandas as pd
+import pytest
 
 from loyalty_spend.data.cleaning import (
     clean_loyalty,
     coerce_numeric,
     normalize_category,
 )
-from loyalty_spend.data.io import read_raw
+from loyalty_spend.data.io import load_clean, read_raw
 from loyalty_spend.data.schema import COLUMNS, LOYALTY_ORDER
 
 
@@ -44,3 +45,31 @@ def test_spec_fill_values(raw_dir):
     was_missing = raw["joining_month"].isna()
     assert (clean.loc[was_missing, "joining_month"] == "Unknown").all()
     assert (clean.loc[raw["first_month"] == ".", "first_month"] == 0).all()
+
+
+def test_without_imputation_missing_values_stay_missing(raw_dir):
+    clean, _ = clean_loyalty(read_raw(raw_dir / "loyalty.csv"), impute=False)
+    assert clean["first_month"].isna().sum() == 125
+
+
+def test_negative_amounts_become_missing():
+    raw = pd.DataFrame(
+        {
+            "customer_id": ["1"],
+            "spend": ["-5"],
+            "first_month": ["3"],
+            "items_in_first_month": ["2"],
+            "region": ["Europe"],
+            "loyalty_years": ["1-3"],
+            "joining_month": ["Mar"],
+            "promotion": ["No"],
+        }
+    )
+    clean, report = clean_loyalty(raw, impute=False)
+    assert clean["spend"].isna().all()
+    assert ("spend", "negative to missing") in report.counts
+
+
+def test_missing_file_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_clean(tmp_path / "none.csv")
