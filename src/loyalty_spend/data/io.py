@@ -37,3 +37,12 @@ def load_clean(
         logger.warning("%s: %s", Path(path).name, warning)
     result.raise_for_errors()
     return clean, report
+
+
+def load_modeling_data(
+    train_path: str | Path, test_path: str | Path
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Training frame with target and scoring frame without, both cleaned."""
+    train, _ = load_clean(train_path, impute=False)
+    test, _ = load_clean(test_path, impute=False, require_target=False)
+    return train, test
