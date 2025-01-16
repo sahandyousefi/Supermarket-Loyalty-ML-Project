@@ -1,51 +1,26 @@
-# Supermarket-Loyalty-ML-Project
-International Essentials is an international supermarket chain.
+# Supermarket Loyalty: Annual Spend Forecasting
 
-Shoppers at their supermarkets can sign up for a loyalty program that provides rewards each year to customers based on their spending. The more you spend the bigger the rewards.
+International Essentials runs a loyalty programme in which customers earn rewards that grow with their annual spend. To budget for the cost of those rewards, the business needs a forecast of how much each member will spend over the year.
 
-The supermarket would like to be able to predict the likely amount customers in the program will spend, so they can estimate the cost of the rewards.
+This repository started as a solution to a certification exercise and is being rebuilt as a tested Python package. The original notebook is kept in `notebooks/` as a record of the first attempt.
 
-This will help them to predict the likely profit at the end of the year.
+## Status
 
-# Task 1
-Before you fit any models, you will need to make sure the data is clean.
-The table below shows what the data should look like.
-Create a cleaned version of the dataframe.
+Work in progress. Implemented so far:
 
-1- You should start with the data in the file "loyalty.csv".
+- Data dictionary as code, with validation of column types, category levels and identifiers
+- Cleaning of the raw extract with a log of every change (Task 1 of the brief)
+- A lineage check showing that `loyalty.csv` and `train.csv` share customer ids but not customer attributes, so the files must not be joined
 
-2- Your output should be a dataframe named clean_data.
+Planned: the analysis of spend by tenure (Task 2), baseline and comparison models (Tasks 3 and 4), and a forecast of reward cost.
 
+## Data
 
+See [data/README.md](data/README.md) for the files, the data dictionary and the quality issues found in `loyalty.csv`.
 
+## Development
 
-# Task 2
-The team at International Essentials have told you that they have always believed that the number of years in the loyalty scheme is the biggest driver of spend.
-
-Producing a table showing the difference in the average spend by number of years in the loyalty programme along with the variance to investigate this question for the team.
-
-You should start with the data in the file 'loyalty.csv'.
-
-1- Your output should be a data frame named spend_by_years.
-
-2- It should include the three columns loyalty_years, avg_spend, var_spend.
-
-3- Your answers should be rounded to 2 decimal places.
-
-
-# Task 3
-Fit a baseline model to predict the spend over the year for each customer.
-
-1- Fit your model using the data contained in “train.csv”
-
-
-2- Use “test.csv” to predict new values based on your model. You must return a dataframe named base_result, that includes customer_id and spend. The spend column must be your predicted values.
-
-
-# Task 4
-Fit a comparison model to predict the sale price of a house.
-
-1- Fit your model using the data contained in “train.csv”
-
-
-2- Use “test.csv” to predict new values based on your model. You must return a dataframe named compare_result, that includes customer_id and spend. The spend column must be your predicted values.
+```bash
+pip install -e ".[dev]"
+pytest -q
+```
