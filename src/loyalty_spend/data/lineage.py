@@ -52,3 +52,8 @@ def compare_extracts(
             }
         )
     return pd.DataFrame(rows)
+
+
+def linkable(table: pd.DataFrame, min_kappa: float = 0.8) -> bool:
+    """True when every attribute agrees well beyond chance."""
+    return bool((table["kappa"] >= min_kappa).all())
