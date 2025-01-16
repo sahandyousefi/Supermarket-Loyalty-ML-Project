@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 DEFAULT_CONFIG = Path(__file__).resolve().parents[2] / "configs" / "default.yaml"
 
@@ -78,3 +81,34 @@ class Config:
     deep: DeepConfig = field(default_factory=DeepConfig)
     rewards: RewardConfig = field(default_factory=RewardConfig)
     conformal: ConformalConfig = field(default_factory=ConformalConfig)
+
+
+_SECTIONS = {
+    "paths": PathsConfig,
+    "cv": CVConfig,
+    "deep": DeepConfig,
+    "rewards": RewardConfig,
+    "conformal": ConformalConfig,
+}
+
+
+def _build(cls: type, values: dict[str, Any] | None) -> Any:
+    values = dict(values or {})
+    known = {f.name for f in fields(cls)}
+    unknown = set(values) - known
+    if unknown:
+        raise ValueError(f"unknown keys for {cls.__name__}: {sorted(unknown)}")
+    if cls is RewardConfig and "tiers" in values:
+        values["tiers"] = tuple(tuple(float(v) for v in t) for t in values["tiers"])
+    return cls(**values)
+
+
+def load_config(path: str | Path | None = None) -> Config:
+    """Read a YAML file; missing sections and keys fall back to defaults."""
+    path = Path(path) if path else DEFAULT_CONFIG
+    raw = yaml.safe_load(path.read_text()) if path.exists() else None
+    raw = raw or {}
+    unknown = set(raw) - set(_SECTIONS)
+    if unknown:
+        raise ValueError(f"unknown top-level keys: {sorted(unknown)}")
+    return Config(**{k: _build(cls, raw.get(k)) for k, cls in _SECTIONS.items()})
