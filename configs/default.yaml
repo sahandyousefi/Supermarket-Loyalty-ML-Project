@@ -1,0 +1,12 @@
+paths:
+  raw_dir: data/raw
+  loyalty_file: loyalty.csv
+  train_file: train.csv
+  test_file: test.csv
+  output_dir: artifacts
+  report_dir: reports
+
+cv:
+  n_splits: 5
+  n_repeats: 3
+  seed: 42
