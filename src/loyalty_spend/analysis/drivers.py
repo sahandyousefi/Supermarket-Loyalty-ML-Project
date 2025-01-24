@@ -14,6 +14,7 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 from scipy import stats
+from sklearn.linear_model import LinearRegression
 
 from loyalty_spend.data.schema import TARGET
 
@@ -105,3 +106,16 @@ def tukey_table(df: pd.DataFrame, group: str, value: str = TARGET) -> pd.DataFra
             }
         )
     return pd.DataFrame(rows)
+
+
+def _design(df: pd.DataFrame, features: list[str]) -> np.ndarray:
+    if not features:
+        return np.empty((len(df), 0))
+    return pd.get_dummies(df[features], drop_first=True, dtype=float).to_numpy()
+
+
+def _r2(df: pd.DataFrame, features: list[str], y: np.ndarray) -> float:
+    X = _design(df, features)
+    if X.shape[1] == 0:
+        return 0.0
+    return float(LinearRegression().fit(X, y).score(X, y))
