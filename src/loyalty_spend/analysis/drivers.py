@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from loyalty_spend.data.schema import TARGET
 
@@ -41,3 +42,25 @@ def spend_by_group(
             }
         )
     return pd.DataFrame(rows)
+
+
+def welch_anova(df: pd.DataFrame, group: str, value: str = TARGET) -> dict[str, float]:
+    """Welch's one-way ANOVA, valid when group variances differ (Welch, 1951)."""
+    parts = [g[value].to_numpy(float) for _, g in df.groupby(group, observed=True)]
+    k = len(parts)
+    n = np.array([len(p) for p in parts], float)
+    means = np.array([p.mean() for p in parts])
+    var = np.array([p.var(ddof=1) for p in parts])
+    w = n / var
+    grand = (w * means).sum() / w.sum()
+    a = (w * (means - grand) ** 2).sum() / (k - 1)
+    lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()
+    b = 1 + 2 * (k - 2) / (k**2 - 1) * lam
+    f = a / b
+    df2 = (k**2 - 1) / (3 * lam)
+    return {
+        "f": float(f),
+        "df1": float(k - 1),
+        "df2": float(df2),
+        "p_value": float(stats.f.sf(f, k - 1, df2)),
+    }
