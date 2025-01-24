@@ -64,3 +64,17 @@ def welch_anova(df: pd.DataFrame, group: str, value: str = TARGET) -> dict[str, 
         "df2": float(df2),
         "p_value": float(stats.f.sf(f, k - 1, df2)),
     }
+
+
+def effect_sizes(df: pd.DataFrame, group: str, value: str = TARGET) -> dict[str, float]:
+    """Eta squared and the less biased omega squared of a one-way layout."""
+    y = df[value].to_numpy(float)
+    grand = y.mean()
+    groups = [g[value].to_numpy(float) for _, g in df.groupby(group, observed=True)]
+    ss_between = sum(len(g) * (g.mean() - grand) ** 2 for g in groups)
+    ss_total = ((y - grand) ** 2).sum()
+    ss_within = ss_total - ss_between
+    k, n = len(groups), len(y)
+    ms_within = ss_within / (n - k)
+    omega = (ss_between - (k - 1) * ms_within) / (ss_total + ms_within)
+    return {"eta_squared": float(ss_between / ss_total), "omega_squared": float(omega)}
