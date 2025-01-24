@@ -9,6 +9,8 @@ decomposition of the explained variance.
 
 from __future__ import annotations
 
+from itertools import combinations
+
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -78,3 +80,28 @@ def effect_sizes(df: pd.DataFrame, group: str, value: str = TARGET) -> dict[str,
     ms_within = ss_within / (n - k)
     omega = (ss_between - (k - 1) * ms_within) / (ss_total + ms_within)
     return {"eta_squared": float(ss_between / ss_total), "omega_squared": float(omega)}
+
+
+def tukey_table(df: pd.DataFrame, group: str, value: str = TARGET) -> pd.DataFrame:
+    """All pairwise mean differences with Tukey HSD p-values and intervals."""
+    levels, parts = zip(
+        *[
+            (lvl, g[value].to_numpy(float))
+            for lvl, g in df.groupby(group, observed=True)
+        ]
+    )
+    res = stats.tukey_hsd(*parts)
+    ci = res.confidence_interval()
+    rows = []
+    for i, j in combinations(range(len(levels)), 2):
+        rows.append(
+            {
+                "group_a": levels[i],
+                "group_b": levels[j],
+                "diff": float(parts[i].mean() - parts[j].mean()),
+                "ci_low": float(ci.low[i, j]),
+                "ci_high": float(ci.high[i, j]),
+                "p_value": float(res.pvalue[i, j]),
+            }
+        )
+    return pd.DataFrame(rows)
