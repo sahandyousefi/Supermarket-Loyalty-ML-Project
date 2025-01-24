@@ -10,6 +10,7 @@ decomposition of the explained variance.
 from __future__ import annotations
 
 from itertools import combinations
+from math import factorial
 
 import numpy as np
 import pandas as pd
@@ -119,3 +120,39 @@ def _r2(df: pd.DataFrame, features: list[str], y: np.ndarray) -> float:
     if X.shape[1] == 0:
         return 0.0
     return float(LinearRegression().fit(X, y).score(X, y))
+
+
+def lmg_importance(
+    df: pd.DataFrame, features: list[str], value: str = TARGET
+) -> pd.DataFrame:
+    """Shapley decomposition of the OLS R squared over features.
+
+    Each feature receives its average increase in R squared over all orders
+    of entry (Lindeman, Merenda and Gold, 1980; Groemping, 2006). The shares
+    add up to the R squared of the full model, so they answer "which driver
+    explains most of the variance" without depending on the order in which
+    variables are added. Categorical features enter as dummy blocks.
+    """
+    data = df[features].dropna()
+    y = df.loc[data.index, value].to_numpy(float)
+    p = len(features)
+    cache: dict[frozenset, float] = {}
+
+    def r2(subset: frozenset) -> float:
+        if subset not in cache:
+            cache[subset] = _r2(data, [f for f in features if f in subset], y)
+        return cache[subset]
+
+    rows = []
+    for f in features:
+        others = [g for g in features if g != f]
+        total = 0.0
+        for size in range(p):
+            weight = factorial(size) * factorial(p - size - 1) / factorial(p)
+            for subset in combinations(others, size):
+                s = frozenset(subset)
+                total += weight * (r2(s | {f}) - r2(s))
+        rows.append({"feature": f, "r2_share": total})
+    out = pd.DataFrame(rows).sort_values("r2_share", ascending=False)
+    out["relative_share"] = out["r2_share"] / out["r2_share"].sum()
+    return out.reset_index(drop=True)
