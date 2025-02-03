@@ -16,6 +16,7 @@ from sklearn.preprocessing import (
 from loyalty_spend.data.schema import (
     CATEGORICAL,
     FEATURES,
+    ID,
     NUMERIC,
     TARGET,
     allowed_values,
@@ -94,3 +95,17 @@ def make_preprocessor(kind: str = "onehot") -> ColumnTransformer:
         [("num", num, NUMERIC), ("cat", cat, CATEGORICAL)],
         verbose_feature_names_out=False,
     )
+
+
+def original_feature(name: str) -> str:
+    """Map a transformed column name back to the raw feature it came from."""
+    for feature in sorted(FEATURES, key=len, reverse=True):
+        if name == feature or name.startswith(f"{feature}_"):
+            return feature
+        if name == f"missingindicator_{feature}":
+            return feature
+    return name
+
+
+def drop_id(df: pd.DataFrame) -> pd.DataFrame:
+    return df.drop(columns=[ID], errors="ignore")
