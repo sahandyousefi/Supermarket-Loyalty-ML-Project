@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
 from sklearn.model_selection import RepeatedKFold
+
+from loyalty_spend.evaluation.metrics import regression_report
 
 
 @dataclass
@@ -33,3 +37,33 @@ def make_splits(
     """Fixed splits so that every model is evaluated on identical folds."""
     cv = RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=seed)
     return list(cv.split(np.zeros(n)))
+
+
+def cross_validate(
+    name: str,
+    estimator,
+    X: pd.DataFrame,
+    y: pd.Series,
+    splits: list[tuple[np.ndarray, np.ndarray]],
+    fit_hook: Callable | None = None,
+) -> CVResult:
+    """Fit a fresh clone on each split and score it on the held-out fold.
+
+    Out-of-fold predictions are averaged over repeats, so ``oof`` holds one
+    prediction per row.
+    """
+    rows = []
+    oof_sum = np.zeros(len(y))
+    oof_n = np.zeros(len(y))
+    for i, (tr, te) in enumerate(splits):
+        model = clone(estimator)
+        model.fit(X.iloc[tr], y.iloc[tr])
+        if fit_hook is not None:
+            fit_hook(model)
+        pred = model.predict(X.iloc[te])
+        oof_sum[te] += pred
+        oof_n[te] += 1
+        rows.append({"fold": i, **regression_report(y.iloc[te], pred)})
+    oof = oof_sum / np.maximum(oof_n, 1)
+    n_test = float(np.mean([len(te) for _, te in splits]))
+    return CVResult(name, pd.DataFrame(rows), oof, len(y) - n_test, n_test)
