@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
 def rmse(y_true, y_pred) -> float:
@@ -12,3 +12,20 @@ def rmse(y_true, y_pred) -> float:
 
 def mae(y_true, y_pred) -> float:
     return float(mean_absolute_error(y_true, y_pred))
+
+
+def mape(y_true, y_pred) -> float:
+    """Mean absolute percentage error; undefined for zero targets."""
+    y = np.asarray(y_true, float)
+    if np.any(y == 0):
+        raise ValueError("MAPE is undefined when a target value is zero")
+    return float(np.mean(np.abs((y - np.asarray(y_pred, float)) / y)))
+
+
+def regression_report(y_true, y_pred) -> dict[str, float]:
+    return {
+        "rmse": rmse(y_true, y_pred),
+        "mae": mae(y_true, y_pred),
+        "mape": mape(y_true, y_pred),
+        "r2": float(r2_score(y_true, y_pred)),
+    }
