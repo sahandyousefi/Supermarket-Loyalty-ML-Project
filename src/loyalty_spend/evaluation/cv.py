@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from scipy.stats import t as student_t
 from sklearn.base import clone
 from sklearn.model_selection import RepeatedKFold
 
@@ -67,3 +68,21 @@ def cross_validate(
     oof = oof_sum / np.maximum(oof_n, 1)
     n_test = float(np.mean([len(te) for _, te in splits]))
     return CVResult(name, pd.DataFrame(rows), oof, len(y) - n_test, n_test)
+
+
+def corrected_ttest(
+    diffs: np.ndarray, n_train: int, n_test: int
+) -> tuple[float, float]:
+    """Corrected resampled t-test of Nadeau and Bengio (2003).
+
+    Fold scores share most of their training data, so the naive paired
+    t-test underestimates the variance. The correction replaces ``1/J`` by
+    ``1/J + n_test/n_train``. Returns the statistic and two-sided p-value.
+    """
+    d = np.asarray(diffs, float)
+    j = len(d)
+    var = d.var(ddof=1)
+    if var == 0:
+        return 0.0, 1.0
+    stat = d.mean() / np.sqrt((1 / j + n_test / n_train) * var)
+    return float(stat), float(2 * student_t.sf(abs(stat), df=j - 1))
