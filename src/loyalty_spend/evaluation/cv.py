@@ -86,3 +86,31 @@ def corrected_ttest(
         return 0.0, 1.0
     stat = d.mean() / np.sqrt((1 / j + n_test / n_train) * var)
     return float(stat), float(2 * student_t.sf(abs(stat), df=j - 1))
+
+
+def compare_results(
+    results: list[CVResult], reference: str, metric: str = "rmse"
+) -> pd.DataFrame:
+    """Summary table with the paired difference to a reference model."""
+    by_name = {r.name: r for r in results}
+    if reference not in by_name:
+        raise KeyError(f"reference model '{reference}' not in results")
+    base = by_name[reference]
+    ref = base.folds[metric].to_numpy()
+    rows = []
+    for r in results:
+        d = r.folds[metric].to_numpy() - ref
+        stat, p = (
+            (np.nan, np.nan)
+            if r.name == reference
+            else corrected_ttest(d, base.n_train, base.n_test)
+        )
+        rows.append(
+            {
+                **r.summary(),
+                f"{metric}_diff_vs_{reference}": float(d.mean()),
+                "t_stat": stat,
+                "p_value": p,
+            }
+        )
+    return pd.DataFrame(rows).sort_values(f"{metric}_mean").reset_index(drop=True)
