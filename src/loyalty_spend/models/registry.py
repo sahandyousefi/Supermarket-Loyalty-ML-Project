@@ -7,6 +7,8 @@ editing a central table.
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -45,3 +47,22 @@ def register(
         return factory
 
     return decorator
+
+
+def _load_all() -> None:
+    for module in _MODULES:
+        if importlib.util.find_spec(module.rsplit(".", 1)[0]) is None:
+            continue
+        try:
+            importlib.import_module(module)
+        except ImportError:
+            continue
+
+
+def _installed(package: str | None) -> bool:
+    return package is None or importlib.util.find_spec(package) is not None
+
+
+def available_models() -> list[str]:
+    _load_all()
+    return [n for n, s in _REGISTRY.items() if _installed(s.requires)]
