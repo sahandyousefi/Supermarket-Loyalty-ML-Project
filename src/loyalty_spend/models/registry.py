@@ -66,3 +66,19 @@ def _installed(package: str | None) -> bool:
 def available_models() -> list[str]:
     _load_all()
     return [n for n, s in _REGISTRY.items() if _installed(s.requires)]
+
+
+def model_family(name: str) -> str:
+    _load_all()
+    return _REGISTRY[name].family
+
+
+def build_model(name: str, **params: Any):
+    """Instantiate a registered model with optional hyperparameters."""
+    _load_all()
+    if name not in _REGISTRY:
+        raise KeyError(f"unknown model '{name}'; available: {available_models()}")
+    spec = _REGISTRY[name]
+    if not _installed(spec.requires):
+        raise ImportError(f"model '{name}' needs the optional package {spec.requires}")
+    return spec.factory(**params)
