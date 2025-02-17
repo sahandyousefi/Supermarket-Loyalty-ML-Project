@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 from sklearn.linear_model import (
     LinearRegression,
+    RidgeCV,
 )
 from sklearn.pipeline import Pipeline
 
@@ -22,3 +23,9 @@ def _pipeline(model, encoding: str = "onehot") -> Pipeline:
 def ols() -> Pipeline:
     """Ordinary least squares on one-hot categories; the baseline."""
     return _pipeline(LinearRegression())
+
+
+@register("ridge", family="linear")
+def ridge(alphas=ALPHAS) -> Pipeline:
+    """Ridge regression with the penalty chosen by efficient leave-one-out CV."""
+    return _pipeline(RidgeCV(alphas=alphas))
