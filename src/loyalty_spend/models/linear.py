@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 from sklearn.linear_model import (
     ElasticNetCV,
+    HuberRegressor,
     LinearRegression,
     RidgeCV,
 )
@@ -36,3 +37,9 @@ def ridge(alphas=ALPHAS) -> Pipeline:
 def elastic_net(l1_ratio=(0.1, 0.5, 0.9, 1.0), cv: int = 5) -> Pipeline:
     """Elastic net; the L1 part can drop uninformative dummies."""
     return _pipeline(ElasticNetCV(l1_ratio=list(l1_ratio), cv=cv, max_iter=20000))
+
+
+@register("huber", family="linear")
+def huber(epsilon: float = 1.35, alpha: float = 1e-4) -> Pipeline:
+    """Huber loss regression, robust to a minority of extreme residuals."""
+    return _pipeline(HuberRegressor(epsilon=epsilon, alpha=alpha, max_iter=2000))
