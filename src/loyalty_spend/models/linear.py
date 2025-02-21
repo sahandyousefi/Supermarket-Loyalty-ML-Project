@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 from sklearn.linear_model import (
     ElasticNetCV,
+    GammaRegressor,
     HuberRegressor,
     LinearRegression,
     RidgeCV,
@@ -43,3 +44,13 @@ def elastic_net(l1_ratio=(0.1, 0.5, 0.9, 1.0), cv: int = 5) -> Pipeline:
 def huber(epsilon: float = 1.35, alpha: float = 1e-4) -> Pipeline:
     """Huber loss regression, robust to a minority of extreme residuals."""
     return _pipeline(HuberRegressor(epsilon=epsilon, alpha=alpha, max_iter=2000))
+
+
+@register("gamma_glm", family="linear")
+def gamma_glm(alpha: float = 1e-4) -> Pipeline:
+    """Gamma GLM with log link.
+
+    Spend is positive and its spread tends to grow with its level; the log
+    link makes effects multiplicative and predictions positive.
+    """
+    return _pipeline(GammaRegressor(alpha=alpha, max_iter=5000))
