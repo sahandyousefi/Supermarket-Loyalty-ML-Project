@@ -57,3 +57,21 @@ def xgboost(**params: Any) -> Pipeline:
         n_jobs=1,
     )
     return _pipeline(XGBRegressor(random_state=SEED, **{**defaults, **params}))
+
+
+@register("lightgbm", family="tree", requires="lightgbm")
+def lightgbm(**params: Any) -> Pipeline:
+    from lightgbm import LGBMRegressor
+
+    defaults = dict(
+        n_estimators=800,
+        learning_rate=0.03,
+        num_leaves=15,
+        min_child_samples=15,
+        subsample=0.8,
+        subsample_freq=1,
+        colsample_bytree=0.8,
+        n_jobs=1,
+        verbose=-1,
+    )
+    return _pipeline(LGBMRegressor(random_state=SEED, **{**defaults, **params}))
