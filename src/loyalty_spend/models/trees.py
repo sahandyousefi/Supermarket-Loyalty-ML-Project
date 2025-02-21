@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.pipeline import Pipeline
 
 from loyalty_spend.features.preprocess import make_preprocessor
@@ -25,3 +25,18 @@ def _pipeline(model) -> Pipeline:
 def random_forest(**params: Any) -> Pipeline:
     defaults = dict(n_estimators=500, min_samples_leaf=2, max_features=0.6, n_jobs=-1)
     return _pipeline(RandomForestRegressor(random_state=SEED, **{**defaults, **params}))
+
+
+@register("hist_gbm", family="tree")
+def hist_gbm(**params: Any) -> Pipeline:
+    defaults = dict(
+        learning_rate=0.05,
+        max_iter=600,
+        max_leaf_nodes=15,
+        min_samples_leaf=10,
+        l2_regularization=1.0,
+        categorical_features=CATEGORICAL_NAMES,
+    )
+    return _pipeline(
+        HistGradientBoostingRegressor(random_state=SEED, **{**defaults, **params})
+    )
