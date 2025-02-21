@@ -40,3 +40,20 @@ def hist_gbm(**params: Any) -> Pipeline:
     return _pipeline(
         HistGradientBoostingRegressor(random_state=SEED, **{**defaults, **params})
     )
+
+
+@register("xgboost", family="tree", requires="xgboost")
+def xgboost(**params: Any) -> Pipeline:
+    from xgboost import XGBRegressor
+
+    defaults = dict(
+        n_estimators=800,
+        learning_rate=0.03,
+        max_depth=4,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        min_child_weight=3,
+        reg_lambda=1.0,
+        n_jobs=1,
+    )
+    return _pipeline(XGBRegressor(random_state=SEED, **{**defaults, **params}))
