@@ -54,3 +54,9 @@ def gamma_glm(alpha: float = 1e-4) -> Pipeline:
     link makes effects multiplicative and predictions positive.
     """
     return _pipeline(GammaRegressor(alpha=alpha, max_iter=5000))
+
+
+@register("spline_ridge", family="linear")
+def spline_ridge(alphas=ALPHAS) -> Pipeline:
+    """Additive model: cubic B-splines of the numerics, ridge penalty."""
+    return _pipeline(RidgeCV(alphas=alphas), encoding="spline")
