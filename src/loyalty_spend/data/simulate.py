@@ -16,6 +16,9 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from loyalty_spend.data.schema import FEATURES, ID, TARGET
+from loyalty_spend.features.preprocess import split_xy
+
 
 @dataclass(frozen=True)
 class Scenario:
@@ -78,3 +81,54 @@ def interaction_terms(X: pd.DataFrame) -> np.ndarray:
 def _centred(v: np.ndarray) -> np.ndarray:
     sd = v.std()
     return (v - v.mean()) / sd if sd > 0 else v - v.mean()
+
+
+@dataclass
+class SimulatedData:
+    frame: pd.DataFrame
+    signal: np.ndarray
+    noise_sd: np.ndarray
+
+    @property
+    def bayes_rmse(self) -> float:
+        """Root mean noise variance; no model can do better in expectation."""
+        return float(np.sqrt(np.mean(self.noise_sd**2)))
+
+
+def simulate(
+    train: pd.DataFrame,
+    scenario: Scenario,
+    n: int = 2000,
+    seed: int = 0,
+) -> SimulatedData:
+    """Draw ``n`` customers under ``scenario``.
+
+    Features are resampled rows of ``train``. The signal is the in-sample
+    OLS fit on ``train`` plus the scenario's nonlinear and interaction terms;
+    noise is Student-t with five degrees of freedom, rescaled to the
+    requested standard deviation, to allow occasional large deviations.
+    """
+    from loyalty_spend.models.linear import ols
+
+    rng = np.random.default_rng(seed)
+    X_ref, y_ref = split_xy(train)
+    reference = ols().fit(X_ref, y_ref)
+    scale = float(y_ref.std())
+
+    rows = rng.integers(0, len(train), size=n)
+    X = X_ref.iloc[rows].reset_index(drop=True)
+    signal = reference.predict(X)
+    if scenario.nonlinear:
+        signal = signal + scenario.nonlinear * scale * _centred(nonlinear_terms(X))
+    if scenario.interaction:
+        signal = signal + scenario.interaction * scale * _centred(interaction_terms(X))
+
+    sd = np.full(n, scenario.noise * scale)
+    if scenario.heteroscedastic:
+        sd = sd * signal / signal.mean()
+    t = rng.standard_t(df=5, size=n) / np.sqrt(5 / 3)
+    spend = np.clip(signal + sd * t, 0.01, None).round(2)
+
+    frame = X.assign(**{TARGET: spend})
+    frame.insert(0, ID, np.arange(1, n + 1))
+    return SimulatedData(frame[[ID, TARGET, *FEATURES]], signal, sd)
