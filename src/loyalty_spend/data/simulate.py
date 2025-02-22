@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
+import pandas as pd
+
 
 @dataclass(frozen=True)
 class Scenario:
@@ -48,3 +51,30 @@ SCENARIOS: dict[str, Scenario] = {
         "interactions", noise=0.05, nonlinear=0.25, interaction=0.25
     ),
 }
+
+
+def _standardize(x: pd.Series) -> np.ndarray:
+    x = x.astype(float).fillna(x.median())
+    return ((x - x.mean()) / (x.std() or 1.0)).to_numpy()
+
+
+def nonlinear_terms(X: pd.DataFrame) -> np.ndarray:
+    """Saturating basket-size effect and a threshold in first-month spend."""
+    items = _standardize(X["items_in_first_month"])
+    first = _standardize(X["first_month"])
+    return np.tanh(2.0 * items) + 1.5 * (first > 0.8) - 0.5 * first**2
+
+
+def interaction_terms(X: pd.DataFrame) -> np.ndarray:
+    """Promotion joiners in their first year, and tenure by first-month spend."""
+    promo_new = (X["promotion"].astype(str) == "Yes") & (
+        X["loyalty_years"].astype(str) == "0-1"
+    )
+    long_tenure = X["loyalty_years"].astype(str).isin(["5-10", "10+"])
+    first = _standardize(X["first_month"])
+    return 1.5 * promo_new.to_numpy() - 1.0 * long_tenure.to_numpy() * first
+
+
+def _centred(v: np.ndarray) -> np.ndarray:
+    sd = v.std()
+    return (v - v.mean()) / sd if sd > 0 else v - v.mean()
