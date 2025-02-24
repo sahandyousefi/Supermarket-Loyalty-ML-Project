@@ -49,3 +49,9 @@ def run_study(
                 }
             )
     return pd.DataFrame(rows)
+
+
+def winners(table: pd.DataFrame) -> pd.DataFrame:
+    """Best model per scenario."""
+    idx = table.groupby("scenario")["rmse"].idxmin()
+    return table.loc[idx, ["scenario", "model", "family", "rmse", "relative_excess"]]
