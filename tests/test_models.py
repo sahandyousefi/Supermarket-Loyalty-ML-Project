@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 
 from loyalty_spend.evaluation.metrics import rmse
-from loyalty_spend.models.registry import build_model
+from loyalty_spend.models import registry
+from loyalty_spend.models.registry import available_models, build_model, register
 
 CLASSICAL = [
     "ols",
@@ -31,3 +32,27 @@ def test_optional_boosters(xy, name):
     X, y = xy
     pred = build_model(name, n_estimators=100).fit(X, y).predict(X)
     assert np.isfinite(pred).all()
+
+
+def test_registry_lists_and_rejects():
+    assert set(CLASSICAL) <= set(available_models())
+    with pytest.raises(KeyError):
+        build_model("svm")
+
+
+def test_duplicate_registration_is_refused():
+    with pytest.raises(ValueError):
+        register("ols", family="linear")(lambda: None)
+
+
+def test_missing_optional_dependency(monkeypatch):
+    registry._load_all()
+    spec = registry._REGISTRY["ols"]
+    monkeypatch.setitem(
+        registry._REGISTRY,
+        "ols",
+        registry.ModelSpec("ols", spec.factory, "not_a_pkg", "linear"),
+    )
+    assert "ols" not in available_models()
+    with pytest.raises(ImportError):
+        build_model("ols")
