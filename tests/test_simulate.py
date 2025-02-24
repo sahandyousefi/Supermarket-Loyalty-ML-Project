@@ -3,6 +3,7 @@ import pytest
 
 from loyalty_spend.data.schema import COLUMNS
 from loyalty_spend.data.simulate import SCENARIOS, Scenario, simulate
+from loyalty_spend.evaluation.simulation_study import run_study, winners
 
 
 def test_simulated_frame_has_schema(train_df):
@@ -27,3 +28,18 @@ def test_reproducible(train_df):
     a = simulate(train_df, SCENARIOS["interactions"], n=100, seed=5).frame
     b = simulate(train_df, SCENARIOS["interactions"], n=100, seed=5).frame
     assert a.equals(b)
+
+
+@pytest.mark.slow
+def test_study_ranks_linear_first_in_linear_scenario(train_df):
+    table = run_study(
+        train_df,
+        ["ols", "hist_gbm"],
+        scenarios=["linear", "interactions"],
+        n=600,
+        n_splits=3,
+    )
+    best = winners(table).set_index("scenario")["model"]
+    assert best["linear"] == "ols"
+    assert best["interactions"] == "hist_gbm"
+    assert (table["rmse"] >= 0.9 * table["bayes_rmse"]).all()
