@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Callable, Sequence
 
@@ -44,6 +45,27 @@ def _clean(args: argparse.Namespace) -> int:
     clean.to_csv(args.output, index=False)
     print(report.to_frame().to_string(index=False))
     print(f"wrote {len(clean)} rows to {args.output}")
+    return 0
+
+
+def _drivers_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--group", default="loyalty_years")
+
+
+@command("drivers", "test whether a feature drives spend", _drivers_args)
+def _drivers(args: argparse.Namespace) -> int:
+    from loyalty_spend.analysis.drivers import effect_sizes, spend_by_group, welch_anova
+    from loyalty_spend.data.io import load_clean
+
+    cfg = load_config(args.config)
+    clean, _ = load_clean(cfg.paths.raw(cfg.paths.loyalty_file), impute=False)
+    print(spend_by_group(clean, args.group).round(2).to_string(index=False))
+    print(
+        json.dumps(
+            {**welch_anova(clean, args.group), **effect_sizes(clean, args.group)}
+        )
+    )
     return 0
 
 
