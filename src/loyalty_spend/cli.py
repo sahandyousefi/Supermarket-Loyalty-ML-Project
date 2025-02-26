@@ -6,6 +6,8 @@ import argparse
 import sys
 from collections.abc import Callable, Sequence
 
+from loyalty_spend.config import load_config
+
 Handler = Callable[[argparse.Namespace], int]
 _COMMANDS: dict[
     str, tuple[str, Callable[[argparse.ArgumentParser], None], Handler]
@@ -24,6 +26,25 @@ def command(name: str, help: str, arguments: Callable[[argparse.ArgumentParser],
 
 def _config_arg(p: argparse.ArgumentParser) -> None:
     p.add_argument("--config", default=None, help="YAML configuration file")
+
+
+def _clean_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--input", default=None, help="raw CSV, defaults to loyalty.csv")
+    p.add_argument("--output", required=True)
+
+
+@command("clean", "clean a raw extract to the data dictionary", _clean_args)
+def _clean(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+
+    cfg = load_config(args.config)
+    path = args.input or cfg.paths.raw(cfg.paths.loyalty_file)
+    clean, report = load_clean(path)
+    clean.to_csv(args.output, index=False)
+    print(report.to_frame().to_string(index=False))
+    print(f"wrote {len(clean)} rows to {args.output}")
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
