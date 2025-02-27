@@ -40,3 +40,44 @@ referred to an $F$ distribution with $k-1$ and $(k^2-1) / \big(3\sum_k (1-w_k/W)
 $$\phi_j = \sum_{S \subseteq F\setminus\{j\}} \frac{|S|!\,(p-|S|-1)!}{p!}\big[R^2(S\cup\{j\}) - R^2(S)\big].$$
 
 This is the Shapley value of the $R^2$ game, so the shares sum to the full-model $R^2$ and do not depend on an arbitrary order of entry. Categorical features enter as blocks of dummies. With six features, all $2^6$ subsets are fitted exactly.
+
+## 4. Models
+
+All models share one preprocessing layer fitted inside each training fold:
+
+| Encoding | Numerics | Categories | Used by |
+| --- | --- | --- | --- |
+| one-hot | median imputation with missing indicator, standardized | one-hot, first level dropped | linear models |
+| spline | as above, then a cubic B-spline basis with six knots | one-hot | additive model |
+| ordinal | median imputation with indicator | integer codes, native categorical splits | tree ensembles |
+
+| Family | Models |
+| --- | --- |
+| Linear | OLS (baseline), ridge with the penalty chosen by efficient leave-one-out CV, elastic net, Huber regression, Gamma GLM with log link, spline ridge (an additive model) |
+| Trees | random forest, histogram gradient boosting, XGBoost (Chen and Guestrin, 2016), LightGBM (Ke et al., 2017) |
+| Deep | MLP with entity embeddings (Guo and Berkhahn, 2016), MLP with periodic numeric embeddings (Gorishniy et al., 2022), FT-Transformer (Gorishniy et al., 2021), deep ensemble of Gaussian MLPs (Lakshminarayanan et al., 2017) |
+
+**Networks.** Categories are mapped to learned embeddings; index 0 is reserved for missing and unseen levels. The MLP uses residual blocks of LayerNorm, Linear, GELU, Dropout and Linear. The PLR variant maps each numeric feature $x$ to $\mathrm{ReLU}(W[\sin(2\pi c x), \cos(2\pi c x)] + b)$ with trainable frequencies $c$; this lets a network represent sharp and oscillating effects that a plain MLP, biased towards smooth functions, fits poorly (Grinsztajn et al., 2022). The FT-Transformer turns every feature into a token, prepends a [CLS] token and reads the prediction from its final state. Training uses AdamW, a linear warmup followed by cosine decay, gradient clipping, a standardized target and early stopping on a 15% validation split, keeping the weights of the best epoch.
+
+**Probabilistic networks.** A Gaussian head outputs a mean and a log variance and is trained with the negative log likelihood $\tfrac12[\log\sigma^2(x) + (y-\mu(x))^2/\sigma^2(x)]$. The deep ensemble averages $M$ such networks with different seeds; its predictive variance splits into an aleatoric part $\frac1M\sum_m\sigma_m^2(x)$ and an epistemic part $\frac1M\sum_m(\mu_m(x)-\bar\mu(x))^2$.
+
+**Tuning.** Optuna's TPE sampler (Akiba et al., 2019) minimizes cross-validated RMSE. Because a score obtained while selecting hyperparameters is optimistically biased (Cawley and Talbot, 2010), nested cross-validation is available to estimate the performance of the whole tuning procedure, and the gap between inner and outer RMSE is reported as the optimism of selection.
+
+## 5. Model comparison
+
+Every model is evaluated on the same $5\times3$ repeated $K$-fold splits. RMSE is the primary metric because the cost forecast depends on squared errors through the variance of the total; MAE, MAPE and $R^2$ are also reported. Fold scores of different models on the same split are paired, but the folds share most of their training data, so the naive paired $t$-test is anti-conservative. Differences $d_1,\dots,d_J$ against the baseline are tested with the corrected resampled statistic of Nadeau and Bengio (2003):
+
+$$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}}}\right)\hat\sigma_d^2}} \sim t_{J-1}.$$
+
+## 6. Simulation study
+
+On `train.csv` a linear model reaches an $R^2$ above 0.999, so the data cannot show when a flexible model is worth its cost: every model is close to the noise floor and the ranking reflects how well each approximates a linear function. The simulator keeps the joint distribution of the real features by resampling rows, uses the OLS fit on the real data as the base signal, and adds controlled departures:
+
+| Scenario | Noise (share of target sd) | Heteroscedastic | Nonlinear weight | Interaction weight |
+| --- | --- | --- | --- | --- |
+| linear | 0.05 | no | 0 | 0 |
+| noisy | 0.20 | yes | 0 | 0 |
+| nonlinear | 0.05 | no | 0.25 | 0 |
+| interactions | 0.05 | no | 0.25 | 0.25 |
+
+The nonlinear terms are a saturating effect of basket size, a threshold in first-month spend and a quadratic penalty; the interactions are a promotion effect for first-year members and a tenure-by-first-month slope change. Noise is Student-$t$ with five degrees of freedom, rescaled to the target standard deviation, so occasional large deviations occur. Because the noise is known, each model's RMSE is compared with the Bayes error $\sqrt{\mathbb E[\sigma^2(x)]}$, and the excess RMSE divided by the Bayes error puts scenarios with different noise on one scale.
