@@ -8,11 +8,22 @@ This repository started as a solution to a certification exercise and is being r
 
 Work in progress. Implemented so far:
 
-- Data dictionary as code, with validation of column types, category levels and identifiers
-- Cleaning of the raw extract with a log of every change (Task 1 of the brief)
-- A lineage check showing that `loyalty.csv` and `train.csv` share customer ids but not customer attributes, so the files must not be joined
+- Data dictionary as code, cleaning with a change log, and a lineage check between the supplied files
+- Statistical analysis of spend by tenure: bootstrap intervals, Welch's ANOVA, effect sizes, Tukey's HSD and a Shapley decomposition of R squared
+- A model registry with linear models (OLS, ridge, elastic net, Huber, Gamma GLM, spline ridge) and tree ensembles (random forest, histogram gradient boosting, XGBoost, LightGBM)
+- Repeated cross-validation on fixed splits with the corrected resampled t-test of Nadeau and Bengio (2003)
+- A simulator calibrated to the training data, used to compare model families when the true noise level is known
 
-Planned: the analysis of spend by tenure (Task 2), baseline and comparison models (Tasks 3 and 4), and a forecast of reward cost.
+Planned: neural network models, prediction intervals and a forecast of reward cost.
+
+## Quick start
+
+```bash
+pip install -e ".[dev,gbm]"
+loyalty-spend clean --output clean.csv
+loyalty-spend drivers
+loyalty-spend compare --models ols ridge hist_gbm lightgbm
+```
 
 ## Data
 
@@ -21,6 +32,6 @@ See [data/README.md](data/README.md) for the files, the data dictionary and the 
 ## Development
 
 ```bash
-pip install -e ".[dev]"
 pytest -q
+ruff check .
 ```
