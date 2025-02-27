@@ -69,6 +69,32 @@ def _drivers(args: argparse.Namespace) -> int:
     return 0
 
 
+def _compare_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--models", nargs="+", default=["ols", "ridge", "hist_gbm"])
+    p.add_argument("--reference", default="ols")
+    p.add_argument("--output", default=None, help="CSV of the comparison table")
+
+
+@command("compare", "repeated cross-validation of several models", _compare_args)
+def _compare(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.evaluation.cv import compare_results, cross_validate, make_splits
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.registry import build_model
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    X, y = split_xy(train)
+    splits = make_splits(len(y), cfg.cv.n_splits, cfg.cv.n_repeats, cfg.cv.seed)
+    results = [cross_validate(m, build_model(m), X, y, splits) for m in args.models]
+    table = compare_results(results, args.reference)
+    if args.output:
+        table.to_csv(args.output, index=False)
+    print(table.round(4).to_string(index=False))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="loyalty-spend")
     sub = parser.add_subparsers(dest="command", required=True)
