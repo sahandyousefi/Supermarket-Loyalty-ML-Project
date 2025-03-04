@@ -21,6 +21,8 @@ from __future__ import annotations
 import torch
 from torch import nn
 
+from loyalty_spend.models.deep.tabular import embedding_dim
+
 
 class ResidualBlock(nn.Module):
     def __init__(self, width: int, dropout: float) -> None:
@@ -35,3 +37,43 @@ class ResidualBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x + self.net(x)
+
+
+class EmbeddingMLP(nn.Module):
+    """MLP over standardized numerics and learned category embeddings."""
+
+    def __init__(
+        self,
+        n_numeric: int,
+        cardinalities: list[int],
+        width: int = 128,
+        depth: int = 3,
+        dropout: float = 0.1,
+        n_outputs: int = 1,
+        numeric_embedding: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.embeddings = nn.ModuleList(
+            nn.Embedding(c, embedding_dim(c)) for c in cardinalities
+        )
+        self.numeric = None
+        n_num = n_numeric
+        if numeric_embedding == "plr":
+            self.numeric = PeriodicEmbedding(n_numeric)
+            n_num = n_numeric * self.numeric.d_out
+        elif numeric_embedding is not None:
+            raise ValueError("numeric_embedding must be None or 'plr'")
+        n_in = n_num + sum(e.embedding_dim for e in self.embeddings)
+        self.input = nn.Linear(n_in, width)
+        self.blocks = nn.Sequential(
+            *[ResidualBlock(width, dropout) for _ in range(depth)]
+        )
+        self.head = nn.Sequential(
+            nn.LayerNorm(width), nn.GELU(), nn.Linear(width, n_outputs)
+        )
+
+    def forward(self, x_num: torch.Tensor, x_cat: torch.Tensor) -> torch.Tensor:
+        emb = [e(x_cat[:, i]) for i, e in enumerate(self.embeddings)]
+        num = x_num if self.numeric is None else self.numeric(x_num)
+        h = self.input(torch.cat([num, *emb], dim=1))
+        return self.head(self.blocks(h))
