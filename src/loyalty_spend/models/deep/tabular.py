@@ -56,3 +56,8 @@ class TabularEncoder:
             ]
         )
         return torch.from_numpy(x_num), torch.from_numpy(x_cat)
+
+
+def embedding_dim(cardinality: int, max_dim: int = 16) -> int:
+    """Rule of thumb from fast.ai: grows sub-linearly with the cardinality."""
+    return int(min(max_dim, round(1.6 * cardinality**0.56)))
