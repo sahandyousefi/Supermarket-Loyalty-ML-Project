@@ -102,3 +102,45 @@ class FeatureTokenizer(nn.Module):
             [e(x_cat[:, i]) for i, e in enumerate(self.cat_embeddings)], dim=1
         )
         return torch.cat([num, cat + self.cat_bias], dim=1)
+
+
+class FTTransformer(nn.Module):
+    """Transformer encoder over feature tokens with a [CLS] readout."""
+
+    def __init__(
+        self,
+        n_numeric: int,
+        cardinalities: list[int],
+        d_token: int = 32,
+        n_layers: int = 2,
+        n_heads: int = 4,
+        dropout: float = 0.1,
+        n_outputs: int = 1,
+    ) -> None:
+        super().__init__()
+        self.tokenizer = FeatureTokenizer(n_numeric, cardinalities, d_token)
+        self.cls = nn.Parameter(torch.zeros(1, 1, d_token))
+        layer = nn.TransformerEncoderLayer(
+            d_model=d_token,
+            nhead=n_heads,
+            dim_feedforward=2 * d_token,
+            dropout=dropout,
+            activation="gelu",
+            batch_first=True,
+            norm_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(
+            layer, n_layers, enable_nested_tensor=False
+        )
+        self.head = nn.Sequential(
+            nn.LayerNorm(d_token), nn.GELU(), nn.Linear(d_token, n_outputs)
+        )
+
+    def forward(self, x_num: torch.Tensor, x_cat: torch.Tensor) -> torch.Tensor:
+        tokens = self.tokenizer(x_num, x_cat)
+        cls = self.cls.expand(tokens.shape[0], -1, -1)
+        h = self.encoder(torch.cat([cls, tokens], dim=1))
+        return self.head(h[:, 0])
+
+
+ARCHITECTURES = {"mlp": EmbeddingMLP, "ft_transformer": FTTransformer}
