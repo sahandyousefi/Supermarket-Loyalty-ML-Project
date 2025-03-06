@@ -77,3 +77,28 @@ class EmbeddingMLP(nn.Module):
         num = x_num if self.numeric is None else self.numeric(x_num)
         h = self.input(torch.cat([num, *emb], dim=1))
         return self.head(self.blocks(h))
+
+
+class FeatureTokenizer(nn.Module):
+    """One d-dimensional token per feature.
+
+    A numeric feature ``x_j`` becomes ``x_j * w_j + b_j``; a categorical
+    feature is looked up in its own embedding table and shifted by a bias.
+    """
+
+    def __init__(self, n_numeric: int, cardinalities: list[int], d_token: int) -> None:
+        super().__init__()
+        self.num_weight = nn.Parameter(torch.empty(n_numeric, d_token))
+        self.num_bias = nn.Parameter(torch.zeros(n_numeric, d_token))
+        self.cat_embeddings = nn.ModuleList(
+            nn.Embedding(c, d_token) for c in cardinalities
+        )
+        self.cat_bias = nn.Parameter(torch.zeros(len(cardinalities), d_token))
+        nn.init.kaiming_uniform_(self.num_weight, a=5**0.5)
+
+    def forward(self, x_num: torch.Tensor, x_cat: torch.Tensor) -> torch.Tensor:
+        num = x_num.unsqueeze(-1) * self.num_weight + self.num_bias
+        cat = torch.stack(
+            [e(x_cat[:, i]) for i, e in enumerate(self.cat_embeddings)], dim=1
+        )
+        return torch.cat([num, cat + self.cat_bias], dim=1)
