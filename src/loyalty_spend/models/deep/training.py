@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 import torch
@@ -43,3 +44,16 @@ def gaussian_nll(output: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
 
 def mse_loss(output: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     return nn.functional.mse_loss(output[:, 0], target)
+
+
+def _lr_lambda(settings: TrainSettings):
+    # Linear warmup, then cosine decay to 5% of the base rate.
+    def f(epoch: int) -> float:
+        if epoch < settings.warmup_epochs:
+            return (epoch + 1) / settings.warmup_epochs
+        progress = (epoch - settings.warmup_epochs) / max(
+            1, settings.epochs - settings.warmup_epochs
+        )
+        return 0.05 + 0.95 * 0.5 * (1 + math.cos(math.pi * min(1.0, progress)))
+
+    return f
