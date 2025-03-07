@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import torch
+from torch import nn
 
 
 @dataclass(frozen=True)
@@ -28,3 +29,17 @@ class History:
 
 def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
+
+
+def gaussian_nll(output: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """Negative log likelihood of a Gaussian with predicted mean and log variance.
+
+    The log variance is clamped so that a single badly fitted point cannot
+    drive the variance to zero and the loss to minus infinity.
+    """
+    mean, log_var = output[:, 0], output[:, 1].clamp(-10.0, 10.0)
+    return 0.5 * (log_var + (target - mean) ** 2 / log_var.exp()).mean()
+
+
+def mse_loss(output: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    return nn.functional.mse_loss(output[:, 0], target)
