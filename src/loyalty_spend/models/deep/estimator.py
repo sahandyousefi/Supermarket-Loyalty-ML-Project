@@ -18,6 +18,7 @@ from loyalty_spend.models.deep.training import (
     gaussian_nll,
     mse_loss,
 )
+from loyalty_spend.models.registry import register
 
 
 class TorchTabularRegressor(RegressorMixin, BaseEstimator):
@@ -124,3 +125,16 @@ class TorchTabularRegressor(RegressorMixin, BaseEstimator):
         mean = out[:, 0] * self.y_std_ + self.y_mean_
         var = np.exp(np.clip(out[:, 1], -10, 10)) * self.y_std_**2
         return mean, var
+
+
+@register("mlp", family="deep", requires="torch")
+def mlp(**params: Any) -> TorchTabularRegressor:
+    return TorchTabularRegressor(architecture="mlp", **params)
+
+
+@register("ft_transformer", family="deep", requires="torch")
+def ft_transformer(**params: Any) -> TorchTabularRegressor:
+    defaults = dict(learning_rate=1e-3, weight_decay=1e-5, batch_size=128)
+    return TorchTabularRegressor(
+        architecture="ft_transformer", **{**defaults, **params}
+    )
