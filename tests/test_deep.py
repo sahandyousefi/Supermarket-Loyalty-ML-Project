@@ -3,6 +3,9 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
+from loyalty_spend.models.deep.estimator import (  # noqa: E402
+    TorchTabularRegressor,
+)
 from loyalty_spend.models.deep.networks import (  # noqa: E402
     EmbeddingMLP,
     FTTransformer,
@@ -11,6 +14,7 @@ from loyalty_spend.models.deep.tabular import (  # noqa: E402
     TabularEncoder,
     embedding_dim,
 )
+from loyalty_spend.models.deep.training import gaussian_nll  # noqa: E402
 
 FAST = dict(epochs=15, patience=5)
 
@@ -36,3 +40,34 @@ def test_network_output_shape(cls):
     net = cls(n_numeric=4, cardinalities=[5, 6, 14, 3], n_outputs=2)
     out = net(torch.randn(8, 4), torch.randint(0, 3, (8, 4)))
     assert out.shape == (8, 2)
+
+
+def test_gaussian_nll_prefers_correct_variance():
+    target = torch.zeros(1000)
+    noise = torch.randn(1000)
+    good = torch.stack([noise, torch.zeros(1000)], dim=1)
+    bad = torch.stack([noise, torch.full((1000,), 3.0)], dim=1)
+    assert gaussian_nll(good, target) < gaussian_nll(bad, target)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("arch", ["mlp", "ft_transformer"])
+def test_regressor_learns_signal(xy, arch):
+    X, y = xy
+    model = TorchTabularRegressor(architecture=arch, epochs=60, patience=15).fit(X, y)
+    pred = model.predict(X)
+    assert np.sqrt(np.mean((pred - y) ** 2)) < 0.6 * y.std()
+    assert model.history_.best_epoch < len(model.history_.val_loss)
+
+
+def test_regressor_is_reproducible(xy):
+    X, y = xy
+    a = TorchTabularRegressor(**FAST, seed=3).fit(X, y).predict(X.head(5))
+    b = TorchTabularRegressor(**FAST, seed=3).fit(X, y).predict(X.head(5))
+    assert np.allclose(a, b)
+
+
+def test_unknown_architecture(xy):
+    X, y = xy
+    with pytest.raises(ValueError):
+        TorchTabularRegressor(architecture="cnn").fit(X, y)
