@@ -127,6 +127,61 @@ class TorchTabularRegressor(RegressorMixin, BaseEstimator):
         return mean, var
 
 
+class DeepEnsembleRegressor(RegressorMixin, BaseEstimator):
+    """Average of independently seeded Gaussian networks.
+
+    The predictive distribution is the uniform mixture of the members, with
+    mean ``mu = mean_m mu_m`` and variance
+    ``mean_m (sigma_m^2 + mu_m^2) - mu^2`` (Lakshminarayanan et al., 2017).
+    The first term is aleatoric noise, the spread of the member means is
+    epistemic uncertainty.
+    """
+
+    def __init__(
+        self,
+        n_members: int = 5,
+        architecture: str = "mlp",
+        arch_params: dict[str, Any] | None = None,
+        epochs: int = 400,
+        patience: int = 40,
+        seed: int = 0,
+    ) -> None:
+        self.n_members = n_members
+        self.architecture = architecture
+        self.arch_params = arch_params
+        self.epochs = epochs
+        self.patience = patience
+        self.seed = seed
+
+    def fit(self, X: pd.DataFrame, y) -> DeepEnsembleRegressor:
+        self.members_ = [
+            TorchTabularRegressor(
+                architecture=self.architecture,
+                arch_params=self.arch_params,
+                epochs=self.epochs,
+                patience=self.patience,
+                probabilistic=True,
+                seed=self.seed + m,
+            ).fit(X, y)
+            for m in range(self.n_members)
+        ]
+        return self
+
+    def predict_components(self, X: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+        """Aleatoric and epistemic variance per row."""
+        means, variances = zip(*(m.predict_dist(X) for m in self.members_))
+        means, variances = np.vstack(means), np.vstack(variances)
+        return variances.mean(axis=0), means.var(axis=0)
+
+    def predict_dist(self, X: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+        means = np.vstack([m.predict_dist(X)[0] for m in self.members_])
+        aleatoric, epistemic = self.predict_components(X)
+        return means.mean(axis=0), aleatoric + epistemic
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        return self.predict_dist(X)[0]
+
+
 @register("mlp", family="deep", requires="torch")
 def mlp(**params: Any) -> TorchTabularRegressor:
     return TorchTabularRegressor(architecture="mlp", **params)
@@ -138,6 +193,11 @@ def ft_transformer(**params: Any) -> TorchTabularRegressor:
     return TorchTabularRegressor(
         architecture="ft_transformer", **{**defaults, **params}
     )
+
+
+@register("deep_ensemble", family="deep", requires="torch")
+def deep_ensemble(**params: Any) -> DeepEnsembleRegressor:
+    return DeepEnsembleRegressor(**params)
 
 
 @register("mlp_plr", family="deep", requires="torch")
