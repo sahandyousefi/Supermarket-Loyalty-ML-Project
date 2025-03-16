@@ -9,6 +9,7 @@ from loyalty_spend.models.deep.estimator import (  # noqa: E402
 from loyalty_spend.models.deep.networks import (  # noqa: E402
     EmbeddingMLP,
     FTTransformer,
+    PeriodicEmbedding,
 )
 from loyalty_spend.models.deep.tabular import (  # noqa: E402
     TabularEncoder,
@@ -40,6 +41,11 @@ def test_network_output_shape(cls):
     net = cls(n_numeric=4, cardinalities=[5, 6, 14, 3], n_outputs=2)
     out = net(torch.randn(8, 4), torch.randint(0, 3, (8, 4)))
     assert out.shape == (8, 2)
+
+
+def test_periodic_embedding_shape():
+    emb = PeriodicEmbedding(n_features=3, n_frequencies=4, d_out=5)
+    assert emb(torch.randn(7, 3)).shape == (7, 15)
 
 
 def test_gaussian_nll_prefers_correct_variance():
