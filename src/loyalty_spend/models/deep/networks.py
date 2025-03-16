@@ -39,6 +39,34 @@ class ResidualBlock(nn.Module):
         return x + self.net(x)
 
 
+class PeriodicEmbedding(nn.Module):
+    """PLR embedding of each numeric feature.
+
+    ``x -> ReLU(W [sin(2 pi c x), cos(2 pi c x)] + b)`` with trainable
+    frequencies ``c`` initialized from ``N(0, sigma^2)``, one set per feature.
+    """
+
+    def __init__(
+        self,
+        n_features: int,
+        n_frequencies: int = 16,
+        sigma: float = 0.5,
+        d_out: int = 16,
+    ) -> None:
+        super().__init__()
+        self.frequencies = nn.Parameter(torch.randn(n_features, n_frequencies) * sigma)
+        self.weight = nn.Parameter(torch.empty(n_features, 2 * n_frequencies, d_out))
+        self.bias = nn.Parameter(torch.zeros(n_features, d_out))
+        nn.init.xavier_uniform_(self.weight)
+        self.d_out = d_out
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        angles = 2 * torch.pi * self.frequencies * x.unsqueeze(-1)
+        periodic = torch.cat([torch.sin(angles), torch.cos(angles)], dim=-1)
+        out = torch.einsum("bfk,fkd->bfd", periodic, self.weight) + self.bias
+        return torch.relu(out).flatten(1)
+
+
 class EmbeddingMLP(nn.Module):
     """MLP over standardized numerics and learned category embeddings."""
 
