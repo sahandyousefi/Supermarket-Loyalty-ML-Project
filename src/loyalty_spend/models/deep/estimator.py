@@ -138,3 +138,10 @@ def ft_transformer(**params: Any) -> TorchTabularRegressor:
     return TorchTabularRegressor(
         architecture="ft_transformer", **{**defaults, **params}
     )
+
+
+@register("mlp_plr", family="deep", requires="torch")
+def mlp_plr(**params: Any) -> TorchTabularRegressor:
+    """MLP with periodic embeddings of the numeric features."""
+    arch = {"numeric_embedding": "plr", **params.pop("arch_params", {})}
+    return TorchTabularRegressor(architecture="mlp", arch_params=arch, **params)
