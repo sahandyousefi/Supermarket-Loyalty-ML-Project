@@ -21,10 +21,11 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,gbm]"
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev,gbm,deep]"
       - name: Lint
         run: |
           ruff check .
           ruff format --check .
       - name: Test
-        run: pytest -q --cov=loyalty_spend --cov-report=term-missing
+        run: pytest -q -m "not slow" --cov=loyalty_spend --cov-report=term-missing
