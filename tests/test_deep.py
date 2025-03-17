@@ -4,6 +4,7 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from loyalty_spend.models.deep.estimator import (  # noqa: E402
+    DeepEnsembleRegressor,
     TorchTabularRegressor,
 )
 from loyalty_spend.models.deep.networks import (  # noqa: E402
@@ -71,6 +72,19 @@ def test_regressor_is_reproducible(xy):
     a = TorchTabularRegressor(**FAST, seed=3).fit(X, y).predict(X.head(5))
     b = TorchTabularRegressor(**FAST, seed=3).fit(X, y).predict(X.head(5))
     assert np.allclose(a, b)
+
+
+def test_probabilistic_head_and_ensemble(xy):
+    X, y = xy
+    model = TorchTabularRegressor(**FAST, probabilistic=True).fit(X, y)
+    mean, var = model.predict_dist(X.head(4))
+    assert mean.shape == var.shape == (4,) and (var > 0).all()
+    with pytest.raises(AttributeError):
+        TorchTabularRegressor(**FAST).fit(X, y).predict_dist(X)
+    ens = DeepEnsembleRegressor(n_members=2, epochs=10, patience=5).fit(X, y)
+    aleatoric, epistemic = ens.predict_components(X.head(4))
+    _, total = ens.predict_dist(X.head(4))
+    assert np.allclose(total, aleatoric + epistemic)
 
 
 def test_unknown_architecture(xy):
