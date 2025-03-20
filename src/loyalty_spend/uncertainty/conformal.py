@@ -13,7 +13,11 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from sklearn.base import clone
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.model_selection import KFold, train_test_split
+from sklearn.pipeline import Pipeline
+
+from loyalty_spend.features.preprocess import make_preprocessor
 
 
 def conformal_quantile(scores: np.ndarray, alpha: float) -> float:
@@ -107,3 +111,50 @@ def cv_plus_intervals(
     lo = np.sort(lower, axis=0)[max(k_lo - 1, 0)]
     hi = np.sort(upper, axis=0)[min(k_hi - 1, n - 1)]
     return Intervals(lo, hi)
+
+
+def _quantile_model(q: float, seed: int) -> Pipeline:
+    prep = make_preprocessor("ordinal").set_output(transform="pandas")
+    model = HistGradientBoostingRegressor(
+        loss="quantile",
+        quantile=q,
+        learning_rate=0.05,
+        max_iter=400,
+        max_leaf_nodes=15,
+        min_samples_leaf=20,
+        random_state=seed,
+    )
+    return Pipeline([("prep", prep), ("model", model)])
+
+
+class ConformalizedQuantileRegressor:
+    """Conformalized quantile regression (Romano et al., 2019).
+
+    Gradient-boosted quantile models estimate the ``alpha/2`` and
+    ``1 - alpha/2`` quantiles, and a conformal correction on held-out data
+    widens or narrows the band so that coverage is guaranteed. Unlike split
+    conformal with absolute residuals, the width adapts to each customer.
+    """
+
+    def __init__(
+        self, alpha: float = 0.1, calibration_size: float = 0.25, seed: int = 0
+    ) -> None:
+        self.alpha = alpha
+        self.calibration_size = calibration_size
+        self.seed = seed
+
+    def fit(self, X: pd.DataFrame, y) -> ConformalizedQuantileRegressor:
+        y = np.asarray(y, float)
+        X_fit, X_cal, y_fit, y_cal = train_test_split(
+            X, y, test_size=self.calibration_size, random_state=self.seed
+        )
+        self.lower_ = _quantile_model(self.alpha / 2, self.seed).fit(X_fit, y_fit)
+        self.upper_ = _quantile_model(1 - self.alpha / 2, self.seed).fit(X_fit, y_fit)
+        lo, hi = self.lower_.predict(X_cal), self.upper_.predict(X_cal)
+        scores = np.maximum(lo - y_cal, y_cal - hi)
+        self.q_ = conformal_quantile(scores, self.alpha)
+        return self
+
+    def predict_interval(self, X: pd.DataFrame) -> Intervals:
+        lo, hi = self.lower_.predict(X), self.upper_.predict(X)
+        return Intervals(np.minimum(lo, hi) - self.q_, np.maximum(lo, hi) + self.q_)
