@@ -13,7 +13,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from sklearn.base import clone
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold, train_test_split
 
 
 def conformal_quantile(scores: np.ndarray, alpha: float) -> float:
@@ -75,3 +75,35 @@ class SplitConformalRegressor:
     def predict_interval(self, X: pd.DataFrame) -> Intervals:
         pred = self.predict(X)
         return Intervals(pred - self.q_, pred + self.q_)
+
+
+def cv_plus_intervals(
+    estimator,
+    X: pd.DataFrame,
+    y,
+    X_new: pd.DataFrame,
+    alpha: float = 0.1,
+    n_splits: int = 10,
+    seed: int = 0,
+) -> Intervals:
+    """CV+ intervals (Barber et al., 2021).
+
+    Uses every row for both fitting and calibration. With ``K`` folds the
+    guaranteed coverage is ``1 - 2 alpha - sqrt(2/n)``; in practice it is
+    close to ``1 - alpha``.
+    """
+    y = np.asarray(y, float)
+    n = len(y)
+    lower = np.empty((n, len(X_new)))
+    upper = np.empty((n, len(X_new)))
+    for tr, te in KFold(n_splits, shuffle=True, random_state=seed).split(X):
+        model = clone(estimator).fit(X.iloc[tr], y[tr])
+        resid = np.abs(y[te] - model.predict(X.iloc[te]))
+        pred_new = model.predict(X_new)
+        lower[te] = pred_new[None, :] - resid[:, None]
+        upper[te] = pred_new[None, :] + resid[:, None]
+    k_lo = int(np.floor(alpha * (n + 1)))
+    k_hi = int(np.ceil((1 - alpha) * (n + 1)))
+    lo = np.sort(lower, axis=0)[max(k_lo - 1, 0)]
+    hi = np.sort(upper, axis=0)[min(k_hi - 1, n - 1)]
+    return Intervals(lo, hi)
