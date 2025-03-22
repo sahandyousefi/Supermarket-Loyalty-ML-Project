@@ -19,3 +19,7 @@ deep:
   patience: 40
   val_fraction: 0.15
   seed: 0
+
+conformal:
+  alpha: 0.1
+  calibration_size: 0.25
