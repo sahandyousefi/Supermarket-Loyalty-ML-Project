@@ -158,3 +158,21 @@ class ConformalizedQuantileRegressor:
     def predict_interval(self, X: pd.DataFrame) -> Intervals:
         lo, hi = self.lower_.predict(X), self.upper_.predict(X)
         return Intervals(np.minimum(lo, hi) - self.q_, np.maximum(lo, hi) + self.q_)
+
+
+def coverage_by_group(intervals: Intervals, y, groups: pd.Series) -> pd.DataFrame:
+    """Coverage and mean width per group, to check conditional coverage."""
+    df = pd.DataFrame(
+        {
+            "group": np.asarray(groups),
+            "covered": (np.asarray(y) >= intervals.lower)
+            & (np.asarray(y) <= intervals.upper),
+            "width": intervals.width,
+        }
+    )
+    out = df.groupby("group", observed=True).agg(
+        n=("covered", "size"),
+        coverage=("covered", "mean"),
+        mean_width=("width", "mean"),
+    )
+    return out.reset_index()
