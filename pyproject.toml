@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loyalty-spend"
-version = "0.1.0"
+version = "1.0.0"
 description = "Annual spend forecasting and reward liability estimation for a supermarket loyalty programme"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,9 @@ dependencies = [
 dev = ["pytest>=7.4", "pytest-cov>=4.1", "ruff>=0.5", "pre-commit>=3.5"]
 gbm = ["xgboost>=2.0", "lightgbm>=4.0"]
 deep = ["torch>=2.1"]
+tune = ["optuna>=3.4"]
+explain = ["shap>=0.44"]
+all = ["loyalty-spend[gbm,deep,tune,explain]"]
 
 [project.scripts]
 loyalty-spend = "loyalty_spend.cli:main"
