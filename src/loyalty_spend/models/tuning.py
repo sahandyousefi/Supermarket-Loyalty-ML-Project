@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import pandas as pd
+from sklearn.model_selection import KFold, cross_val_score
+
+from loyalty_spend.models.registry import build_model
+
 
 def search_space(trial, name: str) -> dict[str, Any]:
     """Hyperparameters sampled for each model family."""
@@ -53,3 +58,35 @@ def search_space(trial, name: str) -> dict[str, Any]:
             },
         }
     raise KeyError(f"no search space for '{name}'")
+
+
+def tune(
+    name: str,
+    X: pd.DataFrame,
+    y: pd.Series,
+    n_trials: int = 40,
+    n_splits: int = 5,
+    seed: int = 0,
+) -> tuple[dict[str, Any], float]:
+    """Minimize cross-validated RMSE with the TPE sampler.
+
+    Returns the best parameters and their cross-validated RMSE.
+    """
+    import optuna
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    cv = KFold(n_splits, shuffle=True, random_state=seed)
+
+    def objective(trial) -> float:
+        model = build_model(name, **search_space(trial, name))
+        scores = cross_val_score(
+            model, X, y, cv=cv, scoring="neg_root_mean_squared_error"
+        )
+        return float(-scores.mean())
+
+    study = optuna.create_study(
+        direction="minimize", sampler=optuna.samplers.TPESampler(seed=seed)
+    )
+    study.optimize(objective, n_trials=n_trials)
+    best = search_space(optuna.trial.FixedTrial(study.best_params), name)
+    return best, float(study.best_value)
