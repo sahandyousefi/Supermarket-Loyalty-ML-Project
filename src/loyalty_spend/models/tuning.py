@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold, cross_val_score
 
+from loyalty_spend.evaluation.metrics import rmse
 from loyalty_spend.models.registry import build_model
 
 
@@ -90,3 +93,44 @@ def tune(
     study.optimize(objective, n_trials=n_trials)
     best = search_space(optuna.trial.FixedTrial(study.best_params), name)
     return best, float(study.best_value)
+
+
+@dataclass
+class NestedCVResult:
+    outer_rmse: list[float] = field(default_factory=list)
+    inner_rmse: list[float] = field(default_factory=list)
+    params: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def mean(self) -> float:
+        return float(np.mean(self.outer_rmse))
+
+    @property
+    def optimism(self) -> float:
+        """How much the tuning score understates the generalization error."""
+        return float(np.mean(self.outer_rmse) - np.mean(self.inner_rmse))
+
+
+def nested_cv(
+    name: str,
+    X: pd.DataFrame,
+    y: pd.Series,
+    outer_splits: int = 5,
+    inner_splits: int = 3,
+    n_trials: int = 20,
+    seed: int = 0,
+) -> NestedCVResult:
+    """Tune inside each outer training fold and score on the outer test fold.
+
+    The outer score is an honest estimate of the tuned procedure; the inner
+    score is what a single tuning run would report (Cawley and Talbot, 2010).
+    """
+    result = NestedCVResult()
+    outer = KFold(outer_splits, shuffle=True, random_state=seed)
+    for tr, te in outer.split(X):
+        params, inner = tune(name, X.iloc[tr], y.iloc[tr], n_trials, inner_splits, seed)
+        model = build_model(name, **params).fit(X.iloc[tr], y.iloc[tr])
+        result.outer_rmse.append(rmse(y.iloc[te], model.predict(X.iloc[te])))
+        result.inner_rmse.append(inner)
+        result.params.append(params)
+    return result
