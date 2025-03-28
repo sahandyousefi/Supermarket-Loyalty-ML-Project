@@ -95,6 +95,33 @@ def _compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def _tune_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--model", default="lightgbm")
+    p.add_argument("--trials", type=int, default=40)
+    p.add_argument("--nested", action="store_true", help="nested CV estimate")
+
+
+@command("tune", "Optuna search with optional nested CV", _tune_args)
+def _tune(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.tuning import nested_cv, tune
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    X, y = split_xy(train)
+    if args.nested:
+        res = nested_cv(args.model, X, y, n_trials=args.trials, seed=cfg.cv.seed)
+        print(json.dumps({"outer_rmse": res.mean, "optimism": res.optimism}))
+    else:
+        params, score = tune(
+            args.model, X, y, args.trials, cfg.cv.n_splits, cfg.cv.seed
+        )
+        print(json.dumps({"cv_rmse": score, "params": params}, default=str))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="loyalty-spend")
     sub = parser.add_subparsers(dest="command", required=True)
