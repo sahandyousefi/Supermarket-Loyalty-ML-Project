@@ -81,3 +81,13 @@ On `train.csv` a linear model reaches an $R^2$ above 0.999, so the data cannot s
 | interactions | 0.05 | no | 0.25 | 0.25 |
 
 The nonlinear terms are a saturating effect of basket size, a threshold in first-month spend and a quadratic penalty; the interactions are a promotion effect for first-year members and a tenure-by-first-month slope change. Noise is Student-$t$ with five degrees of freedom, rescaled to the target standard deviation, so occasional large deviations occur. Because the noise is known, each model's RMSE is compared with the Bayes error $\sqrt{\mathbb E[\sigma^2(x)]}$, and the excess RMSE divided by the Bayes error puts scenarios with different noise on one scale.
+
+## 7. Prediction intervals
+
+Conformal prediction gives intervals with finite-sample marginal coverage $\Pr(y \in [\ell(x), u(x)]) \ge 1-\alpha$ for any model, assuming only exchangeability.
+
+**Split conformal** (Lei et al., 2018). Fit on one part of the data, compute absolute residuals $s_i = |y_i - \hat y(x_i)|$ on a calibration part of size $m$, and use the $\lceil (m+1)(1-\alpha)\rceil$-th smallest score $q$ as a constant half-width.
+
+**CV+** (Barber et al., 2021). Uses every row for both fitting and calibration by combining out-of-fold residuals with the fold models' predictions; coverage is guaranteed at $1 - 2\alpha - \sqrt{2/n}$ and is close to $1-\alpha$ in practice.
+
+**Conformalized quantile regression** (Romano et al., 2019). Gradient-boosted models estimate the $\alpha/2$ and $1-\alpha/2$ quantiles, and the conformity score $\max(\hat q_{\text{lo}}(x) - y, y - \hat q_{\text{hi}}(x))$ calibrates the band. The width adapts to each customer, which matters when the noise is heteroscedastic: constant-width intervals then over-cover low spenders and under-cover high spenders, even though the marginal coverage is correct. Coverage is therefore also reported by decile of predicted spend.
