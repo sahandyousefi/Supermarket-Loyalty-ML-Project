@@ -54,3 +54,18 @@ def linear_contributions(pipeline: Pipeline, X: pd.DataFrame) -> pd.DataFrame:
     names = list(prep.get_feature_names_out())
     values = (Z - Z.mean(axis=0)) * np.ravel(model.coef_)
     return _group(values, names).set_index(X.index)
+
+
+def tree_shap(pipeline: Pipeline, X: pd.DataFrame) -> pd.DataFrame:
+    """TreeSHAP values of a tree ensemble pipeline, grouped to raw features."""
+    import shap
+
+    prep, model = pipeline[:-1], pipeline[-1]
+    Z = prep.transform(X)
+    values = shap.TreeExplainer(model).shap_values(Z)
+    names = list(prep.get_feature_names_out())
+    return _group(np.asarray(values), names).set_index(X.index)
+
+
+def mean_absolute_attribution(contributions: pd.DataFrame) -> pd.Series:
+    return contributions.abs().mean().sort_values(ascending=False)
