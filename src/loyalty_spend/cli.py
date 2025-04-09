@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from loyalty_spend.config import load_config
 
@@ -92,6 +93,69 @@ def _compare(args: argparse.Namespace) -> int:
     if args.output:
         table.to_csv(args.output, index=False)
     print(table.round(4).to_string(index=False))
+    return 0
+
+
+def _train_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--model", default="ols")
+    p.add_argument(
+        "--output", default=None, help="defaults to <output_dir>/model.joblib"
+    )
+
+
+@command("train", "fit a model and save it with its residuals", _train_args)
+def _train(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.evaluation.cv import cross_validate, make_splits
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.persistence import (
+        ModelBundle,
+        data_fingerprint,
+        save_bundle,
+    )
+    from loyalty_spend.models.registry import build_model
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    X, y = split_xy(train)
+    splits = make_splits(len(y), cfg.cv.n_splits, 1, cfg.cv.seed)
+    cv = cross_validate(args.model, build_model(args.model), X, y, splits)
+    model = build_model(args.model).fit(X, y)
+    bundle = ModelBundle(
+        args.model,
+        model,
+        residuals=y.to_numpy() - cv.oof,
+        metadata={"cv": cv.summary(), "data": data_fingerprint(train)},
+    )
+    path = save_bundle(
+        bundle, args.output or Path(cfg.paths.output_dir) / "model.joblib"
+    )
+    print(json.dumps(cv.summary(), indent=2))
+    print(f"saved {path}")
+    return 0
+
+
+def _predict_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("input", help="CSV of customers to score")
+    p.add_argument("output")
+    p.add_argument("--model", default="artifacts/model.joblib")
+
+
+@command("predict", "score customers with a saved model", _predict_args)
+def _predict(args: argparse.Namespace) -> int:
+    import pandas as pd
+
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.data.schema import ID, TARGET
+    from loyalty_spend.models.persistence import load_bundle
+
+    bundle = load_bundle(args.model)
+    frame, _ = load_clean(args.input, impute=False, require_target=False)
+    pred = bundle.predict(frame)
+    out = pd.DataFrame({ID: frame[ID], TARGET: pred.round(2)})
+    out.to_csv(args.output, index=False)
+    print(f"scored {len(out)} customers with '{bundle.name}', wrote {args.output}")
     return 0
 
 
