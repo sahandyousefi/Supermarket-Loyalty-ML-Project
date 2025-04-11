@@ -121,3 +121,13 @@ def forecast_liability(
         }
     )
     return LiabilityForecast(per_customer, totals)
+
+
+def near_threshold(
+    forecast: LiabilityForecast, min_probability: float = 0.2
+) -> pd.DataFrame:
+    """Customers whose tier is uncertain, the main source of cost variance."""
+    pc = forecast.per_customer
+    return pc[pc["tier_change_probability"] >= min_probability].sort_values(
+        "tier_change_probability", ascending=False
+    )
