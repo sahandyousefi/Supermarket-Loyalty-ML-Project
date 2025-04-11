@@ -20,6 +20,16 @@ deep:
   val_fraction: 0.15
   seed: 0
 
+rewards:
+  # Illustrative tier schedule: [minimum annual spend, reward rate]
+  tiers:
+    - [0, 0.00]
+    - [100, 0.02]
+    - [125, 0.03]
+    - [140, 0.05]
+  n_simulations: 5000
+  seed: 7
+
 conformal:
   alpha: 0.1
   calibration_size: 0.25
