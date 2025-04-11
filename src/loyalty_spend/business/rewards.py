@@ -10,9 +10,11 @@ simulation and reports the distribution of total programme cost.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 
 
 @dataclass(frozen=True)
@@ -47,3 +49,75 @@ class RewardSchedule:
     def tier(self, spend) -> np.ndarray:
         thresholds = np.array([t for t, _ in self.tiers])
         return np.searchsorted(thresholds, np.asarray(spend, float), side="right") - 1
+
+
+@dataclass
+class LiabilityForecast:
+    per_customer: pd.DataFrame
+    total_draws: np.ndarray
+
+    def summary(self, levels: Sequence[float] = (0.05, 0.5, 0.95)) -> dict[str, float]:
+        q = np.quantile(self.total_draws, levels)
+        out = {
+            "expected_total": float(self.total_draws.mean()),
+            "plug_in_total": float(self.per_customer["plug_in_reward"].sum()),
+        }
+        out.update(
+            {f"p{int(round(100 * lv)):02d}": float(v) for lv, v in zip(levels, q)}
+        )
+        return out
+
+
+def forecast_liability(
+    customer_ids,
+    predicted_spend,
+    residuals,
+    schedule: RewardSchedule,
+    n_simulations: int = 5000,
+    seed: int = 0,
+    batch: int = 500,
+) -> LiabilityForecast:
+    """Monte Carlo distribution of reward cost.
+
+    Spend for each customer is simulated as ``prediction + e`` with ``e``
+    drawn from out-of-sample residuals (a residual bootstrap), the schedule
+    is applied to every draw, and the draws are summed over customers.
+
+    Parameters
+    ----------
+    customer_ids : array-like
+    predicted_spend : array-like
+        Point forecasts for the customers to be costed.
+    residuals : array-like
+        Out-of-fold residuals of the forecasting model.
+    schedule : RewardSchedule
+    n_simulations : int
+    seed : int
+    batch : int
+        Simulations per chunk, to bound memory.
+    """
+    rng = np.random.default_rng(seed)
+    pred = np.asarray(predicted_spend, float)
+    resid = np.asarray(residuals, float)
+    n = len(pred)
+    totals = np.empty(n_simulations)
+    reward_sum = np.zeros(n)
+    upgrade = np.zeros(n)
+    base_tier = schedule.tier(pred)
+    for start in range(0, n_simulations, batch):
+        m = min(batch, n_simulations - start)
+        spend = np.clip(pred[None, :] + rng.choice(resid, size=(m, n)), 0.0, None)
+        rewards = schedule.reward(spend)
+        totals[start : start + m] = rewards.sum(axis=1)
+        reward_sum += rewards.sum(axis=0)
+        upgrade += (schedule.tier(spend) != base_tier[None, :]).sum(axis=0)
+    per_customer = pd.DataFrame(
+        {
+            "customer_id": np.asarray(customer_ids),
+            "predicted_spend": pred,
+            "plug_in_reward": schedule.reward(pred),
+            "expected_reward": reward_sum / n_simulations,
+            "tier_change_probability": upgrade / n_simulations,
+        }
+    )
+    return LiabilityForecast(per_customer, totals)
