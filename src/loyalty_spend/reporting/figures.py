@@ -8,6 +8,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
 
 TEXT = "#191919"
 MUTED = "#666666"
@@ -46,3 +48,26 @@ def _family_legend(target, families, loc: str = "upper right") -> None:
     target.legend(
         handles=handles, frameon=False, fontsize=8, loc=loc, ncol=len(handles)
     )
+
+
+def plot_group_means(table: pd.DataFrame, group: str, path: str | Path) -> Path:
+    """Mean spend per group with bootstrap intervals."""
+    fig, ax = plt.subplots(figsize=(6, 3.2))
+    y = np.arange(len(table))
+    ax.hlines(y, table["ci_low"], table["ci_high"], color=SINGLE, linewidth=2)
+    ax.plot(table["avg_spend"], y, "o", color=SINGLE, markersize=6)
+    ax.set_yticks(y, table[group].astype(str))
+    ax.invert_yaxis()
+    _style(ax, "Mean annual spend by loyalty tenure (95% bootstrap CI)", "spend", "")
+    return _save(fig, path)
+
+
+def plot_driver_shares(table: pd.DataFrame, path: str | Path) -> Path:
+    """Share of explained variance attributed to each feature."""
+    fig, ax = plt.subplots(figsize=(6, 3.0))
+    t = table.sort_values("r2_share")
+    ax.barh(t["feature"], t["r2_share"], color=SINGLE, height=0.6)
+    for yv, v in enumerate(t["r2_share"]):
+        ax.text(v, yv, f" {v:.3f}", va="center", fontsize=8, color=TEXT)
+    _style(ax, "Shapley decomposition of R squared (LMG)", "share of R squared", "")
+    return _save(fig, path)
