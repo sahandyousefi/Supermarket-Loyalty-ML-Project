@@ -159,6 +159,37 @@ def _predict(args: argparse.Namespace) -> int:
     return 0
 
 
+def _rewards_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("input", help="CSV of customers to cost")
+    p.add_argument("--model", default="artifacts/model.joblib")
+    p.add_argument("--output", default=None, help="per-customer CSV")
+
+
+@command("rewards", "forecast the reward cost of a customer file", _rewards_args)
+def _rewards(args: argparse.Namespace) -> int:
+    from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.data.schema import ID
+    from loyalty_spend.models.persistence import load_bundle
+
+    cfg = load_config(args.config)
+    bundle = load_bundle(args.model)
+    frame, _ = load_clean(args.input, impute=False, require_target=False)
+    fc = forecast_liability(
+        frame[ID],
+        bundle.predict(frame),
+        bundle.residuals,
+        RewardSchedule(cfg.rewards.tiers),
+        cfg.rewards.n_simulations,
+        cfg.rewards.seed,
+    )
+    if args.output:
+        fc.per_customer.to_csv(args.output, index=False)
+    print(json.dumps({k: round(v, 2) for k, v in fc.summary().items()}, indent=2))
+    return 0
+
+
 def _tune_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--model", default="lightgbm")
