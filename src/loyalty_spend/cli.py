@@ -217,6 +217,16 @@ def _tune(args: argparse.Namespace) -> int:
     return 0
 
 
+@command("tasks", "write the four deliverables of the original brief", _config_arg)
+def _tasks(args: argparse.Namespace) -> int:
+    from loyalty_spend.tasks import run_all
+
+    results = run_all(load_config(args.config))
+    for name, frame in results.items():
+        print(f"{name}: {len(frame)} rows")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="loyalty-spend")
     sub = parser.add_subparsers(dest="command", required=True)
