@@ -71,3 +71,50 @@ def plot_driver_shares(table: pd.DataFrame, path: str | Path) -> Path:
         ax.text(v, yv, f" {v:.3f}", va="center", fontsize=8, color=TEXT)
     _style(ax, "Shapley decomposition of R squared (LMG)", "share of R squared", "")
     return _save(fig, path)
+
+
+def plot_model_comparison(table: pd.DataFrame, path: str | Path) -> Path:
+    """Cross-validated RMSE with one standard deviation across folds."""
+    t = table.sort_values("rmse_mean", ascending=False).reset_index(drop=True)
+    fig, ax = plt.subplots(figsize=(6.5, 0.35 * len(t) + 1.2))
+    for i, row in t.iterrows():
+        color = FAMILY_COLORS.get(row["family"], MUTED)
+        ax.hlines(
+            i,
+            row["rmse_mean"] - row["rmse_std"],
+            row["rmse_mean"] + row["rmse_std"],
+            color=color,
+            linewidth=2,
+        )
+        ax.plot(row["rmse_mean"], i, "o", color=color, markersize=6)
+    ax.set_yticks(range(len(t)), t["model"])
+    _style(ax, "Repeated 5-fold CV on train.csv", "RMSE (lower is better)", "")
+    _family_legend(ax, t["family"])
+    return _save(fig, path)
+
+
+def plot_simulation_study(table: pd.DataFrame, path: str | Path) -> Path:
+    """Excess RMSE over the Bayes error, one panel per scenario."""
+    scenarios = list(dict.fromkeys(table["scenario"]))
+    fig, axes = plt.subplots(
+        1, len(scenarios), figsize=(3.0 * len(scenarios), 3.2), sharey=True
+    )
+    axes = np.atleast_1d(axes)
+    models = list(dict.fromkeys(table["model"]))
+    for ax, sc in zip(axes, scenarios):
+        part = table[table["scenario"] == sc].set_index("model").reindex(models)
+        colors = [FAMILY_COLORS.get(f, MUTED) for f in part["family"]]
+        ax.barh(range(len(models)), part["relative_excess"], color=colors, height=0.6)
+        ax.set_yticks(range(len(models)), models)
+        ax.invert_yaxis()
+        _style(ax, sc, "excess RMSE / Bayes RMSE", "")
+    _family_legend(fig, table["family"])
+    fig.suptitle(
+        "Simulation study: distance from the irreducible error",
+        x=0.01,
+        ha="left",
+        fontsize=11,
+        color=TEXT,
+    )
+    fig.tight_layout()
+    return _save(fig, path)
