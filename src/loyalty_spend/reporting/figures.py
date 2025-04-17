@@ -118,3 +118,56 @@ def plot_simulation_study(table: pd.DataFrame, path: str | Path) -> Path:
     )
     fig.tight_layout()
     return _save(fig, path)
+
+
+def plot_conditional_coverage(table: pd.DataFrame, target: float, path) -> Path:
+    """Coverage by predicted-spend decile for each interval method."""
+    fig, ax = plt.subplots(figsize=(6, 3.2))
+    for color, (method, part) in zip(
+        ["#257de0", "#f47230", "#00b894"], table.groupby("method", sort=False)
+    ):
+        ax.plot(
+            part["group"],
+            part["coverage"],
+            "-o",
+            color=color,
+            linewidth=2,
+            markersize=5,
+            label=method,
+        )
+    ax.axhline(target, color=MUTED, linewidth=1, linestyle="--")
+    ax.text(
+        table["group"].max(), target, " target", va="bottom", fontsize=8, color=MUTED
+    )
+    ax.set_ylim(min(0.5, table["coverage"].min() - 0.05), 1.02)
+    _style(ax, "Coverage by predicted spend decile", "", "coverage")
+    ax.set_xlabel("decile of predicted spend", color=MUTED, fontsize=9)
+    ax.grid(axis="x", visible=False)
+    ax.legend(frameon=False, fontsize=8, loc="lower left")
+    return _save(fig, path)
+
+
+def plot_liability(draws: np.ndarray, plug_in: float, path: str | Path) -> Path:
+    """Distribution of total reward cost from the Monte Carlo forecast."""
+    fig, ax = plt.subplots(figsize=(6, 3.2))
+    ax.hist(draws, bins=50, color=SINGLE, edgecolor="white", linewidth=0.5)
+    lo, hi = np.quantile(draws, [0.05, 0.95])
+    top = ax.get_ylim()[1]
+    mean = float(draws.mean())
+    # Labels go on opposite sides so they stay readable when the lines are close.
+    for v, label, color in [(mean, "expected", TEXT), (plug_in, "plug-in", "#f47230")]:
+        ax.axvline(v, color=color, linewidth=1.5)
+        left = (v <= plug_in) if label == "expected" else (v < mean)
+        ax.text(
+            v,
+            top * 0.97,
+            f"{label} " if left else f" {label}",
+            fontsize=8,
+            color=TEXT,
+            ha="right" if left else "left",
+            va="top",
+        )
+    ax.axvspan(lo, hi, color=SINGLE, alpha=0.08)
+    _style(ax, "Total reward cost, 90% interval shaded", "reward cost", "draws")
+    ax.grid(axis="x", visible=False)
+    return _save(fig, path)
