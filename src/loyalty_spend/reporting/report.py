@@ -17,9 +17,14 @@ from loyalty_spend.analysis.drivers import (
     welch_anova,
 )
 from loyalty_spend.config import Config
-from loyalty_spend.data.io import load_clean
+from loyalty_spend.data.io import load_clean, load_modeling_data
 from loyalty_spend.data.lineage import compare_extracts
 from loyalty_spend.data.schema import FEATURES
+from loyalty_spend.data.simulate import SCENARIOS
+from loyalty_spend.evaluation.cv import compare_results, cross_validate, make_splits
+from loyalty_spend.evaluation.simulation_study import run_study
+from loyalty_spend.features.preprocess import split_xy
+from loyalty_spend.models.registry import available_models, build_model, model_family
 from loyalty_spend.reporting import figures
 
 DEFAULT_MODELS = (
@@ -95,3 +100,43 @@ def lineage_section(cfg: Config) -> str:
     train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
     table = compare_extracts(loyalty, train)
     return "## Lineage check: loyalty.csv against train.csv\n\n" + _md_table(table, 3)
+
+
+def benchmark_section(
+    cfg: Config, settings: ReportSettings, fig_dir: Path
+) -> tuple[str, pd.DataFrame, np.ndarray]:
+    train, _ = load_modeling_data(
+        cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
+    )
+    X, y = split_xy(train)
+    splits = make_splits(len(y), cfg.cv.n_splits, cfg.cv.n_repeats, cfg.cv.seed)
+    names = [m for m in settings.models if m in available_models()]
+    results = [cross_validate(m, build_model(m), X, y, splits) for m in names]
+    table = compare_results(results, reference="ols")
+    table.insert(1, "family", [model_family(m) for m in table["model"]])
+    figures.plot_model_comparison(table, fig_dir / "model_comparison.png")
+    cols = ["model", "family", "rmse_mean", "rmse_std", "mae_mean", "r2_mean"]
+    cols += ["rmse_diff_vs_ols", "p_value"]
+    text = "## Benchmark on train.csv\n\n" + _md_table(table[cols])
+    oof = {r.name: r.oof for r in results}
+    residuals = y.to_numpy() - oof["ols"]
+    return text, table, residuals
+
+
+def study_section(cfg: Config, settings: ReportSettings, fig_dir: Path) -> str:
+    train, _ = load_modeling_data(
+        cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
+    )
+    table = run_study(
+        train,
+        settings.study_models,
+        n=settings.study_n,
+        n_splits=settings.study_splits,
+        seed=cfg.cv.seed,
+    )
+    figures.plot_simulation_study(table, fig_dir / "simulation_study.png")
+    wide = table.pivot(index="model", columns="scenario", values="rmse")
+    wide = wide.reindex(index=list(settings.study_models), columns=list(SCENARIOS))
+    bayes = table.groupby("scenario")["bayes_rmse"].first().reindex(wide.columns)
+    wide.loc["bayes error"] = bayes
+    return "## Simulation study (RMSE)\n\n" + _md_table(wide.reset_index(), 3)
