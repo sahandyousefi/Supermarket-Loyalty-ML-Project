@@ -22,7 +22,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[dev,gbm,deep]"
+          pip install -e ".[dev,all]"
       - name: Lint
         run: |
           ruff check .
