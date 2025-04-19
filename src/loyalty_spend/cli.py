@@ -227,6 +227,24 @@ def _tasks(args: argparse.Namespace) -> int:
     return 0
 
 
+def _report_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument(
+        "--sections",
+        nargs="+",
+        default=["drivers", "lineage", "benchmark", "study", "conformal"],
+    )
+
+
+@command("report", "run the full analysis and write reports/results.md", _report_args)
+def _report(args: argparse.Namespace) -> int:
+    from loyalty_spend.reporting.report import build_report
+
+    path = build_report(load_config(args.config), sections=args.sections)
+    print(f"wrote {path}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="loyalty-spend")
     sub = parser.add_subparsers(dest="command", required=True)
