@@ -6,7 +6,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 1: Engineering
 
-- [ ] 1.1 Add a changelog that records the 1.0.0 release
 - [ ] 1.2 Add contributing notes with the development workflow
 - [ ] 1.3 Run the pre-commit hooks in CI as a separate job
 - [ ] 1.4 Enforce a coverage floor and publish the coverage report from CI
@@ -166,4 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [ ] 10.6 Release 2.0.0
 
 ## Completed
-
+- [x] 2025-05-05: 1.1 Add a changelog that records the 1.0.0 release
