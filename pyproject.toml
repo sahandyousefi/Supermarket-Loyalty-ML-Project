@@ -39,6 +39,16 @@ testpaths = ["tests"]
 markers = ["slow: trains neural networks or runs searches"]
 filterwarnings = ["ignore::UserWarning:torch.*"]
 
+[tool.coverage.run]
+source = ["loyalty_spend"]
+omit = ["*/reporting/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py310"
