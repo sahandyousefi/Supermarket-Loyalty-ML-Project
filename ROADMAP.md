@@ -1,0 +1,169 @@
+# Roadmap after 1.0
+
+Version 1.0 answers the four questions of the original brief. The work below extends the project in the directions a loyalty programme team would need next: stricter data contracts and drift monitoring, full predictive distributions instead of point forecasts, an honest estimate of what the sign-up promotion does to spend, targeting of that promotion, a reward schedule that can be designed rather than only costed, a scoring service, and grounded natural-language summaries of the results.
+
+Items are numbered `<phase>.<item>`. Finished items move to the Completed section with the date they were finished.
+
+## Phase 1: Engineering
+
+- [ ] 1.1 Add a changelog that records the 1.0.0 release
+- [ ] 1.2 Add contributing notes with the development workflow
+- [ ] 1.3 Run the pre-commit hooks in CI as a separate job
+- [ ] 1.4 Enforce a coverage floor and publish the coverage report from CI
+- [ ] 1.5 Add mypy configuration and type the data package
+- [ ] 1.6 Type the configuration, evaluation and analysis modules
+- [ ] 1.7 Type the models, uncertainty and business modules
+- [ ] 1.8 Run mypy in CI
+- [ ] 1.9 Property-based tests for the reward schedule
+- [ ] 1.10 Property-based tests for numeric parsing and category normalization
+- [ ] 1.11 Property-based tests for the conformal quantile
+- [ ] 1.12 Add a `--version` flag and a `--verbose` logging flag to the CLI
+- [ ] 1.13 Run the slow test suite on a weekly schedule
+- [ ] 1.14 Add Dependabot configuration for pip and GitHub Actions
+- [ ] 1.15 Add a citation file
+
+## Phase 2: Data contracts and drift
+
+- [ ] 2.1 Declarative column contracts for dtype, range and allowed levels
+- [ ] 2.2 Contract checks for ranges and types
+- [ ] 2.3 Contract checks for levels, uniqueness and missing-value budgets
+- [ ] 2.4 Read contracts from `configs/contracts.yaml`
+- [ ] 2.5 `loyalty-spend validate` command with a contract report
+- [ ] 2.6 Column profile: missing share, distinct count, quantiles and top levels
+- [ ] 2.7 Render a profile as Markdown
+- [ ] 2.8 Population stability index for numeric features with quantile bins
+- [ ] 2.9 Population stability index for categorical features, including unseen levels
+- [ ] 2.10 Kolmogorov-Smirnov and chi-square tests with Benjamini-Hochberg control
+- [ ] 2.11 Per-feature drift report combining PSI and the tests
+- [ ] 2.12 Multivariate drift with a domain classifier and its AUC
+- [ ] 2.13 Prediction drift and, when labels arrive, target drift
+- [ ] 2.14 Monitoring section in the configuration with drift thresholds
+- [ ] 2.15 `loyalty-spend drift` command
+- [ ] 2.16 Document the drift between `train.csv` and `test.csv`
+
+## Phase 3: Probabilistic forecasting
+
+- [ ] 3.1 Proper scoring rules: pinball loss, Gaussian and sample CRPS
+- [ ] 3.2 Interval score, coverage and width summaries
+- [ ] 3.3 Probability integral transform values and a calibration test
+- [ ] 3.4 Linear quantile regression for several quantiles at once
+- [ ] 3.5 Gradient boosting quantile regression for several quantiles
+- [ ] 3.6 Monotone rearrangement of crossing quantiles
+- [ ] 3.7 Heteroscedastic Gaussian linear model with a log-variance regression
+- [ ] 3.8 Cross-validated CRPS comparison of distributional models
+- [ ] 3.9 Mondrian conformal prediction by customer group
+- [ ] 3.10 Conformal predictive distributions
+- [ ] 3.11 Normalized conformal prediction with a difficulty model
+- [ ] 3.12 Weighted conformal prediction under covariate shift
+- [ ] 3.13 `loyalty-spend intervals` command comparing interval methods
+- [ ] 3.14 Quantile reliability figure
+- [ ] 3.15 Draw reward cost simulations from a predictive distribution
+- [ ] 3.16 Report section on probabilistic evaluation
+- [ ] 3.17 Methodology: scoring rules and conformal extensions
+
+## Phase 4: Effect of the sign-up promotion
+
+- [ ] 4.1 Causal module with the estimands and the identification assumptions
+- [ ] 4.2 Simulator option for a promotion effect with confounding
+- [ ] 4.3 Cross-fitted propensity model
+- [ ] 4.4 Overlap diagnostics and propensity trimming
+- [ ] 4.5 Covariate balance with standardized mean differences
+- [ ] 4.6 Inverse probability weighting estimator with bootstrap intervals
+- [ ] 4.7 Regression adjustment estimator
+- [ ] 4.8 Augmented IPW estimator with cross-fitting and influence-function errors
+- [ ] 4.9 Double machine learning for the partially linear model
+- [ ] 4.10 Sensitivity analysis with the robustness value of Cinelli and Hazlett
+- [ ] 4.11 Placebo test with permuted treatment
+- [ ] 4.12 Estimator comparison table
+- [ ] 4.13 `loyalty-spend effect` command
+- [ ] 4.14 Figure of effect estimates and intervals
+- [ ] 4.15 Methodology and README sections on the promotion effect
+
+## Phase 5: Heterogeneous effects and targeting
+
+- [ ] 5.1 Simulator option for effects that vary with tenure
+- [ ] 5.2 S-learner and T-learner
+- [ ] 5.3 X-learner
+- [ ] 5.4 DR-learner
+- [ ] 5.5 R-learner
+- [ ] 5.6 Qini curve and area under the uplift curve
+- [ ] 5.7 Uplift by decile of predicted effect
+- [ ] 5.8 Best linear predictor test of effect heterogeneity
+- [ ] 5.9 Sorted group average treatment effects
+- [ ] 5.10 Targeting policy with a cost per promotion and a doubly robust policy value
+- [ ] 5.11 Budget-constrained targeting
+- [ ] 5.12 `loyalty-spend uplift` command
+- [ ] 5.13 Report and methodology sections on targeting
+
+## Phase 6: Customer segments
+
+- [ ] 6.1 Gower distance for mixed numeric and categorical data
+- [ ] 6.2 K-medoids clustering on a precomputed distance matrix
+- [ ] 6.3 Choice of the number of segments by average silhouette width
+- [ ] 6.4 Segment stability by bootstrap Jaccard similarity
+- [ ] 6.5 Segment profiles
+- [ ] 6.6 Spend forecast and reward cost by segment
+- [ ] 6.7 `loyalty-spend segments` command and documentation
+
+## Phase 7: Reward programme design
+
+- [ ] 7.1 Marginal tier schedules alongside whole-spend schedules
+- [ ] 7.2 Effective reward rate and cost-to-spend ratio
+- [ ] 7.3 Common random numbers for comparing schedules
+- [ ] 7.4 Sensitivity of expected cost to each threshold
+- [ ] 7.5 Threshold search under a cost budget
+- [ ] 7.6 Behavioural response scenario with bunching below thresholds
+- [ ] 7.7 Monte Carlo standard errors and quasi-Monte Carlo draws
+- [ ] 7.8 Value at risk and expected shortfall of total reward cost
+- [ ] 7.9 Reward cost by segment and region
+- [ ] 7.10 `loyalty-spend design` command
+- [ ] 7.11 Report and methodology sections on programme design
+
+## Phase 8: Model operations
+
+- [ ] 8.1 File-based model registry with versions and metadata
+- [ ] 8.2 Stage promotion and rollback
+- [ ] 8.3 Champion-challenger comparison
+- [ ] 8.4 Reproducibility manifest with package versions and data fingerprints
+- [ ] 8.5 Batch scoring with intervals and contract checks
+- [ ] 8.6 Optional MLflow tracking
+- [ ] 8.7 FastAPI service with health and version endpoints
+- [ ] 8.8 Prediction endpoint with intervals
+- [ ] 8.9 Reward cost endpoint
+- [ ] 8.10 Request limits and error handling
+- [ ] 8.11 Request metrics endpoint
+- [ ] 8.12 Monitoring job for a new scoring batch
+- [ ] 8.13 Model card generated from bundle metadata
+- [ ] 8.14 `loyalty-spend serve` command, Docker target and deployment notes
+
+## Phase 9: Grounded summaries with language models
+
+- [ ] 9.1 Language model client interface with an offline mock
+- [ ] 9.2 OpenAI-compatible HTTP client as an optional extra
+- [ ] 9.3 Versioned prompt templates
+- [ ] 9.4 Fact sheet built from the report summary
+- [ ] 9.5 Narrative summary generated only from the fact sheet
+- [ ] 9.6 Numeric grounding check against the fact sheet
+- [ ] 9.7 Structured output validation with a bounded retry
+- [ ] 9.8 Chunking of the project documentation
+- [ ] 9.9 TF-IDF retrieval with recall at k and mean reciprocal rank
+- [ ] 9.10 Questions answered with citations to retrieved chunks
+- [ ] 9.11 Citation verification
+- [ ] 9.12 Input guardrails against prompt injection
+- [ ] 9.13 Plain-language reason statements for single forecasts
+- [ ] 9.14 Evaluation harness for faithfulness, format and refusals
+- [ ] 9.15 Token and cost accounting
+- [ ] 9.16 `loyalty-spend narrate` and `loyalty-spend ask` commands
+- [ ] 9.17 Design notes for the language model components
+
+## Phase 10: Documentation and release
+
+- [ ] 10.1 Walkthrough notebook for the promotion analysis
+- [ ] 10.2 Walkthrough notebook for reward programme design
+- [ ] 10.3 Runtime benchmarks of the main commands
+- [ ] 10.4 Methodology and model card updates
+- [ ] 10.5 README rewrite
+- [ ] 10.6 Release 2.0.0
+
+## Completed
+
