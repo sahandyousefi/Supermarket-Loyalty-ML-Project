@@ -6,7 +6,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 1: Engineering
 
-- [ ] 1.11 Property-based tests for the conformal quantile
 - [ ] 1.12 Add a `--version` flag and a `--verbose` logging flag to the CLI
 - [ ] 1.13 Run the slow test suite on a weekly schedule
 - [ ] 1.14 Add Dependabot configuration for pip and GitHub Actions
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-05-10: 1.8 Run mypy in CI
 - [x] 2025-05-10: 1.9 Property-based tests for the reward schedule
 - [x] 2025-05-10: 1.10 Property-based tests for numeric parsing and category normalization
+- [x] 2025-05-10: 1.11 Property-based tests for the conformal quantile
