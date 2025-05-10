@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from scipy.stats import t as student_t
-from sklearn.base import clone
+from sklearn.base import BaseEstimator, clone
 from sklearn.model_selection import RepeatedKFold
 
 from loyalty_spend.evaluation.metrics import regression_report
@@ -42,11 +42,11 @@ def make_splits(
 
 def cross_validate(
     name: str,
-    estimator,
+    estimator: BaseEstimator,
     X: pd.DataFrame,
     y: pd.Series,
     splits: list[tuple[np.ndarray, np.ndarray]],
-    fit_hook: Callable | None = None,
+    fit_hook: Callable[[BaseEstimator], None] | None = None,
 ) -> CVResult:
     """Fit a fresh clone on each split and score it on the held-out fold.
 
@@ -71,7 +71,7 @@ def cross_validate(
 
 
 def corrected_ttest(
-    diffs: np.ndarray, n_train: int, n_test: int
+    diffs: np.ndarray, n_train: float, n_test: float
 ) -> tuple[float, float]:
     """Corrected resampled t-test of Nadeau and Bengio (2003).
 
