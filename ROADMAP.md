@@ -6,7 +6,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 1: Engineering
 
-- [ ] 1.8 Run mypy in CI
 - [ ] 1.9 Property-based tests for the reward schedule
 - [ ] 1.10 Property-based tests for numeric parsing and category normalization
 - [ ] 1.11 Property-based tests for the conformal quantile
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-05-05: 1.5 Add mypy configuration and type the data package
 - [x] 2025-05-10: 1.6 Type the configuration, evaluation and analysis modules
 - [x] 2025-05-10: 1.7 Type the models, uncertainty and business modules
+- [x] 2025-05-10: 1.8 Run mypy in CI

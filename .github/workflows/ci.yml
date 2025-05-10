@@ -39,6 +39,8 @@ jobs:
         run: |
           ruff check .
           ruff format --check .
+      - name: Type check
+        run: mypy
       - name: Test
         run: pytest -q -m "not slow" --cov=loyalty_spend --cov-report=term --cov-report=xml
       - name: Upload coverage report

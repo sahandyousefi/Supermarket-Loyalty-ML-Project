@@ -1,4 +1,4 @@
-.PHONY: install install-all lint format test test-all tasks report clean docker-build
+.PHONY: install install-all lint typecheck format test test-all tasks report clean docker-build
 
 CONFIG ?= configs/default.yaml
 
@@ -12,6 +12,9 @@ install-all:
 lint:
 	ruff check .
 	ruff format --check .
+
+typecheck:
+	mypy
 
 format:
 	ruff check . --fix
