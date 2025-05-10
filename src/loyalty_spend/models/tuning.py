@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -12,8 +12,11 @@ from sklearn.model_selection import KFold, cross_val_score
 from loyalty_spend.evaluation.metrics import rmse
 from loyalty_spend.models.registry import build_model
 
+if TYPE_CHECKING:
+    import optuna
 
-def search_space(trial, name: str) -> dict[str, Any]:
+
+def search_space(trial: optuna.trial.BaseTrial, name: str) -> dict[str, Any]:
     """Hyperparameters sampled for each model family."""
     if name == "hist_gbm":
         return {
@@ -80,7 +83,7 @@ def tune(
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     cv = KFold(n_splits, shuffle=True, random_state=seed)
 
-    def objective(trial) -> float:
+    def objective(trial: optuna.Trial) -> float:
         model = build_model(name, **search_space(trial, name))
         scores = cross_val_score(
             model, X, y, cv=cv, scoring="neg_root_mean_squared_error"

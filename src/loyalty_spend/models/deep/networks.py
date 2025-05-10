@@ -91,7 +91,7 @@ class EmbeddingMLP(nn.Module):
             n_num = n_numeric * self.numeric.d_out
         elif numeric_embedding is not None:
             raise ValueError("numeric_embedding must be None or 'plr'")
-        n_in = n_num + sum(e.embedding_dim for e in self.embeddings)
+        n_in = n_num + sum(embedding_dim(c) for c in cardinalities)
         self.input = nn.Linear(n_in, width)
         self.blocks = nn.Sequential(
             *[ResidualBlock(width, dropout) for _ in range(depth)]

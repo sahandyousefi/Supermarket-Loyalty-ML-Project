@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import torch
+from numpy.typing import ArrayLike
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.model_selection import train_test_split
 
@@ -77,14 +78,16 @@ class TorchTabularRegressor(RegressorMixin, BaseEstimator):
             seed=self.seed,
         )
 
-    def _tensors(self, X: pd.DataFrame, y: np.ndarray | None = None):
+    def _tensors(
+        self, X: pd.DataFrame, y: np.ndarray | None = None
+    ) -> tuple[torch.Tensor, ...]:
         x_num, x_cat = self.encoder_.transform(X)
         if y is None:
             return x_num, x_cat
         target = torch.as_tensor((y - self.y_mean_) / self.y_std_, dtype=torch.float32)
         return x_num, x_cat, target
 
-    def fit(self, X: pd.DataFrame, y) -> TorchTabularRegressor:
+    def fit(self, X: pd.DataFrame, y: ArrayLike) -> TorchTabularRegressor:
         if self.architecture not in ARCHITECTURES:
             raise ValueError(f"architecture must be one of {sorted(ARCHITECTURES)}")
         torch.manual_seed(self.seed)
@@ -153,7 +156,7 @@ class DeepEnsembleRegressor(RegressorMixin, BaseEstimator):
         self.patience = patience
         self.seed = seed
 
-    def fit(self, X: pd.DataFrame, y) -> DeepEnsembleRegressor:
+    def fit(self, X: pd.DataFrame, y: ArrayLike) -> DeepEnsembleRegressor:
         self.members_ = [
             TorchTabularRegressor(
                 architecture=self.architecture,

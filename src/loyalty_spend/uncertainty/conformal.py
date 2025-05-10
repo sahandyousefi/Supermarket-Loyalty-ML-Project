@@ -12,7 +12,8 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from sklearn.base import clone
+from numpy.typing import ArrayLike
+from sklearn.base import BaseEstimator, clone
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.model_selection import KFold, train_test_split
 from sklearn.pipeline import Pipeline
@@ -40,7 +41,7 @@ class Intervals:
     def width(self) -> np.ndarray:
         return self.upper - self.lower
 
-    def coverage(self, y) -> float:
+    def coverage(self, y: ArrayLike) -> float:
         y = np.asarray(y, float)
         return float(np.mean((y >= self.lower) & (y <= self.upper)))
 
@@ -54,7 +55,7 @@ class SplitConformalRegressor:
 
     def __init__(
         self,
-        estimator,
+        estimator: BaseEstimator,
         alpha: float = 0.1,
         calibration_size: float = 0.25,
         seed: int = 0,
@@ -64,7 +65,7 @@ class SplitConformalRegressor:
         self.calibration_size = calibration_size
         self.seed = seed
 
-    def fit(self, X: pd.DataFrame, y) -> SplitConformalRegressor:
+    def fit(self, X: pd.DataFrame, y: ArrayLike) -> SplitConformalRegressor:
         X_fit, X_cal, y_fit, y_cal = train_test_split(
             X, y, test_size=self.calibration_size, random_state=self.seed
         )
@@ -82,9 +83,9 @@ class SplitConformalRegressor:
 
 
 def cv_plus_intervals(
-    estimator,
+    estimator: BaseEstimator,
     X: pd.DataFrame,
-    y,
+    y: ArrayLike,
     X_new: pd.DataFrame,
     alpha: float = 0.1,
     n_splits: int = 10,
@@ -143,7 +144,7 @@ class ConformalizedQuantileRegressor:
         self.calibration_size = calibration_size
         self.seed = seed
 
-    def fit(self, X: pd.DataFrame, y) -> ConformalizedQuantileRegressor:
+    def fit(self, X: pd.DataFrame, y: ArrayLike) -> ConformalizedQuantileRegressor:
         y = np.asarray(y, float)
         X_fit, X_cal, y_fit, y_cal = train_test_split(
             X, y, test_size=self.calibration_size, random_state=self.seed
@@ -160,7 +161,9 @@ class ConformalizedQuantileRegressor:
         return Intervals(np.minimum(lo, hi) - self.q_, np.maximum(lo, hi) + self.q_)
 
 
-def coverage_by_group(intervals: Intervals, y, groups: pd.Series) -> pd.DataFrame:
+def coverage_by_group(
+    intervals: Intervals, y: ArrayLike, groups: pd.Series
+) -> pd.DataFrame:
     """Coverage and mean width per group, to check conditional coverage."""
     df = pd.DataFrame(
         {

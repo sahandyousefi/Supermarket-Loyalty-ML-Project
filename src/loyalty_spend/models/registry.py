@@ -73,7 +73,7 @@ def model_family(name: str) -> str:
     return _REGISTRY[name].family
 
 
-def build_model(name: str, **params: Any):
+def build_model(name: str, **params: Any) -> Any:
     """Instantiate a registered model with optional hyperparameters."""
     _load_all()
     if name not in _REGISTRY:

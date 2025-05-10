@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import copy
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
+
+Batch = tuple[torch.Tensor, ...]
+LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
 
 @dataclass(frozen=True)
@@ -48,7 +52,7 @@ def mse_loss(output: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     return nn.functional.mse_loss(output[:, 0], target)
 
 
-def _lr_lambda(settings: TrainSettings):
+def _lr_lambda(settings: TrainSettings) -> Callable[[int], float]:
     # Linear warmup, then cosine decay to 5% of the base rate.
     def f(epoch: int) -> float:
         if epoch < settings.warmup_epochs:
@@ -62,7 +66,7 @@ def _lr_lambda(settings: TrainSettings):
 
 
 @torch.no_grad()
-def evaluate(model: nn.Module, tensors, loss_fn) -> float:
+def evaluate(model: nn.Module, tensors: Batch, loss_fn: LossFn) -> float:
     model.eval()
     x_num, x_cat, y = tensors
     return float(loss_fn(model(x_num, x_cat), y))
@@ -70,10 +74,10 @@ def evaluate(model: nn.Module, tensors, loss_fn) -> float:
 
 def fit_network(
     model: nn.Module,
-    train: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
-    val: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    train: Batch,
+    val: Batch,
     settings: TrainSettings,
-    loss_fn=mse_loss,
+    loss_fn: LossFn = mse_loss,
 ) -> History:
     """Train with AdamW and keep the weights of the best validation epoch."""
     set_seed(settings.seed)

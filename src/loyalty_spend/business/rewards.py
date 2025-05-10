@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from numpy.typing import ArrayLike
 
 
 @dataclass(frozen=True)
@@ -35,18 +36,18 @@ class RewardSchedule:
         if any(not 0.0 <= r < 1.0 for _, r in self.tiers):
             raise ValueError("reward rates must be in [0, 1)")
 
-    def rate(self, spend) -> np.ndarray:
+    def rate(self, spend: ArrayLike) -> np.ndarray:
         spend = np.asarray(spend, float)
         thresholds = np.array([t for t, _ in self.tiers])
         rates = np.array([r for _, r in self.tiers])
         idx = np.searchsorted(thresholds, spend, side="right") - 1
         return np.where(idx >= 0, rates[np.clip(idx, 0, None)], 0.0)
 
-    def reward(self, spend) -> np.ndarray:
+    def reward(self, spend: ArrayLike) -> np.ndarray:
         spend = np.asarray(spend, float)
         return self.rate(spend) * np.clip(spend, 0.0, None)
 
-    def tier(self, spend) -> np.ndarray:
+    def tier(self, spend: ArrayLike) -> np.ndarray:
         thresholds = np.array([t for t, _ in self.tiers])
         return np.searchsorted(thresholds, np.asarray(spend, float), side="right") - 1
 
@@ -69,9 +70,9 @@ class LiabilityForecast:
 
 
 def forecast_liability(
-    customer_ids,
-    predicted_spend,
-    residuals,
+    customer_ids: ArrayLike,
+    predicted_spend: ArrayLike,
+    residuals: ArrayLike,
     schedule: RewardSchedule,
     n_simulations: int = 5000,
     seed: int = 0,

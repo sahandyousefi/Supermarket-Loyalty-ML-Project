@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from sklearn.base import BaseEstimator
 from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.pipeline import Pipeline
 
@@ -16,7 +17,7 @@ SEED = 42
 CATEGORICAL_NAMES = ["region", "loyalty_years", "joining_month", "promotion"]
 
 
-def _pipeline(model) -> Pipeline:
+def _pipeline(model: BaseEstimator) -> Pipeline:
     prep = make_preprocessor("ordinal").set_output(transform="pandas")
     return Pipeline([("prep", prep), ("model", model)])
 

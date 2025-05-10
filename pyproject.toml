@@ -71,6 +71,9 @@ module = [
     "loyalty_spend.config",
     "loyalty_spend.evaluation.*",
     "loyalty_spend.analysis.*",
+    "loyalty_spend.models.*",
+    "loyalty_spend.uncertainty.*",
+    "loyalty_spend.business.*",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true

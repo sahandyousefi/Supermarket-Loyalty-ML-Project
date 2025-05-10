@@ -161,7 +161,7 @@ def conformal_section(cfg: Config, settings: ReportSettings, fig_dir: Path) -> s
     X, y = split_xy(fit)
     X_test, y_test = split_xy(test)
     alpha = cfg.conformal.alpha
-    methods = {
+    methods: dict[str, SplitConformalRegressor | ConformalizedQuantileRegressor] = {
         "split conformal (OLS)": SplitConformalRegressor(
             build_model("ols"), alpha, cfg.conformal.calibration_size
         ).fit(X, y),
