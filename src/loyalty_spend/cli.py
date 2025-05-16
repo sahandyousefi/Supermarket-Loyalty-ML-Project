@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from loyalty_spend import __version__
 from loyalty_spend.config import load_config
 
 Handler = Callable[[argparse.Namespace], int]
@@ -247,6 +249,16 @@ def _report(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="loyalty-spend")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="log progress (-v) or debugging detail (-vv) to stderr",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     for name, (help_text, arguments, handler) in _COMMANDS.items():
         p = sub.add_parser(name, help=help_text)
@@ -255,8 +267,20 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def configure_logging(verbosity: int) -> None:
+    """Warnings only by default; ``-v`` adds progress, ``-vv`` debug output."""
+    level = {0: logging.WARNING, 1: logging.INFO}.get(verbosity, logging.DEBUG)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+        force=True,
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    configure_logging(args.verbose)
     return args.func(args)
 
 

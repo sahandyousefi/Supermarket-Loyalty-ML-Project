@@ -89,3 +89,26 @@ def test_clean_and_compare_commands(cfg, tmp_path):
         == 0
     )
     assert set(pd.read_csv(table)["model"]) == {"ols", "ridge"}
+
+
+def test_version_flag(capsys):
+    import pytest
+
+    from loyalty_spend import __version__
+    from loyalty_spend.cli import main
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    assert __version__ in capsys.readouterr().out
+
+
+def test_verbosity_sets_the_log_level():
+    import logging
+
+    from loyalty_spend.cli import configure_logging
+
+    for count, level in [(0, logging.WARNING), (1, logging.INFO), (3, logging.DEBUG)]:
+        configure_logging(count)
+        assert logging.getLogger().level == level
+    configure_logging(0)
