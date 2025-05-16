@@ -9,8 +9,10 @@ same rules that the training data were checked against.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Literal
+
+import pandas as pd
 
 from loyalty_spend.data.schema import (
     CATEGORICAL,
@@ -120,3 +122,98 @@ def default_contract(require_target: bool = True) -> TableContract:
     if require_target:
         columns.insert(1, ColumnContract(TARGET, "numeric", minimum=0.0))
     return TableContract("loyalty", tuple(columns))
+
+
+Severity = Literal["error", "warning"]
+
+
+@dataclass(frozen=True)
+class Violation:
+    column: str
+    rule: str
+    n: int
+    detail: str
+    severity: Severity = "error"
+
+
+@dataclass
+class ContractReport:
+    """Outcome of checking one frame against a contract."""
+
+    contract: str
+    n_rows: int
+    violations: list[Violation] = field(default_factory=list)
+
+    @property
+    def errors(self) -> list[Violation]:
+        return [v for v in self.violations if v.severity == "error"]
+
+    @property
+    def warnings(self) -> list[Violation]:
+        return [v for v in self.violations if v.severity == "warning"]
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
+    def to_frame(self) -> pd.DataFrame:
+        cols = ["column", "rule", "n", "detail", "severity"]
+        return pd.DataFrame([asdict(v) for v in self.violations], columns=cols)
+
+    def raise_for_errors(self) -> None:
+        if self.errors:
+            lines = [f"{v.column}: {v.rule}: {v.detail}" for v in self.errors]
+            raise ValueError(
+                f"{self.contract}: contract violated:\n- " + "\n- ".join(lines)
+            )
+
+
+def _numeric_rules(series: pd.Series, rule: ColumnContract) -> list[Violation]:
+    out: list[Violation] = []
+    values = pd.to_numeric(series, errors="coerce")
+    n_type = int((values.isna() & series.notna()).sum())
+    if n_type:
+        out.append(Violation(rule.name, "type", n_type, "values are not numeric"))
+    if rule.kind == "integer":
+        finite = values.dropna()
+        n_frac = int((finite != finite.round()).sum())
+        if n_frac:
+            out.append(
+                Violation(rule.name, "integer", n_frac, "values are not whole numbers")
+            )
+    if rule.minimum is not None:
+        n_low = int((values < rule.minimum).sum())
+        if n_low:
+            out.append(
+                Violation(rule.name, "range", n_low, f"values below {rule.minimum}")
+            )
+    if rule.maximum is not None:
+        n_high = int((values > rule.maximum).sum())
+        if n_high:
+            out.append(
+                Violation(rule.name, "range", n_high, f"values above {rule.maximum}")
+            )
+    return out
+
+
+def check_contract(df: pd.DataFrame, contract: TableContract) -> ContractReport:
+    """Check ``df`` against ``contract`` and collect every violation.
+
+    All rules are evaluated, so one run lists every problem of an extract
+    instead of stopping at the first.
+    """
+    report = ContractReport(contract.name, len(df))
+    if len(df) < contract.min_rows:
+        report.violations.append(
+            Violation("*", "rows", len(df), f"fewer than {contract.min_rows} rows")
+        )
+    for rule in contract.columns:
+        if rule.name not in df.columns:
+            if rule.required:
+                report.violations.append(
+                    Violation(rule.name, "presence", 1, "required column is missing")
+                )
+            continue
+        if rule.kind in ("numeric", "integer"):
+            report.violations.extend(_numeric_rules(df[rule.name], rule))
+    return report

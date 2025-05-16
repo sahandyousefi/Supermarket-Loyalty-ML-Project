@@ -9,7 +9,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 2: Data contracts and drift
 
-- [ ] 2.2 Contract checks for ranges and types
 - [ ] 2.3 Contract checks for levels, uniqueness and missing-value budgets
 - [ ] 2.4 Read contracts from `configs/contracts.yaml`
 - [ ] 2.5 `loyalty-spend validate` command with a contract report
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-05-16: 1.14 Build and check the source distribution and wheel in CI, and ship type information
 - [x] 2025-05-16: 1.15 Add a citation file
 - [x] 2025-05-16: 2.1 Declarative column contracts for dtype, range and allowed levels
+- [x] 2025-05-16: 2.2 Contract checks for ranges and types
