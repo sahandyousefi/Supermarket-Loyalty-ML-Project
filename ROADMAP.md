@@ -6,7 +6,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 1: Engineering
 
-- [ ] 1.13 Run the slow test suite on a weekly schedule
 - [ ] 1.14 Add Dependabot configuration for pip and GitHub Actions
 - [ ] 1.15 Add a citation file
 
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-05-10: 1.10 Property-based tests for numeric parsing and category normalization
 - [x] 2025-05-10: 1.11 Property-based tests for the conformal quantile
 - [x] 2025-05-16: 1.12 Add a `--version` flag and a `--verbose` logging flag to the CLI
+- [x] 2025-05-16: 1.13 Run the slow test suite on demand from GitHub Actions
