@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Supermarket Loyalty: Spend Forecasting and Reward Cost Estimation"
+authors:
+  - family-names: Yousefi
+    given-names: Sahand
+version: 1.0.0
+date-released: 2025-04-27
+license: MIT
+repository-code: "https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project"
+keywords:
+  - customer analytics
+  - loyalty programme
+  - conformal prediction
+  - tabular deep learning
+  - Monte Carlo simulation
+abstract: >-
+  Spend forecasting for supermarket loyalty members with a statistical
+  comparison of linear, tree and deep tabular models, distribution-free
+  prediction intervals, and a Monte Carlo forecast of total reward cost
+  under a tiered reward schedule.
