@@ -42,6 +42,9 @@ loyalty-spend = "loyalty_spend.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+loyalty_spend = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: trains neural networks or runs searches"]
