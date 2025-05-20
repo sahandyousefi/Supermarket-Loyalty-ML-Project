@@ -28,6 +28,7 @@ from loyalty_spend.evaluation.simulation_study import run_study
 from loyalty_spend.features.preprocess import feature_frame, split_xy
 from loyalty_spend.models.registry import available_models, build_model, model_family
 from loyalty_spend.reporting import figures
+from loyalty_spend.reporting.markdown import markdown_table
 from loyalty_spend.uncertainty.conformal import (
     ConformalizedQuantileRegressor,
     SplitConformalRegressor,
@@ -62,18 +63,6 @@ class ReportSettings:
     conformal_test_n: int = 5000
 
 
-def _md_table(df: pd.DataFrame, digits: int = 4) -> str:
-    def fmt(v) -> str:
-        if isinstance(v, float | np.floating):
-            return "" if np.isnan(v) else f"{v:.{digits}f}"
-        return str(v)
-
-    head = "| " + " | ".join(df.columns) + " |"
-    sep = "| " + " | ".join("---" for _ in df.columns) + " |"
-    rows = ["| " + " | ".join(fmt(v) for v in r) + " |" for r in df.itertuples(False)]
-    return "\n".join([head, sep, *rows])
-
-
 def driver_section(cfg: Config, fig_dir: Path) -> tuple[str, dict]:
     clean, log = load_clean(cfg.paths.raw(cfg.paths.loyalty_file), impute=False)
     by_years = spend_by_group(clean, "loyalty_years", seed=cfg.cv.seed)
@@ -86,17 +75,17 @@ def driver_section(cfg: Config, fig_dir: Path) -> tuple[str, dict]:
     text = "\n\n".join(
         [
             "## Data quality (loyalty.csv)",
-            _md_table(log.to_frame()),
+            markdown_table(log.to_frame()),
             "## Spend by loyalty tenure",
-            _md_table(by_years, 2),
+            markdown_table(by_years, 2),
             f"Welch ANOVA: F = {anova['f']:.1f} on ({anova['df1']:.0f}, "
             f"{anova['df2']:.1f}) df, p = {anova['p_value']:.2e}. "
             f"Eta squared {sizes['eta_squared']:.3f}, "
             f"omega squared {sizes['omega_squared']:.3f}.",
             "### Tukey HSD",
-            _md_table(tukey, 3),
+            markdown_table(tukey, 3),
             "### Shapley decomposition of R squared",
-            _md_table(shares),
+            markdown_table(shares),
         ]
     )
     return text, {"welch": anova, **sizes, "lmg": shares.to_dict("records")}
@@ -106,7 +95,9 @@ def lineage_section(cfg: Config) -> str:
     loyalty, _ = load_clean(cfg.paths.raw(cfg.paths.loyalty_file), impute=False)
     train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
     table = compare_extracts(loyalty, train)
-    return "## Lineage check: loyalty.csv against train.csv\n\n" + _md_table(table, 3)
+    return "## Lineage check: loyalty.csv against train.csv\n\n" + markdown_table(
+        table, 3
+    )
 
 
 def benchmark_section(
@@ -124,7 +115,7 @@ def benchmark_section(
     figures.plot_model_comparison(table, fig_dir / "model_comparison.png")
     cols = ["model", "family", "rmse_mean", "rmse_std", "mae_mean", "r2_mean"]
     cols += ["rmse_diff_vs_ols", "p_value"]
-    text = "## Benchmark on train.csv\n\n" + _md_table(table[cols])
+    text = "## Benchmark on train.csv\n\n" + markdown_table(table[cols])
     oof = {r.name: r.oof for r in results}
     residuals = y.to_numpy() - oof["ols"]
     return text, table, residuals
@@ -146,7 +137,7 @@ def study_section(cfg: Config, settings: ReportSettings, fig_dir: Path) -> str:
     wide = wide.reindex(index=list(settings.study_models), columns=list(SCENARIOS))
     bayes = table.groupby("scenario")["bayes_rmse"].first().reindex(wide.columns)
     wide.loc["bayes error"] = bayes
-    return "## Simulation study (RMSE)\n\n" + _md_table(wide.reset_index(), 3)
+    return "## Simulation study (RMSE)\n\n" + markdown_table(wide.reset_index(), 3)
 
 
 def conformal_section(cfg: Config, settings: ReportSettings, fig_dir: Path) -> str:
@@ -190,7 +181,7 @@ def conformal_section(cfg: Config, settings: ReportSettings, fig_dir: Path) -> s
     summary = pd.DataFrame(rows).merge(worst, on="method")
     return (
         f"## Prediction intervals ({settings.conformal_scenario} scenario, "
-        f"target coverage {1 - alpha:.0%})\n\n" + _md_table(summary, 3)
+        f"target coverage {1 - alpha:.0%})\n\n" + markdown_table(summary, 3)
     )
 
 
@@ -217,7 +208,7 @@ def liability_section(cfg: Config, residuals: np.ndarray, fig_dir: Path) -> str:
     table = pd.DataFrame([{k: round(v, 2) for k, v in s.items()}])
     return (
         f"## Reward liability for the {len(test)} customers in test.csv\n\n"
-        + _md_table(table, 2)
+        + markdown_table(table, 2)
         + f"\n\nCustomers with at least a 20% chance of changing tier: {near}."
     )
 

@@ -63,3 +63,26 @@ def profile_frame(df: pd.DataFrame, top_k: int = 3) -> pd.DataFrame:
             row["top"] = top_levels(series, top_k)
         rows.append(row)
     return pd.DataFrame(rows).set_index("column")
+
+
+def profile_markdown(profile: pd.DataFrame, digits: int = 2) -> str:
+    """Two Markdown tables: numeric columns and category columns."""
+    from loyalty_spend.reporting.markdown import markdown_table
+
+    parts = []
+    numeric = profile[profile["kind"] == "numeric"]
+    if not numeric.empty:
+        cols = ["missing", "distinct", "mean", "std", "min", "q25", "q50", "q75"]
+        cols = [c for c in [*cols, "max"] if c in numeric.columns]
+        parts.append(
+            "### Numeric columns\n\n"
+            + markdown_table(numeric[cols].reset_index(), digits)
+        )
+    category = profile[profile["kind"] == "category"]
+    if not category.empty:
+        cols = ["missing", "distinct", "top"]
+        parts.append(
+            "### Category columns\n\n"
+            + markdown_table(category[cols].reset_index(), digits)
+        )
+    return "\n\n".join(parts)
