@@ -10,9 +10,11 @@ same rules that the training data were checked against.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
 import pandas as pd
+import yaml
 
 from loyalty_spend.data.schema import (
     CATEGORICAL,
@@ -255,3 +257,30 @@ def check_contract(df: pd.DataFrame, contract: TableContract) -> ContractReport:
             )
         )
     return report
+
+
+DEFAULT_CONTRACTS = Path(__file__).resolve().parents[3] / "configs" / "contracts.yaml"
+
+
+def contract_from_dict(name: str, spec: dict[str, Any]) -> TableContract:
+    """Build a contract from the mapping used in ``configs/contracts.yaml``."""
+    unknown = set(spec) - {"columns", "min_rows"}
+    if unknown:
+        raise ValueError(f"{name}: unknown keys {sorted(unknown)}")
+    columns = []
+    for col in spec.get("columns", []):
+        col = dict(col)
+        if col.get("levels") is not None:
+            col["levels"] = tuple(str(v) for v in col["levels"])
+        for bound in ("minimum", "maximum"):
+            if col.get(bound) is not None:
+                col[bound] = float(col[bound])
+        columns.append(ColumnContract(**col))
+    return TableContract(name, tuple(columns), int(spec.get("min_rows", 1)))
+
+
+def load_contracts(path: str | Path | None = None) -> dict[str, TableContract]:
+    """Read every contract in a YAML file, keyed by name."""
+    path = Path(path) if path else DEFAULT_CONTRACTS
+    raw = yaml.safe_load(Path(path).read_text()) or {}
+    return {name: contract_from_dict(name, spec) for name, spec in raw.items()}

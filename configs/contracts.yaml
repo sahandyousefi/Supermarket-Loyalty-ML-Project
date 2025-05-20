@@ -1,0 +1,44 @@
+# Data contracts checked by `loyalty-spend validate`.
+# Bounds are inclusive; max_missing is the largest acceptable share of
+# missing values in a column.
+
+training:
+  min_rows: 100
+  columns:
+    - {name: customer_id, kind: id, unique: true, max_missing: 0.0}
+    - {name: spend, kind: numeric, minimum: 0.0, max_missing: 0.0}
+    - {name: first_month, kind: numeric, minimum: 0.0, max_missing: 0.2}
+    - {name: items_in_first_month, kind: integer, minimum: 0, max_missing: 0.2}
+    - name: region
+      kind: category
+      levels: [Americas, Asia/Pacific, Europe, Middle East/Africa, Unknown]
+      max_missing: 0.2
+    - name: loyalty_years
+      kind: category
+      levels: ["0-1", "1-3", "3-5", "5-10", "10+"]
+      max_missing: 0.2
+    - name: joining_month
+      kind: category
+      levels: [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec, Unknown]
+      max_missing: 0.2
+    - {name: promotion, kind: category, levels: ["Yes", "No"], max_missing: 0.2}
+
+scoring:
+  min_rows: 1
+  columns:
+    - {name: customer_id, kind: id, unique: true, max_missing: 0.0}
+    - {name: first_month, kind: numeric, minimum: 0.0, max_missing: 0.2}
+    - {name: items_in_first_month, kind: integer, minimum: 0, max_missing: 0.2}
+    - name: region
+      kind: category
+      levels: [Americas, Asia/Pacific, Europe, Middle East/Africa, Unknown]
+      max_missing: 0.2
+    - name: loyalty_years
+      kind: category
+      levels: ["0-1", "1-3", "3-5", "5-10", "10+"]
+      max_missing: 0.2
+    - name: joining_month
+      kind: category
+      levels: [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec, Unknown]
+      max_missing: 0.2
+    - {name: promotion, kind: category, levels: ["Yes", "No"], max_missing: 0.2}

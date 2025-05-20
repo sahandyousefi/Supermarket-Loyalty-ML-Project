@@ -6,7 +6,9 @@ from loyalty_spend.data.contracts import (
     ColumnContract,
     TableContract,
     check_contract,
+    contract_from_dict,
     default_contract,
+    load_contracts,
 )
 from loyalty_spend.data.schema import COLUMNS, FEATURES, ID
 
@@ -112,3 +114,28 @@ def test_unexpected_columns_are_a_warning_only():
     assert [(v.rule, v.severity) for v in report.violations] == [
         ("unexpected", "warning")
     ]
+
+
+def test_yaml_contracts_match_the_data_dictionary():
+    contracts = load_contracts()
+    training, scoring = contracts["training"], contracts["scoring"]
+    reference = default_contract()
+    assert training.names == reference.names
+    assert scoring.names == default_contract(require_target=False).names
+    for name in FEATURES:
+        assert training.column(name).levels == reference.column(name).levels
+        assert training.column(name).kind == reference.column(name).kind
+
+
+def test_yaml_contracts_accept_the_supplied_files(train_df):
+    report = check_contract(train_df, load_contracts()["training"])
+    assert report.ok, report.to_frame()
+
+
+def test_unknown_contract_keys_are_rejected():
+    with pytest.raises(ValueError):
+        contract_from_dict("t", {"columns": [], "rows": 3})
+    with pytest.raises(TypeError):
+        contract_from_dict(
+            "t", {"columns": [{"name": "x", "kind": "numeric", "lo": 0}]}
+        )

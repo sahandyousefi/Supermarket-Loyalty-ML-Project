@@ -9,7 +9,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 2: Data contracts and drift
 
-- [ ] 2.4 Read contracts from `configs/contracts.yaml`
 - [ ] 2.5 `loyalty-spend validate` command with a contract report
 - [ ] 2.6 Column profile: missing share, distinct count, quantiles and top levels
 - [ ] 2.7 Render a profile as Markdown
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-05-16: 2.1 Declarative column contracts for dtype, range and allowed levels
 - [x] 2025-05-16: 2.2 Contract checks for ranges and types
 - [x] 2025-05-20: 2.3 Contract checks for levels, uniqueness and missing-value budgets
+- [x] 2025-05-20: 2.4 Read contracts from `configs/contracts.yaml`
