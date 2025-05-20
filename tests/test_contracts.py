@@ -1,7 +1,29 @@
+import numpy as np
+import pandas as pd
 import pytest
 
-from loyalty_spend.data.contracts import ColumnContract, TableContract, default_contract
+from loyalty_spend.data.contracts import (
+    ColumnContract,
+    TableContract,
+    check_contract,
+    default_contract,
+)
 from loyalty_spend.data.schema import COLUMNS, FEATURES, ID
+
+
+def _frame(**overrides):
+    base = {
+        "customer_id": [1, 2, 3],
+        "spend": [120.5, 99.0, 140.2],
+        "first_month": [10.0, 12.5, 15.0],
+        "items_in_first_month": [3, 4, 5],
+        "region": ["Europe", "Americas", "Asia/Pacific"],
+        "loyalty_years": ["0-1", "1-3", "10+"],
+        "joining_month": ["Jan", "Unknown", "Dec"],
+        "promotion": ["Yes", "No", "No"],
+    }
+    base.update(overrides)
+    return pd.DataFrame(base)
 
 
 def test_default_contract_covers_the_schema():
@@ -34,37 +56,13 @@ def test_duplicated_columns_are_rejected():
         TableContract("t", (col,)).column("y")
 
 
-def _frame(**overrides):
-    import pandas as pd
-
-    base = {
-        "customer_id": [1, 2, 3],
-        "spend": [120.5, 99.0, 140.2],
-        "first_month": [10.0, 12.5, 15.0],
-        "items_in_first_month": [3, 4, 5],
-        "region": ["Europe", "Americas", "Asia/Pacific"],
-        "loyalty_years": ["0-1", "1-3", "10+"],
-        "joining_month": ["Jan", "Unknown", "Dec"],
-        "promotion": ["Yes", "No", "No"],
-    }
-    base.update(overrides)
-    return pd.DataFrame(base)
-
-
 def test_supplied_training_data_satisfy_the_contract(train_df):
-    from loyalty_spend.data.contracts import check_contract
-
     report = check_contract(train_df, default_contract())
     assert report.ok, report.to_frame()
 
 
 def test_range_and_type_violations_are_counted():
-    from loyalty_spend.data.contracts import check_contract
-
-    df = _frame(
-        spend=[-1.0, 99.0, "abc"],
-        items_in_first_month=[3, 4.5, -2],
-    )
+    df = _frame(spend=[-1.0, 99.0, "abc"], items_in_first_month=[3, 4.5, -2])
     report = check_contract(df, default_contract())
     found = {(v.column, v.rule): v.n for v in report.errors}
     assert found == {
@@ -78,8 +76,6 @@ def test_range_and_type_violations_are_counted():
 
 
 def test_missing_required_column_and_row_minimum():
-    from loyalty_spend.data.contracts import check_contract
-
     contract = TableContract(
         "t",
         (
@@ -88,8 +84,31 @@ def test_missing_required_column_and_row_minimum():
         ),
         min_rows=5,
     )
-    report = check_contract(_frame().rename(columns={"spend": "z"}), contract)
+    report = check_contract(_frame(), contract)
     assert {(v.column, v.rule) for v in report.errors} == {
         ("*", "rows"),
         ("x", "presence"),
     }
+
+
+def test_levels_uniqueness_and_missing_budget():
+    df = _frame(
+        customer_id=[1, 1, 2],
+        region=["Europe", "europe", "Mars"],
+        promotion=[np.nan, np.nan, "No"],
+    )
+    report = check_contract(df, default_contract())
+    found = {(v.column, v.rule): v.n for v in report.errors}
+    assert found == {
+        ("customer_id", "unique"): 1,
+        ("region", "levels"): 2,
+        ("promotion", "missing"): 2,
+    }
+
+
+def test_unexpected_columns_are_a_warning_only():
+    report = check_contract(_frame(note=["a", "b", "c"]), default_contract())
+    assert report.ok
+    assert [(v.rule, v.severity) for v in report.violations] == [
+        ("unexpected", "warning")
+    ]

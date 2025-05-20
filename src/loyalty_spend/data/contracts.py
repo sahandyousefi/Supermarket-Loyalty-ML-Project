@@ -196,6 +196,16 @@ def _numeric_rules(series: pd.Series, rule: ColumnContract) -> list[Violation]:
     return out
 
 
+def _level_rules(series: pd.Series, rule: ColumnContract) -> list[Violation]:
+    allowed = set(rule.levels or ())
+    observed = series.dropna().astype(str)
+    bad = observed[~observed.isin(allowed)]
+    if bad.empty:
+        return []
+    shown = sorted(bad.unique())[:5]
+    return [Violation(rule.name, "levels", len(bad), f"unexpected levels {shown}")]
+
+
 def check_contract(df: pd.DataFrame, contract: TableContract) -> ContractReport:
     """Check ``df`` against ``contract`` and collect every violation.
 
@@ -214,6 +224,34 @@ def check_contract(df: pd.DataFrame, contract: TableContract) -> ContractReport:
                     Violation(rule.name, "presence", 1, "required column is missing")
                 )
             continue
+        series = df[rule.name]
         if rule.kind in ("numeric", "integer"):
-            report.violations.extend(_numeric_rules(df[rule.name], rule))
+            report.violations.extend(_numeric_rules(series, rule))
+        if rule.levels is not None:
+            report.violations.extend(_level_rules(series, rule))
+        if rule.unique:
+            n_dup = int(series.dropna().duplicated().sum())
+            if n_dup:
+                report.violations.append(
+                    Violation(rule.name, "unique", n_dup, "duplicated values")
+                )
+        if len(df):
+            n_na = int(series.isna().sum())
+            share = n_na / len(df)
+            if share > rule.max_missing:
+                report.violations.append(
+                    Violation(
+                        rule.name,
+                        "missing",
+                        n_na,
+                        f"{share:.1%} missing, budget {rule.max_missing:.1%}",
+                    )
+                )
+    extra = [c for c in df.columns if c not in contract.names]
+    if extra:
+        report.violations.append(
+            Violation(
+                "*", "unexpected", len(extra), f"columns {extra}", severity="warning"
+            )
+        )
     return report
