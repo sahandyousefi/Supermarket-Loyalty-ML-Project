@@ -51,6 +51,43 @@ def _clean(args: argparse.Namespace) -> int:
     return 0
 
 
+def _validate_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--input", default=None, help="raw CSV, defaults to train.csv")
+    p.add_argument(
+        "--contract",
+        default=None,
+        help="contract name; defaults to training, or scoring without a spend column",
+    )
+    p.add_argument("--contracts", default=None, help="YAML file with contracts")
+    p.add_argument("--output", default=None, help="write violations to this CSV")
+
+
+@command("validate", "check an extract against a data contract", _validate_args)
+def _validate(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.cleaning import clean_loyalty
+    from loyalty_spend.data.contracts import check_contract, load_contracts
+    from loyalty_spend.data.io import read_raw
+    from loyalty_spend.data.schema import TARGET
+
+    cfg = load_config(args.config)
+    path = args.input or cfg.paths.raw(cfg.paths.train_file)
+    raw = read_raw(path)
+    has_target = TARGET in raw.columns
+    clean, _ = clean_loyalty(raw, impute=False, require_target=has_target)
+    contracts = load_contracts(args.contracts)
+    name = args.contract or ("training" if has_target else "scoring")
+    report = check_contract(clean, contracts[name])
+    table = report.to_frame()
+    if args.output:
+        table.to_csv(args.output, index=False)
+    status = "passed" if report.ok else "failed"
+    print(f"{path}: {report.n_rows} rows, contract '{name}' {status}")
+    if not table.empty:
+        print(table.to_string(index=False))
+    return 0 if report.ok else 1
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
