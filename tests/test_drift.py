@@ -1,7 +1,15 @@
 import numpy as np
 import pytest
 
-from loyalty_spend.monitoring.drift import numeric_psi, psi_from_counts, quantile_edges
+from loyalty_spend.data.io import load_clean
+from loyalty_spend.data.schema import CATEGORICAL, allowed_values
+from loyalty_spend.monitoring.drift import (
+    category_psi,
+    numeric_psi,
+    psi_from_counts,
+    quantile_edges,
+    unseen_levels,
+)
 
 
 def test_identical_counts_have_zero_psi():
@@ -35,3 +43,26 @@ def test_missing_values_count_as_drift():
     cur[:400] = np.nan
     assert numeric_psi(ref, ref) == pytest.approx(0.0, abs=1e-12)
     assert numeric_psi(ref, cur) > 0.1
+
+
+def test_category_psi_detects_a_change_in_mix():
+    ref = ["Europe"] * 50 + ["Americas"] * 50
+    assert category_psi(ref, ref) == pytest.approx(0.0, abs=1e-12)
+    assert category_psi(ref, ["Europe"] * 90 + ["Americas"] * 10) > 0.25
+
+
+def test_unseen_levels_and_missing_values_register():
+    ref = ["a", "b"] * 100
+    cur = ["a", "b"] * 80 + ["c"] * 40
+    assert unseen_levels(ref, cur) == ["c"]
+    assert category_psi(ref, cur, levels=["a", "b"]) > 0.1
+    with_missing = ["a", "b"] * 80 + [None] * 40
+    assert category_psi(ref, with_missing) > 0.1
+
+
+def test_train_and_test_files_show_no_large_shift(train_df, raw_dir):
+    # With 250 scoring rows and up to 13 levels, sampling noise alone gives a
+    # PSI of several hundredths, so only the large-shift threshold is checked.
+    test, _ = load_clean(raw_dir / "test.csv", impute=False, require_target=False)
+    for col in CATEGORICAL:
+        assert category_psi(train_df[col], test[col], allowed_values(col)) < 0.25

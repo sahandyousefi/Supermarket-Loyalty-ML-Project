@@ -67,3 +67,37 @@ def numeric_psi(reference: ArrayLike, current: ArrayLike, n_bins: int = 10) -> f
         return np.append(binned, s.isna().sum())
 
     return psi_from_counts(counts(ref), counts(cur))
+
+
+def category_psi(
+    reference: ArrayLike, current: ArrayLike, levels: list[str] | None = None
+) -> float:
+    """PSI of a categorical variable.
+
+    Bins are the declared ``levels`` (or the reference levels), one bin for
+    missing values and one for levels that the reference never showed, so a
+    new region or a typo in an extract registers as drift instead of being
+    dropped.
+    """
+    ref = pd.Series(reference, dtype=object)
+    cur = pd.Series(current, dtype=object)
+    known = (
+        list(levels)
+        if levels is not None
+        else sorted(ref.dropna().astype(str).unique())
+    )
+
+    def counts(s: pd.Series) -> np.ndarray:
+        text = s.dropna().astype(str)
+        known_counts = [int((text == lvl).sum()) for lvl in known]
+        unseen = int((~text.isin(known)).sum())
+        return np.array([*known_counts, unseen, int(s.isna().sum())])
+
+    return psi_from_counts(counts(ref), counts(cur))
+
+
+def unseen_levels(reference: ArrayLike, current: ArrayLike) -> list[str]:
+    """Levels present in ``current`` but never in ``reference``."""
+    ref = set(pd.Series(reference, dtype=object).dropna().astype(str))
+    cur = set(pd.Series(current, dtype=object).dropna().astype(str))
+    return sorted(cur - ref)
