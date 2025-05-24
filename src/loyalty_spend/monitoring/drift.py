@@ -14,10 +14,14 @@ the two binned distributions. The usual reading is below 0.1 stable, 0.1 to
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 from scipy import stats
+
+from loyalty_spend.data.schema import CATEGORICAL, NUMERIC
 
 EPS = 1e-4
 
@@ -151,3 +155,83 @@ def benjamini_hochberg(p_values: ArrayLike) -> np.ndarray:
     values[order] = adjusted
     out[ok] = values
     return out
+
+
+@dataclass(frozen=True)
+class DriftThresholds:
+    """PSI bands and the false discovery rate for the tests."""
+
+    psi_moderate: float = 0.1
+    psi_large: float = 0.25
+    fdr: float = 0.05
+
+    def __post_init__(self) -> None:
+        if not 0 < self.psi_moderate < self.psi_large:
+            raise ValueError("need 0 < psi_moderate < psi_large")
+        if not 0 < self.fdr < 1:
+            raise ValueError("fdr must be in (0, 1)")
+
+
+def _status(psi: float, p_adj: float, t: DriftThresholds) -> str:
+    # PSI says how large a shift is; the test says whether it is more than
+    # sampling noise. A shift is flagged only when both agree.
+    significant = bool(p_adj < t.fdr) if not np.isnan(p_adj) else False
+    if psi >= t.psi_large and significant:
+        return "large"
+    if psi >= t.psi_moderate and significant:
+        return "moderate"
+    return "stable"
+
+
+def drift_report(
+    reference: pd.DataFrame,
+    current: pd.DataFrame,
+    numeric: list[str] | None = None,
+    categorical: list[str] | None = None,
+    n_bins: int = 10,
+    thresholds: DriftThresholds | None = None,
+) -> pd.DataFrame:
+    """Per-feature drift of ``current`` against ``reference``.
+
+    Numeric features get the quantile-bin PSI and the KS test, categorical
+    features the level PSI and the chi-square test. P-values are adjusted
+    across all features with Benjamini-Hochberg.
+    """
+    t = thresholds or DriftThresholds()
+    numeric = list(NUMERIC if numeric is None else numeric)
+    categorical = list(CATEGORICAL if categorical is None else categorical)
+    rows = []
+    for col in numeric:
+        stat, p = ks_test(reference[col], current[col])
+        rows.append(
+            {
+                "feature": col,
+                "kind": "numeric",
+                "psi": numeric_psi(reference[col], current[col], n_bins),
+                "test": "ks",
+                "statistic": stat,
+                "p_value": p,
+                "unseen": "",
+            }
+        )
+    for col in categorical:
+        stat, p = chi_square_test(reference[col], current[col])
+        rows.append(
+            {
+                "feature": col,
+                "kind": "category",
+                "psi": category_psi(reference[col], current[col]),
+                "test": "chi2",
+                "statistic": stat,
+                "p_value": p,
+                "unseen": ", ".join(unseen_levels(reference[col], current[col])),
+            }
+        )
+    table = pd.DataFrame(rows)
+    if table.empty:
+        return table
+    table["p_adjusted"] = benjamini_hochberg(table["p_value"])
+    table["status"] = [
+        _status(psi, p, t) for psi, p in zip(table["psi"], table["p_adjusted"])
+    ]
+    return table

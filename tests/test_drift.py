@@ -5,9 +5,11 @@ from scipy import stats
 from loyalty_spend.data.io import load_clean
 from loyalty_spend.data.schema import CATEGORICAL, allowed_values
 from loyalty_spend.monitoring.drift import (
+    DriftThresholds,
     benjamini_hochberg,
     category_psi,
     chi_square_test,
+    drift_report,
     ks_test,
     numeric_psi,
     psi_from_counts,
@@ -98,3 +100,29 @@ def test_benjamini_hochberg_matches_scipy():
     np.testing.assert_allclose(adj[:4], stats.false_discovery_control(p[:4]))
     assert np.isnan(adj[4])
     assert np.all(adj[:4] >= p[:4])
+
+
+def test_report_flags_only_the_shifted_feature(sim_df):
+    ref = sim_df.iloc[:300]
+    cur = sim_df.iloc[300:].copy()
+    cur["first_month"] = cur["first_month"] * 1.5
+    report = drift_report(ref, cur).set_index("feature")
+    assert report.loc["first_month", "status"] == "large"
+    others = report.drop(index="first_month")
+    assert (others["status"] == "stable").all()
+    assert (report["p_adjusted"] >= report["p_value"]).all()
+
+
+def test_report_lists_unseen_levels(sim_df):
+    cur = sim_df.copy()
+    cur["region"] = cur["region"].astype(str)
+    cur.loc[cur.index[:50], "region"] = "Antarctica"
+    report = drift_report(sim_df, cur).set_index("feature")
+    assert report.loc["region", "unseen"] == "Antarctica"
+
+
+def test_thresholds_are_validated():
+    with pytest.raises(ValueError):
+        DriftThresholds(psi_moderate=0.3, psi_large=0.2)
+    with pytest.raises(ValueError):
+        DriftThresholds(fdr=1.5)
