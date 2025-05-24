@@ -8,7 +8,13 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
-- Roadmap for the work after 1.0 (`ROADMAP.md`).
+- Roadmap for the work after 1.0 (`ROADMAP.md`), contributing notes and a citation file.
+- Declarative data contracts in `configs/contracts.yaml` and `loyalty-spend validate`.
+- Column profiles with a Markdown renderer.
+- Drift monitoring: PSI for numeric and categorical features, KS and chi-square tests with Benjamini-Hochberg control, a domain classifier for joint shifts, prediction and performance drift, and `loyalty-spend drift`.
+- `--version` and `--verbose` flags for the command line.
+- Property-based tests (Hypothesis) for the reward schedule, the cleaning rules and the conformal quantile.
+- CI jobs for the pre-commit hooks, type checking with mypy, a coverage floor and a package build check; an on-demand workflow for the slow tests.
 
 ## [1.0.0] - 2025-04-27
 

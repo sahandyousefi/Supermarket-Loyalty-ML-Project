@@ -9,7 +9,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 2: Data contracts and drift
 
-- [ ] 2.16 Document the drift between `train.csv` and `test.csv`
 
 ## Phase 3: Probabilistic forecasting
 
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-05-24: 2.13 Prediction drift and, when labels arrive, target drift
 - [x] 2025-05-24: 2.14 Monitoring section in the configuration with drift thresholds
 - [x] 2025-05-24: 2.15 `loyalty-spend drift` command
+- [x] 2025-05-24: 2.16 Document the drift between `train.csv` and `test.csv`

@@ -32,3 +32,18 @@ Three files are supplied with the original brief. They are small and are kept in
 ## Relationship between the files
 
 `train.csv` and `test.csv` together contain the same 1,246 customer ids as `loyalty.csv`, but their attributes do not match: region agrees for 25% of shared ids, which is the agreement expected by chance (Cohen's kappa about 0). The files are therefore treated as independent samples and are never joined. `loyalty-spend report` includes this check.
+
+## Drift between `train.csv` and `test.csv`
+
+`loyalty-spend drift` compares the scoring file with the training file feature by feature and with a domain classifier. PSI uses ten quantile bins from the training data (one bin per level for categories, plus bins for missing and unseen values); p-values are adjusted for the six features with Benjamini-Hochberg.
+
+| Feature | PSI | Test | Adjusted p |
+| --- | --- | --- | --- |
+| first_month | 0.134 | KS 0.113 | 0.066 |
+| items_in_first_month | 0.030 | KS 0.048 | 0.779 |
+| region | 0.017 | chi-square 3.52 | 0.606 |
+| loyalty_years | 0.009 | chi-square 1.76 | 0.779 |
+| joining_month | 0.118 | chi-square 22.35 | 0.066 |
+| promotion | 0.004 | chi-square 0.70 | 0.606 |
+
+The domain classifier separates the two files with an out-of-fold AUC of 0.511 (Mann-Whitney p = 0.29), so there is no evidence of a joint shift. Two features pass the moderate PSI threshold of 0.1 without a significant test. With 250 scoring rows this is expected: under no drift the PSI of a variable with $k$ bins is approximately $\chi^2_{k-1}\,(1/n_1 + 1/n_2)$, whose mean for the 13 joining-month levels is about 0.06. PSI alone overstates drift in small samples, which is why a shift is flagged only when the test agrees.
