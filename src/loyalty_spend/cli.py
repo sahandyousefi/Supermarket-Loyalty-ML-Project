@@ -88,6 +88,51 @@ def _validate(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _drift_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--reference", default=None, help="defaults to train.csv")
+    p.add_argument("--current", default=None, help="defaults to test.csv")
+    p.add_argument("--output", default=None, help="write the report to this CSV")
+    p.add_argument(
+        "--fail-on",
+        choices=["never", "moderate", "large"],
+        default="never",
+        help="exit with status 1 when any feature reaches this level",
+    )
+
+
+@command("drift", "compare a new extract with the reference data", _drift_args)
+def _drift(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.monitoring.domain import domain_classifier_test
+    from loyalty_spend.monitoring.drift import DriftThresholds, drift_report
+
+    cfg = load_config(args.config)
+    ref_path = args.reference or cfg.paths.raw(cfg.paths.train_file)
+    cur_path = args.current or cfg.paths.raw(cfg.paths.test_file)
+    reference, _ = load_clean(ref_path, impute=False, require_target=False)
+    current, _ = load_clean(cur_path, impute=False, require_target=False)
+    report = drift_report(
+        reference,
+        current,
+        n_bins=cfg.monitoring.n_bins,
+        thresholds=DriftThresholds.from_config(cfg.monitoring),
+    )
+    domain = domain_classifier_test(reference, current, seed=cfg.cv.seed)
+    if args.output:
+        report.to_csv(args.output, index=False)
+    cols = ["feature", "psi", "statistic", "p_adjusted", "unseen", "status"]
+    print(report[cols].to_string(index=False, float_format=lambda v: f"{v:.4f}"))
+    alert = domain.auc >= cfg.monitoring.domain_auc_alert
+    print(
+        f"domain classifier AUC {domain.auc:.3f} (p = {domain.p_value:.3g})"
+        + (" exceeds the alert level" if alert else "")
+    )
+    levels = {"never": set(), "moderate": {"moderate", "large"}, "large": {"large"}}
+    failed = bool(set(report["status"]) & levels[args.fail_on])
+    return 1 if failed else 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
