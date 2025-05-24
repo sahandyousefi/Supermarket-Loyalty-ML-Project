@@ -235,3 +235,58 @@ def drift_report(
         _status(psi, p, t) for psi, p in zip(table["psi"], table["p_adjusted"])
     ]
     return table
+
+
+def distribution_shift(reference: ArrayLike, current: ArrayLike) -> dict[str, float]:
+    """PSI, KS test and standardized mean shift of a scalar quantity.
+
+    Used for model outputs (prediction drift) and, once spend is observed
+    for a new cohort, for the target itself.
+    """
+    ref = pd.Series(reference, dtype=float).dropna()
+    cur = pd.Series(current, dtype=float).dropna()
+    stat, p = ks_test(ref, cur)
+    sd = float(ref.std(ddof=1)) if len(ref) > 1 else 0.0
+    return {
+        "psi": numeric_psi(ref, cur),
+        "ks_statistic": stat,
+        "p_value": p,
+        "mean_reference": float(ref.mean()),
+        "mean_current": float(cur.mean()),
+        "standardized_shift": (float(cur.mean() - ref.mean()) / sd) if sd else 0.0,
+    }
+
+
+def performance_shift(
+    y_reference: ArrayLike,
+    pred_reference: ArrayLike,
+    y_current: ArrayLike,
+    pred_current: ArrayLike,
+    n_boot: int = 2000,
+    seed: int = 0,
+) -> dict[str, float]:
+    """Change in RMSE between two labelled samples with a bootstrap interval.
+
+    Each sample is resampled independently; the interval is the percentile
+    interval of the RMSE ratio current / reference.
+    """
+    rng = np.random.default_rng(seed)
+    e_ref = np.asarray(y_reference, float) - np.asarray(pred_reference, float)
+    e_cur = np.asarray(y_current, float) - np.asarray(pred_current, float)
+
+    def rmse(e: np.ndarray) -> float:
+        return float(np.sqrt(np.mean(e**2)))
+
+    ratios = np.empty(n_boot)
+    for b in range(n_boot):
+        r = rmse(rng.choice(e_ref, size=e_ref.size))
+        c = rmse(rng.choice(e_cur, size=e_cur.size))
+        ratios[b] = c / r if r > 0 else np.inf
+    lo, hi = np.quantile(ratios, [0.025, 0.975])
+    return {
+        "rmse_reference": rmse(e_ref),
+        "rmse_current": rmse(e_cur),
+        "ratio": rmse(e_cur) / rmse(e_ref) if rmse(e_ref) > 0 else float("inf"),
+        "ratio_lower": float(lo),
+        "ratio_upper": float(hi),
+    }

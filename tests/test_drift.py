@@ -9,9 +9,11 @@ from loyalty_spend.monitoring.drift import (
     benjamini_hochberg,
     category_psi,
     chi_square_test,
+    distribution_shift,
     drift_report,
     ks_test,
     numeric_psi,
+    performance_shift,
     psi_from_counts,
     quantile_edges,
     unseen_levels,
@@ -126,3 +128,23 @@ def test_thresholds_are_validated():
         DriftThresholds(psi_moderate=0.3, psi_large=0.2)
     with pytest.raises(ValueError):
         DriftThresholds(fdr=1.5)
+
+
+def test_distribution_shift_of_predictions():
+    rng = np.random.default_rng(3)
+    ref = rng.normal(120, 10, size=1000)
+    same = distribution_shift(ref, rng.normal(120, 10, size=500))
+    moved = distribution_shift(ref, rng.normal(125, 10, size=500))
+    assert same["p_value"] > 0.01
+    assert moved["p_value"] < 1e-6
+    assert moved["standardized_shift"] == pytest.approx(0.5, abs=0.15)
+
+
+def test_performance_shift_interval_covers_the_true_ratio():
+    rng = np.random.default_rng(4)
+    y_ref, y_cur = rng.normal(size=800), rng.normal(size=800)
+    p_ref = y_ref + rng.normal(scale=1.0, size=800)
+    p_cur = y_cur + rng.normal(scale=2.0, size=800)
+    out = performance_shift(y_ref, p_ref, y_cur, p_cur, n_boot=500)
+    assert out["ratio_lower"] < 2.0 < out["ratio_upper"]
+    assert out["ratio_lower"] > 1.0
