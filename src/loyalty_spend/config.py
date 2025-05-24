@@ -75,12 +75,34 @@ class ConformalConfig:
 
 
 @dataclass(frozen=True)
+class MonitoringConfig:
+    # PSI bands follow the common credit-scoring convention; a shift is only
+    # flagged when the drift test is also significant at the given FDR.
+    psi_moderate: float = 0.1
+    psi_large: float = 0.25
+    fdr: float = 0.05
+    n_bins: int = 10
+    domain_auc_alert: float = 0.6
+
+    def __post_init__(self) -> None:
+        if not 0.0 < self.psi_moderate < self.psi_large:
+            raise ValueError("monitoring: need 0 < psi_moderate < psi_large")
+        if not 0.0 < self.fdr < 1.0:
+            raise ValueError("monitoring.fdr must be in (0, 1)")
+        if self.n_bins < 2:
+            raise ValueError("monitoring.n_bins must be at least 2")
+        if not 0.5 < self.domain_auc_alert < 1.0:
+            raise ValueError("monitoring.domain_auc_alert must be in (0.5, 1)")
+
+
+@dataclass(frozen=True)
 class Config:
     paths: PathsConfig = field(default_factory=PathsConfig)
     cv: CVConfig = field(default_factory=CVConfig)
     deep: DeepConfig = field(default_factory=DeepConfig)
     rewards: RewardConfig = field(default_factory=RewardConfig)
     conformal: ConformalConfig = field(default_factory=ConformalConfig)
+    monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
 
 
 _SECTIONS = {
@@ -89,6 +111,7 @@ _SECTIONS = {
     "deep": DeepConfig,
     "rewards": RewardConfig,
     "conformal": ConformalConfig,
+    "monitoring": MonitoringConfig,
 }
 
 

@@ -21,6 +21,7 @@ import pandas as pd
 from numpy.typing import ArrayLike
 from scipy import stats
 
+from loyalty_spend.config import MonitoringConfig
 from loyalty_spend.data.schema import CATEGORICAL, NUMERIC
 
 EPS = 1e-4
@@ -164,6 +165,10 @@ class DriftThresholds:
     psi_moderate: float = 0.1
     psi_large: float = 0.25
     fdr: float = 0.05
+
+    @classmethod
+    def from_config(cls, cfg: MonitoringConfig) -> DriftThresholds:
+        return cls(cfg.psi_moderate, cfg.psi_large, cfg.fdr)
 
     def __post_init__(self) -> None:
         if not 0 < self.psi_moderate < self.psi_large:

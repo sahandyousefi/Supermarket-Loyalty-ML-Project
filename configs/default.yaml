@@ -33,3 +33,10 @@ rewards:
 conformal:
   alpha: 0.1
   calibration_size: 0.25
+
+monitoring:
+  psi_moderate: 0.1
+  psi_large: 0.25
+  fdr: 0.05
+  n_bins: 10
+  domain_auc_alert: 0.6
