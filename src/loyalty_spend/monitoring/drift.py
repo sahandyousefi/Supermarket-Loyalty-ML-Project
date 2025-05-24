@@ -17,6 +17,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
+from scipy import stats
 
 EPS = 1e-4
 
@@ -101,3 +102,52 @@ def unseen_levels(reference: ArrayLike, current: ArrayLike) -> list[str]:
     ref = set(pd.Series(reference, dtype=object).dropna().astype(str))
     cur = set(pd.Series(current, dtype=object).dropna().astype(str))
     return sorted(cur - ref)
+
+
+def ks_test(reference: ArrayLike, current: ArrayLike) -> tuple[float, float]:
+    """Two-sample Kolmogorov-Smirnov statistic and p-value, ignoring missing values."""
+    ref = pd.Series(reference, dtype=float).dropna()
+    cur = pd.Series(current, dtype=float).dropna()
+    if ref.empty or cur.empty:
+        return float("nan"), float("nan")
+    result = stats.ks_2samp(ref, cur)
+    return float(result.statistic), float(result.pvalue)
+
+
+def chi_square_test(reference: ArrayLike, current: ArrayLike) -> tuple[float, float]:
+    """Chi-square test of homogeneity of two categorical samples.
+
+    Levels seen in neither sample are dropped; missing values are a level, as
+    in the PSI. Returns the statistic and p-value.
+    """
+    ref = pd.Series(reference, dtype=object).fillna("<missing>").astype(str)
+    cur = pd.Series(current, dtype=object).fillna("<missing>").astype(str)
+    table = pd.crosstab(
+        np.r_[np.zeros(len(ref)), np.ones(len(cur))],
+        np.r_[ref.to_numpy(), cur.to_numpy()],
+    )
+    if table.shape[1] < 2:
+        return 0.0, 1.0
+    stat, p, _, _ = stats.chi2_contingency(table.to_numpy())
+    return float(stat), float(p)
+
+
+def benjamini_hochberg(p_values: ArrayLike) -> np.ndarray:
+    """Adjusted p-values controlling the false discovery rate (BH, 1995).
+
+    Missing p-values stay missing and do not count towards the number of
+    tests.
+    """
+    p = np.asarray(p_values, float)
+    out = np.full_like(p, np.nan)
+    ok = ~np.isnan(p)
+    m = int(ok.sum())
+    if m == 0:
+        return out
+    order = np.argsort(p[ok])
+    ranked = p[ok][order] * m / np.arange(1, m + 1)
+    adjusted = np.minimum.accumulate(ranked[::-1])[::-1].clip(max=1.0)
+    values = np.empty(m)
+    values[order] = adjusted
+    out[ok] = values
+    return out

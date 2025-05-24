@@ -1,10 +1,14 @@
 import numpy as np
 import pytest
+from scipy import stats
 
 from loyalty_spend.data.io import load_clean
 from loyalty_spend.data.schema import CATEGORICAL, allowed_values
 from loyalty_spend.monitoring.drift import (
+    benjamini_hochberg,
     category_psi,
+    chi_square_test,
+    ks_test,
     numeric_psi,
     psi_from_counts,
     quantile_edges,
@@ -66,3 +70,31 @@ def test_train_and_test_files_show_no_large_shift(train_df, raw_dir):
     test, _ = load_clean(raw_dir / "test.csv", impute=False, require_target=False)
     for col in CATEGORICAL:
         assert category_psi(train_df[col], test[col], allowed_values(col)) < 0.25
+
+
+def test_ks_test_matches_scipy_and_ignores_missing():
+    rng = np.random.default_rng(2)
+    a, b = rng.normal(size=300), rng.normal(0.3, size=200)
+    b_missing = np.r_[b, [np.nan] * 20]
+    stat, p = ks_test(a, b_missing)
+    ref = stats.ks_2samp(a, b)
+    assert stat == pytest.approx(ref.statistic)
+    assert p == pytest.approx(ref.pvalue)
+
+
+def test_chi_square_detects_a_new_mix():
+    same = ["a"] * 60 + ["b"] * 40
+    assert chi_square_test(same, same)[1] == pytest.approx(1.0)
+    _, p = chi_square_test(same * 3, ["a"] * 20 + ["b"] * 80)
+    assert p < 1e-6
+    assert chi_square_test(["a"] * 5, ["a"] * 7) == (0.0, 1.0)
+
+
+def test_benjamini_hochberg_matches_scipy():
+    p = np.array([0.01, 0.04, 0.03, 0.20, np.nan])
+    adj = benjamini_hochberg(p)
+    # Sorted: 0.01, 0.03, 0.04, 0.20 -> 0.04, 0.06, 0.0533, 0.20 -> step-up minima.
+    np.testing.assert_allclose(adj[:4], [0.04, 0.16 / 3, 0.16 / 3, 0.20])
+    np.testing.assert_allclose(adj[:4], stats.false_discovery_control(p[:4]))
+    assert np.isnan(adj[4])
+    assert np.all(adj[:4] >= p[:4])

@@ -9,7 +9,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 2: Data contracts and drift
 
-- [ ] 2.10 Kolmogorov-Smirnov and chi-square tests with Benjamini-Hochberg control
 - [ ] 2.11 Per-feature drift report combining PSI and the tests
 - [ ] 2.12 Multivariate drift with a domain classifier and its AUC
 - [ ] 2.13 Prediction drift and, when labels arrive, target drift
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-05-20: 2.7 Render a profile as Markdown
 - [x] 2025-05-20: 2.8 Population stability index for numeric features with quantile bins
 - [x] 2025-05-20: 2.9 Population stability index for categorical features, including unseen levels
+- [x] 2025-05-24: 2.10 Kolmogorov-Smirnov and chi-square tests with Benjamini-Hochberg control
