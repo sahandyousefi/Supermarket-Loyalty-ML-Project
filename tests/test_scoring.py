@@ -5,6 +5,8 @@ from scipy import integrate, stats
 from loyalty_spend.evaluation.scoring import (
     crps_gaussian,
     crps_sample,
+    interval_score,
+    interval_summary,
     mean_pinball,
     pinball_loss,
 )
@@ -58,3 +60,27 @@ def test_sample_crps_matches_the_pairwise_formula():
     x, y = rng.normal(size=25), 0.4
     pairwise = np.abs(x - y).mean() - 0.5 * np.abs(x[:, None] - x[None, :]).mean()
     assert crps_sample([y], x[None, :])[0] == pytest.approx(pairwise)
+
+
+def test_interval_score_penalises_misses():
+    score = interval_score([5.0, 0.0, 12.0], [2.0, 2.0, 2.0], [10.0, 10.0, 10.0], 0.2)
+    np.testing.assert_allclose(score, [8.0, 8.0 + 10 * 2.0, 8.0 + 10 * 2.0])
+    with pytest.raises(ValueError):
+        interval_score([1.0], [2.0], [1.0], 0.1)
+
+
+def test_interval_score_is_minimised_by_the_true_quantiles():
+    rng = np.random.default_rng(3)
+    y = rng.normal(size=40000)
+    halfwidths = np.linspace(1.0, 2.4, 57)
+    scores = [interval_score(y, -h, h, 0.1).mean() for h in halfwidths]
+    best = halfwidths[int(np.argmin(scores))]
+    assert best == pytest.approx(stats.norm.ppf(0.95), abs=0.05)
+
+
+def test_interval_summary():
+    out = interval_summary([1.0, 2.0, 3.0, 9.0], [0.0] * 4, [4.0] * 4, 0.2)
+    assert out["coverage"] == pytest.approx(0.75)
+    assert out["coverage_se"] == pytest.approx(np.sqrt(0.75 * 0.25 / 4))
+    assert out["mean_width"] == pytest.approx(4.0)
+    assert out["interval_score"] == pytest.approx(4.0 + 10 * 5.0 / 4)

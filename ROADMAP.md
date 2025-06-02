@@ -12,7 +12,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 3: Probabilistic forecasting
 
-- [ ] 3.2 Interval score, coverage and width summaries
 - [ ] 3.3 Probability integral transform values and a calibration test
 - [ ] 3.4 Linear quantile regression for several quantiles at once
 - [ ] 3.5 Gradient boosting quantile regression for several quantiles
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-05-24: 2.15 `loyalty-spend drift` command
 - [x] 2025-05-24: 2.16 Document the drift between `train.csv` and `test.csv`
 - [x] 2025-06-02: 3.1 Proper scoring rules: pinball loss, Gaussian and sample CRPS
+- [x] 2025-06-02: 3.2 Interval score, coverage and width summaries

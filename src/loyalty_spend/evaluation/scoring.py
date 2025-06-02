@@ -67,3 +67,44 @@ def crps_sample(y: ArrayLike, samples: ArrayLike) -> np.ndarray:
     weights = 2 * np.arange(1, m + 1) - m - 1
     spread = 2 * (x * weights).sum(axis=1) / m**2
     return first - 0.5 * spread
+
+
+def interval_score(
+    y: ArrayLike, lower: ArrayLike, upper: ArrayLike, alpha: float
+) -> np.ndarray:
+    """Interval score of a central ``1 - alpha`` interval (Gneiting and Raftery, 2007).
+
+    The width plus a penalty of ``2 / alpha`` times the distance by which the
+    outcome falls outside. It rewards narrow intervals only as long as they
+    keep their coverage.
+    """
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must be in (0, 1)")
+    y = np.asarray(y, float)
+    lo = np.asarray(lower, float)
+    hi = np.asarray(upper, float)
+    if np.any(hi < lo):
+        raise ValueError("upper bounds must not be below lower bounds")
+    below = np.clip(lo - y, 0.0, None)
+    above = np.clip(y - hi, 0.0, None)
+    return (hi - lo) + 2.0 / alpha * (below + above)
+
+
+def interval_summary(
+    y: ArrayLike, lower: ArrayLike, upper: ArrayLike, alpha: float
+) -> dict[str, float]:
+    """Coverage with its binomial standard error, width and interval score."""
+    y = np.asarray(y, float)
+    lo = np.asarray(lower, float)
+    hi = np.asarray(upper, float)
+    inside = (y >= lo) & (y <= hi)
+    n = len(y)
+    cov = float(inside.mean())
+    return {
+        "target": 1.0 - alpha,
+        "coverage": cov,
+        "coverage_se": float(np.sqrt(cov * (1 - cov) / n)) if n else float("nan"),
+        "mean_width": float(np.mean(hi - lo)),
+        "median_width": float(np.median(hi - lo)),
+        "interval_score": float(interval_score(y, lo, hi, alpha).mean()),
+    }
