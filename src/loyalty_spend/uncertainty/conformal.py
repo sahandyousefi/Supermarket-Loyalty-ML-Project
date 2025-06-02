@@ -14,11 +14,9 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 from sklearn.base import BaseEstimator, clone
-from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.model_selection import KFold, train_test_split
-from sklearn.pipeline import Pipeline
 
-from loyalty_spend.features.preprocess import make_preprocessor
+from loyalty_spend.models.quantile import gbm_quantile_model
 
 
 def conformal_quantile(scores: np.ndarray, alpha: float) -> float:
@@ -114,20 +112,6 @@ def cv_plus_intervals(
     return Intervals(lo, hi)
 
 
-def _quantile_model(q: float, seed: int) -> Pipeline:
-    prep = make_preprocessor("ordinal").set_output(transform="pandas")
-    model = HistGradientBoostingRegressor(
-        loss="quantile",
-        quantile=q,
-        learning_rate=0.05,
-        max_iter=400,
-        max_leaf_nodes=15,
-        min_samples_leaf=20,
-        random_state=seed,
-    )
-    return Pipeline([("prep", prep), ("model", model)])
-
-
 class ConformalizedQuantileRegressor:
     """Conformalized quantile regression (Romano et al., 2019).
 
@@ -149,8 +133,10 @@ class ConformalizedQuantileRegressor:
         X_fit, X_cal, y_fit, y_cal = train_test_split(
             X, y, test_size=self.calibration_size, random_state=self.seed
         )
-        self.lower_ = _quantile_model(self.alpha / 2, self.seed).fit(X_fit, y_fit)
-        self.upper_ = _quantile_model(1 - self.alpha / 2, self.seed).fit(X_fit, y_fit)
+        self.lower_ = gbm_quantile_model(self.alpha / 2, self.seed).fit(X_fit, y_fit)
+        self.upper_ = gbm_quantile_model(1 - self.alpha / 2, self.seed).fit(
+            X_fit, y_fit
+        )
         lo, hi = self.lower_.predict(X_cal), self.upper_.predict(X_cal)
         scores = np.maximum(lo - y_cal, y_cal - hi)
         self.q_ = conformal_quantile(scores, self.alpha)

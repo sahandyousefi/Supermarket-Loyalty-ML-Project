@@ -4,7 +4,7 @@ import pytest
 from loyalty_spend.data.schema import FEATURES
 from loyalty_spend.data.simulate import SCENARIOS, simulate
 from loyalty_spend.evaluation.scoring import mean_pinball
-from loyalty_spend.models.quantile import MultiQuantileRegressor
+from loyalty_spend.models.quantile import MultiQuantileRegressor, gbm_quantile_model
 
 
 @pytest.fixture(scope="module")
@@ -44,3 +44,16 @@ def test_invalid_levels_are_rejected(hetero, taus):
     X, y, _, _ = hetero
     with pytest.raises(ValueError):
         MultiQuantileRegressor(taus=taus).fit(X.iloc[:50], y.iloc[:50])
+
+
+def test_gradient_boosting_quantiles_adapt_to_heteroscedasticity(hetero):
+    X, y, X_new, y_new = hetero
+    taus = (0.1, 0.5, 0.9)
+    gbm = MultiQuantileRegressor(gbm_quantile_model, taus).fit(X, y)
+    q = gbm.predict_quantiles(X_new)
+    shares = (y_new.to_numpy()[:, None] <= q).mean(axis=0)
+    np.testing.assert_allclose(shares, taus, atol=0.07)
+    # In the heteroscedastic scenario, high spenders get wider intervals.
+    width = q[:, 2] - q[:, 0]
+    high = q[:, 1] > np.median(q[:, 1])
+    assert width[high].mean() > width[~high].mean()

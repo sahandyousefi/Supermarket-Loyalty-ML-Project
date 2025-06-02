@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.linear_model import QuantileRegressor
 from sklearn.pipeline import Pipeline
 
@@ -37,6 +38,21 @@ def linear_quantile_model(tau: float, alpha: float = 0.0) -> Pipeline:
             ("model", QuantileRegressor(quantile=tau, alpha=alpha, solver="highs")),
         ]
     )
+
+
+def gbm_quantile_model(tau: float, seed: int = 0) -> Pipeline:
+    """Histogram gradient boosting with the pinball loss of level ``tau``."""
+    prep = make_preprocessor("ordinal").set_output(transform="pandas")
+    model = HistGradientBoostingRegressor(
+        loss="quantile",
+        quantile=tau,
+        learning_rate=0.05,
+        max_iter=400,
+        max_leaf_nodes=15,
+        min_samples_leaf=20,
+        random_state=seed,
+    )
+    return Pipeline([("prep", prep), ("model", model)])
 
 
 class MultiQuantileRegressor(RegressorMixin, BaseEstimator):

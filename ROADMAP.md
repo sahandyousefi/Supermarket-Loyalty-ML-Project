@@ -12,7 +12,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 3: Probabilistic forecasting
 
-- [ ] 3.5 Gradient boosting quantile regression for several quantiles
 - [ ] 3.6 Monotone rearrangement of crossing quantiles
 - [ ] 3.7 Heteroscedastic Gaussian linear model with a log-variance regression
 - [ ] 3.8 Cross-validated CRPS comparison of distributional models
@@ -166,3 +165,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-02: 3.2 Interval score, coverage and width summaries
 - [x] 2025-06-02: 3.3 Probability integral transform values and a calibration test
 - [x] 2025-06-02: 3.4 Linear quantile regression for several quantiles at once
+- [x] 2025-06-02: 3.5 Gradient boosting quantile regression for several quantiles
