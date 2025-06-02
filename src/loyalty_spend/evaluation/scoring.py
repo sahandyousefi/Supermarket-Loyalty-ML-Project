@@ -108,3 +108,55 @@ def interval_summary(
         "median_width": float(np.median(hi - lo)),
         "interval_score": float(interval_score(y, lo, hi, alpha).mean()),
     }
+
+
+def pit_gaussian(y: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> np.ndarray:
+    """Probability integral transform values of normal forecasts."""
+    return stats.norm.cdf(np.asarray(y, float), np.asarray(mu, float), sigma)
+
+
+def pit_sample(y: ArrayLike, samples: ArrayLike, seed: int = 0) -> np.ndarray:
+    """Randomised PIT of sample forecasts.
+
+    Ties between the outcome and the draws are broken uniformly at random, so
+    a calibrated forecast gives exactly uniform values even when the draws
+    are discrete.
+    """
+    rng = np.random.default_rng(seed)
+    x = np.atleast_2d(np.asarray(samples, float))
+    y = np.asarray(y, float).reshape(-1, 1)
+    below = (x < y).mean(axis=1)
+    equal = (x == y).mean(axis=1)
+    return below + rng.uniform(size=len(below)) * equal
+
+
+def pit_quantiles(y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]) -> np.ndarray:
+    """PIT values from quantile forecasts by linear interpolation of the CDF.
+
+    Outcomes beyond the outermost quantiles get the outermost levels, which
+    is conservative: those cases still show up in the tail bins.
+    """
+    q = np.sort(np.asarray(q_pred, float), axis=1)
+    t = np.asarray(taus, float)
+    y = np.asarray(y, float)
+    return np.array([np.interp(v, row, t) for v, row in zip(y, q)])
+
+
+def calibration_test(pit: ArrayLike, n_bins: int = 10) -> dict[str, float]:
+    """Tests of uniformity of PIT values.
+
+    A calibrated forecast has uniform PIT values. A U-shaped histogram means
+    the forecast is too narrow, a hump means it is too wide, and a slope
+    means it is biased. Returns the chi-square statistic over equal bins,
+    its p-value and the KS p-value.
+    """
+    u = np.asarray(pit, float)
+    counts = np.histogram(u, bins=n_bins, range=(0.0, 1.0))[0]
+    chi2 = stats.chisquare(counts)
+    ks = stats.kstest(u, "uniform")
+    return {
+        "chi2": float(chi2.statistic),
+        "chi2_p_value": float(chi2.pvalue),
+        "ks_p_value": float(ks.pvalue),
+        "tail_share": float(np.mean((u < 0.05) | (u > 0.95))),
+    }

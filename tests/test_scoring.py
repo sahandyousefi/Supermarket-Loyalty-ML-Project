@@ -3,12 +3,16 @@ import pytest
 from scipy import integrate, stats
 
 from loyalty_spend.evaluation.scoring import (
+    calibration_test,
     crps_gaussian,
     crps_sample,
     interval_score,
     interval_summary,
     mean_pinball,
     pinball_loss,
+    pit_gaussian,
+    pit_quantiles,
+    pit_sample,
 )
 
 
@@ -84,3 +88,34 @@ def test_interval_summary():
     assert out["coverage_se"] == pytest.approx(np.sqrt(0.75 * 0.25 / 4))
     assert out["mean_width"] == pytest.approx(4.0)
     assert out["interval_score"] == pytest.approx(4.0 + 10 * 5.0 / 4)
+
+
+def test_calibrated_forecasts_have_uniform_pit():
+    rng = np.random.default_rng(4)
+    mu = rng.normal(size=4000)
+    y = mu + rng.normal(size=4000)
+    out = calibration_test(pit_gaussian(y, mu, 1.0))
+    assert out["chi2_p_value"] > 0.01
+    assert out["tail_share"] == pytest.approx(0.10, abs=0.02)
+
+
+def test_overconfident_forecasts_fail_the_test():
+    rng = np.random.default_rng(5)
+    mu = rng.normal(size=4000)
+    y = mu + rng.normal(size=4000)
+    out = calibration_test(pit_gaussian(y, mu, 0.5))
+    assert out["chi2_p_value"] < 1e-6
+    assert out["tail_share"] > 0.3
+
+
+def test_sample_pit_breaks_ties_at_random():
+    draws = np.repeat([[1.0, 2.0, 3.0, 4.0]], 4000, axis=0)
+    u = pit_sample(np.full(4000, 2.0), draws, seed=1)
+    assert u.min() >= 0.25 and u.max() <= 0.5
+    assert np.mean(u) == pytest.approx(0.375, abs=0.01)
+
+
+def test_quantile_pit_interpolates():
+    taus = [0.1, 0.5, 0.9]
+    q = [[0.0, 1.0, 2.0]] * 3
+    np.testing.assert_allclose(pit_quantiles([0.5, 1.5, 5.0], q, taus), [0.3, 0.7, 0.9])
