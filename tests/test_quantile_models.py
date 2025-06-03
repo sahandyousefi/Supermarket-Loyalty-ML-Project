@@ -4,7 +4,12 @@ import pytest
 from loyalty_spend.data.schema import FEATURES
 from loyalty_spend.data.simulate import SCENARIOS, simulate
 from loyalty_spend.evaluation.scoring import mean_pinball
-from loyalty_spend.models.quantile import MultiQuantileRegressor, gbm_quantile_model
+from loyalty_spend.models.quantile import (
+    MultiQuantileRegressor,
+    crossing_rate,
+    gbm_quantile_model,
+    rearrange,
+)
 
 
 @pytest.fixture(scope="module")
@@ -57,3 +62,26 @@ def test_gradient_boosting_quantiles_adapt_to_heteroscedasticity(hetero):
     width = q[:, 2] - q[:, 0]
     high = q[:, 1] > np.median(q[:, 1])
     assert width[high].mean() > width[~high].mean()
+
+
+def test_rearrangement_removes_crossings_and_reduces_loss():
+    rng = np.random.default_rng(0)
+    y = rng.normal(size=2000)
+    taus = (0.1, 0.3, 0.5, 0.7, 0.9)
+    true_q = np.tile(np.quantile(rng.normal(size=100000), taus), (2000, 1))
+    noisy = true_q + rng.normal(scale=0.5, size=true_q.shape)
+    assert crossing_rate(noisy) > 0.3
+    fixed = rearrange(noisy)
+    assert crossing_rate(fixed) == 0.0
+    assert mean_pinball(y, fixed, taus).sum() <= mean_pinball(y, noisy, taus).sum()
+
+
+def test_estimator_returns_monotone_quantiles(hetero):
+    X, y, X_new, _ = hetero
+    taus = (0.05, 0.1, 0.5, 0.9, 0.95)
+    raw = MultiQuantileRegressor(gbm_quantile_model, taus, monotone=False).fit(X, y)
+    fixed = MultiQuantileRegressor(gbm_quantile_model, taus).fit(X, y)
+    assert crossing_rate(fixed.predict_quantiles(X_new)) == 0.0
+    np.testing.assert_allclose(
+        np.sort(raw.predict_quantiles(X_new), axis=1), fixed.predict_quantiles(X_new)
+    )

@@ -30,6 +30,23 @@ def _check_taus(taus: Sequence[float]) -> tuple[float, ...]:
     return t
 
 
+def crossing_rate(q: ArrayLike) -> float:
+    """Share of rows whose quantile forecasts are not non-decreasing."""
+    q = np.asarray(q, float)
+    return float(np.mean(np.any(np.diff(q, axis=1) < 0, axis=1)))
+
+
+def rearrange(q: ArrayLike) -> np.ndarray:
+    """Monotone rearrangement of quantile forecasts.
+
+    Separately fitted quantile models can cross, which makes the implied
+    distribution invalid. Sorting each row is the rearrangement of
+    Chernozhukov, Fernandez-Val and Galichon (2010): it restores monotonicity
+    and never increases the distance to the true quantile function.
+    """
+    return np.sort(np.asarray(q, float), axis=1)
+
+
 def linear_quantile_model(tau: float, alpha: float = 0.0) -> Pipeline:
     """Linear quantile regression solved exactly as a linear programme."""
     return Pipeline(
@@ -71,9 +88,11 @@ class MultiQuantileRegressor(RegressorMixin, BaseEstimator):
         self,
         factory: Callable[[float], BaseEstimator] = linear_quantile_model,
         taus: Sequence[float] = DEFAULT_TAUS,
+        monotone: bool = True,
     ) -> None:
         self.factory = factory
         self.taus = taus
+        self.monotone = monotone
 
     def fit(self, X: pd.DataFrame, y: ArrayLike) -> MultiQuantileRegressor:
         taus = _check_taus(self.taus)
@@ -84,7 +103,8 @@ class MultiQuantileRegressor(RegressorMixin, BaseEstimator):
         return self
 
     def predict_quantiles(self, X: pd.DataFrame) -> np.ndarray:
-        return np.column_stack([m.predict(X) for m in self.models_])
+        q = np.column_stack([m.predict(X) for m in self.models_])
+        return rearrange(q) if self.monotone else q
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        return self.models_[self.taus_.index(0.5)].predict(X)
+        return self.predict_quantiles(X)[:, self.taus_.index(0.5)]
