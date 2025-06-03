@@ -160,3 +160,18 @@ def calibration_test(pit: ArrayLike, n_bins: int = 10) -> dict[str, float]:
         "ks_p_value": float(ks.pvalue),
         "tail_share": float(np.mean((u < 0.05) | (u > 0.95))),
     }
+
+
+def crps_quantiles(
+    y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]
+) -> np.ndarray:
+    """CRPS approximated from quantile forecasts on an equally spaced grid.
+
+    The CRPS equals twice the pinball loss integrated over all levels, so
+    the average over an evenly spaced grid of levels, times two, converges
+    to it as the grid becomes finer. Every model scored on the same grid is
+    compared on the same footing.
+    """
+    q = np.asarray(q_pred, float)
+    losses = np.column_stack([pinball_loss(y, q[:, j], t) for j, t in enumerate(taus)])
+    return 2.0 * losses.mean(axis=1)

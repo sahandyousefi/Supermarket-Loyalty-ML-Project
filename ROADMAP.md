@@ -12,7 +12,7 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 3: Probabilistic forecasting
 
-- [ ] 3.8 Cross-validated CRPS comparison of distributional models
+- [ ] 3.8b Cross-validated CRPS comparison of distributional models
 - [ ] 3.9 Mondrian conformal prediction by customer group
 - [ ] 3.10 Conformal predictive distributions
 - [ ] 3.11 Normalized conformal prediction with a difficulty model
@@ -166,3 +166,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-02: 3.5 Gradient boosting quantile regression for several quantiles
 - [x] 2025-06-03: 3.6 Monotone rearrangement of crossing quantiles
 - [x] 2025-06-03: 3.7 Heteroscedastic Gaussian linear model with a log-variance regression
+- [x] 2025-06-03: 3.8a Common quantile-grid interface for distributional models
