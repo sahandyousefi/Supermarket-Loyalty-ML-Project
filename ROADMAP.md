@@ -12,7 +12,7 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 3: Probabilistic forecasting
 
-- [ ] 3.12 Weighted conformal prediction under covariate shift
+- [ ] 3.12b Weighted conformal intervals with density ratios from a domain classifier
 - [ ] 3.13 `loyalty-spend intervals` command comparing interval methods
 - [ ] 3.14 Quantile reliability figure
 - [ ] 3.15 Draw reward cost simulations from a predictive distribution
@@ -167,3 +167,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-03: 3.9 Mondrian conformal prediction by customer group
 - [x] 2025-06-10: 3.10 Conformal predictive distributions
 - [x] 2025-06-10: 3.11 Normalized conformal prediction with a difficulty model
+- [x] 2025-06-10: 3.12a Weighted conformal quantile
