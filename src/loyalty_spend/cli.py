@@ -133,6 +133,60 @@ def _drift(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def _intervals_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument(
+        "--scenario",
+        default="noisy",
+        help="simulation scenario calibrated to train.csv",
+    )
+    p.add_argument("--n-fit", type=int, default=2000)
+    p.add_argument("--n-test", type=int, default=5000)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--output", default=None, help="write the table to this CSV")
+
+
+@command("intervals", "compare prediction interval methods", _intervals_args)
+def _intervals(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_modeling_data
+    from loyalty_spend.data.schema import FEATURES, TARGET
+    from loyalty_spend.data.simulate import SCENARIOS, simulate
+    from loyalty_spend.uncertainty.compare import compare_intervals
+
+    cfg = load_config(args.config)
+    if args.scenario not in SCENARIOS:
+        raise SystemExit(f"unknown scenario; choose from {sorted(SCENARIOS)}")
+    train, _ = load_modeling_data(
+        cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
+    )
+    sim = simulate(
+        train, SCENARIOS[args.scenario], n=args.n_fit + args.n_test, seed=args.seed
+    ).frame
+    fit, new = sim.iloc[: args.n_fit], sim.iloc[args.n_fit :]
+    table = compare_intervals(
+        fit[FEATURES],
+        fit[TARGET],
+        new[FEATURES],
+        new[TARGET],
+        alpha=cfg.conformal.alpha,
+        calibration_size=cfg.conformal.calibration_size,
+        seed=args.seed,
+    )
+    if args.output:
+        table.to_csv(args.output, index=False)
+    cols = [
+        "method",
+        "coverage",
+        "mean_width",
+        "interval_score",
+        "worst_group_coverage",
+        "best_group_coverage",
+    ]
+    print(f"scenario '{args.scenario}', target coverage {1 - cfg.conformal.alpha:.0%}")
+    print(table[cols].to_string(index=False, float_format=lambda v: f"{v:.3f}"))
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
