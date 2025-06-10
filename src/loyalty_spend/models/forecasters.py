@@ -81,11 +81,30 @@ class QuantileModelForecaster:
         return self.model_.predict_quantiles(X)
 
 
+class ConformalPredictiveForecaster:
+    """Split conformal predictive distribution around OLS."""
+
+    def __init__(self, taus: Sequence[float] = TAU_GRID) -> None:
+        self.taus = tuple(taus)
+
+    def fit(self, X: pd.DataFrame, y: ArrayLike) -> ConformalPredictiveForecaster:
+        from loyalty_spend.uncertainty.predictive import (
+            ConformalPredictiveDistribution,
+        )
+
+        self.model_ = ConformalPredictiveDistribution(ols()).fit(X, y)
+        return self
+
+    def quantiles(self, X: pd.DataFrame) -> np.ndarray:
+        return self.model_.quantiles(X, self.taus)
+
+
 FORECASTERS: dict[str, Callable[[], QuantileForecaster]] = {
     "gaussian": GaussianResidualForecaster,
     "gaussian_heteroscedastic": HeteroscedasticForecaster,
     "linear_quantile": lambda: QuantileModelForecaster(linear_quantile_model),
     "gbm_quantile": lambda: QuantileModelForecaster(gbm_quantile_model),
+    "conformal_predictive": ConformalPredictiveForecaster,
 }
 
 
