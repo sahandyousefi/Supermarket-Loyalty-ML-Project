@@ -19,7 +19,12 @@ equal.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 from numpy.typing import ArrayLike
+from sklearn.base import BaseEstimator, clone
+from sklearn.model_selection import train_test_split
+
+from loyalty_spend.uncertainty.conformal import Intervals
 
 
 def weighted_conformal_quantile(
@@ -49,3 +54,62 @@ def weighted_conformal_quantile(
     idx = np.argmax(cum[None, :] >= target - 1e-12, axis=1)
     reached = cum[-1] >= (1 - alpha) * total - 1e-12
     return np.where(reached, s[idx], np.inf)
+
+
+class WeightedConformalRegressor:
+    """Split conformal intervals reweighted towards a new population.
+
+    ``predict_interval`` estimates the likelihood ratio between the new rows
+    and the calibration rows with the domain classifier used for drift
+    monitoring, so the intervals adapt to the batch being scored.
+
+    Parameters
+    ----------
+    estimator : estimator
+    clip : float
+        Weights are clipped to ``[1 / clip, clip]``; unclipped ratios from a
+        well-separating classifier make the intervals infinite.
+    """
+
+    def __init__(
+        self,
+        estimator: BaseEstimator,
+        alpha: float = 0.1,
+        calibration_size: float = 0.25,
+        clip: float = 20.0,
+        seed: int = 0,
+    ) -> None:
+        self.estimator = estimator
+        self.alpha = alpha
+        self.calibration_size = calibration_size
+        self.clip = clip
+        self.seed = seed
+
+    def fit(self, X: pd.DataFrame, y: ArrayLike) -> WeightedConformalRegressor:
+        X_fit, X_cal, y_fit, y_cal = train_test_split(
+            X, y, test_size=self.calibration_size, random_state=self.seed
+        )
+        self.model_ = clone(self.estimator).fit(X_fit, y_fit)
+        self.X_cal_ = X_cal.reset_index(drop=True)
+        self.scores_ = np.abs(np.asarray(y_cal, float) - self.model_.predict(X_cal))
+        return self
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        return self.model_.predict(X)
+
+    def weights(self, X_new: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+        """Estimated likelihood ratios at the calibration rows and at ``X_new``."""
+        from loyalty_spend.monitoring.domain import domain_classifier_test
+
+        result = domain_classifier_test(
+            self.X_cal_, X_new.reset_index(drop=True), seed=self.seed
+        )
+        ratio = result.density_ratio(clip=self.clip)
+        n_cal = len(self.X_cal_)
+        return ratio[:n_cal], ratio[n_cal:]
+
+    def predict_interval(self, X_new: pd.DataFrame) -> Intervals:
+        w_cal, w_new = self.weights(X_new)
+        q = weighted_conformal_quantile(self.scores_, w_cal, w_new, self.alpha)
+        pred = self.predict(X_new)
+        return Intervals(pred - q, pred + q)
