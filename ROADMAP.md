@@ -12,7 +12,7 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 3: Probabilistic forecasting
 
-- [ ] 3.13 `loyalty-spend intervals` command comparing interval methods
+- [ ] 3.13b `loyalty-spend intervals` command
 - [ ] 3.14 Quantile reliability figure
 - [ ] 3.15 Draw reward cost simulations from a predictive distribution
 - [ ] 3.16 Report section on probabilistic evaluation
@@ -168,3 +168,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-10: 3.11 Normalized conformal prediction with a difficulty model
 - [x] 2025-06-10: 3.12a Weighted conformal quantile
 - [x] 2025-06-10: 3.12b Weighted conformal intervals with density ratios from a domain classifier
+- [x] 2025-06-10: 3.13a Side-by-side evaluation of the interval methods
