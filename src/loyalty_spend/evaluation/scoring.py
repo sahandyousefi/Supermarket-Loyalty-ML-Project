@@ -175,3 +175,17 @@ def crps_quantiles(
     q = np.asarray(q_pred, float)
     losses = np.column_stack([pinball_loss(y, q[:, j], t) for j, t in enumerate(taus)])
     return 2.0 * losses.mean(axis=1)
+
+
+def quantile_reliability(
+    y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]
+) -> np.ndarray:
+    """Observed share of outcomes at or below each forecast quantile.
+
+    For a calibrated forecast the share equals the nominal level; plotted
+    against the level it should follow the diagonal.
+    """
+    q = np.asarray(q_pred, float)
+    if q.shape[1] != len(taus):
+        raise ValueError("q_pred must have one column per level")
+    return (np.asarray(y, float)[:, None] <= q).mean(axis=0)

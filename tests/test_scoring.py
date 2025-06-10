@@ -13,6 +13,7 @@ from loyalty_spend.evaluation.scoring import (
     pit_gaussian,
     pit_quantiles,
     pit_sample,
+    quantile_reliability,
 )
 
 
@@ -119,3 +120,23 @@ def test_quantile_pit_interpolates():
     taus = [0.1, 0.5, 0.9]
     q = [[0.0, 1.0, 2.0]] * 3
     np.testing.assert_allclose(pit_quantiles([0.5, 1.5, 5.0], q, taus), [0.3, 0.7, 0.9])
+
+
+def test_quantile_reliability_of_true_quantiles():
+    rng = np.random.default_rng(6)
+    y = rng.normal(size=20000)
+    taus = [0.1, 0.5, 0.9]
+    q = np.tile(stats.norm.ppf(taus), (20000, 1))
+    np.testing.assert_allclose(quantile_reliability(y, q, taus), taus, atol=0.01)
+    with pytest.raises(ValueError):
+        quantile_reliability(y, q, [0.5])
+
+
+def test_reliability_figure_is_written(tmp_path):
+    from loyalty_spend.reporting.figures import plot_quantile_reliability
+
+    taus = np.array([0.1, 0.5, 0.9])
+    path = plot_quantile_reliability(
+        taus, {"a": taus, "b": np.array([0.2, 0.5, 0.8])}, tmp_path / "rel.png"
+    )
+    assert path.exists() and path.stat().st_size > 1000

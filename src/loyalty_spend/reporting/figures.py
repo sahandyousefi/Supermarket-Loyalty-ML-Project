@@ -171,3 +171,27 @@ def plot_liability(draws: np.ndarray, plug_in: float, path: str | Path) -> Path:
     _style(ax, "Total reward cost, 90% interval shaded", "reward cost", "draws")
     ax.grid(axis="x", visible=False)
     return _save(fig, path)
+
+
+def plot_quantile_reliability(
+    taus, shares: dict[str, np.ndarray], path: str | Path
+) -> Path:
+    """Observed against nominal quantile level, one line per forecaster."""
+    palette = ["#257de0", "#f47230", "#00b894", "#8e6bd8", "#c0392b", "#7f8c8d"]
+    fig, ax = plt.subplots(figsize=(5.2, 4.6))
+    ax.plot([0, 1], [0, 1], color=MUTED, linewidth=0.8, linestyle="--")
+    for (name, share), color in zip(shares.items(), palette):
+        ax.plot(taus, share, marker="o", markersize=3, linewidth=1.4, color=color)
+        ax.annotate(
+            name,
+            (taus[-1], share[-1]),
+            xytext=(4, 0),
+            textcoords="offset points",
+            fontsize=7,
+            color=color,
+            va="center",
+        )
+    ax.set_xlim(0, 1.25)
+    ax.set_ylim(0, 1)
+    _style(ax, "Quantile reliability", "Nominal level", "Observed share below")
+    return _save(fig, path)
