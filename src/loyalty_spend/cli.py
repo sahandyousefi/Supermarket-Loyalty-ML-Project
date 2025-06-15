@@ -398,12 +398,23 @@ def _tasks(args: argparse.Namespace) -> int:
     return 0
 
 
+REPORT_SECTIONS = (
+    "drivers",
+    "lineage",
+    "benchmark",
+    "study",
+    "conformal",
+    "probabilistic",
+)
+
+
 def _report_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument(
         "--sections",
         nargs="+",
-        default=["drivers", "lineage", "benchmark", "study", "conformal"],
+        choices=REPORT_SECTIONS,
+        default=list(REPORT_SECTIONS),
     )
 
 

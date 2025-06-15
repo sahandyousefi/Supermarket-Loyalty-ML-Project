@@ -24,11 +24,18 @@ from loyalty_spend.data.lineage import compare_extracts
 from loyalty_spend.data.schema import FEATURES, ID
 from loyalty_spend.data.simulate import SCENARIOS, simulate
 from loyalty_spend.evaluation.cv import compare_results, cross_validate, make_splits
+from loyalty_spend.evaluation.probabilistic import (
+    compare_distributions,
+    cross_validate_distribution,
+)
+from loyalty_spend.evaluation.scoring import quantile_reliability
 from loyalty_spend.evaluation.simulation_study import run_study
 from loyalty_spend.features.preprocess import feature_frame, split_xy
+from loyalty_spend.models.forecasters import FORECASTERS, TAU_GRID, build_forecaster
 from loyalty_spend.models.registry import available_models, build_model, model_family
 from loyalty_spend.reporting import figures
 from loyalty_spend.reporting.markdown import markdown_table
+from loyalty_spend.uncertainty.compare import compare_intervals
 from loyalty_spend.uncertainty.conformal import (
     ConformalizedQuantileRegressor,
     SplitConformalRegressor,
@@ -185,6 +192,90 @@ def conformal_section(cfg: Config, settings: ReportSettings, fig_dir: Path) -> s
     )
 
 
+PROBABILISTIC_FORECASTERS = (
+    "gaussian",
+    "gaussian_heteroscedastic",
+    "conformal_predictive",
+    "linear_quantile",
+    "gbm_quantile",
+)
+
+
+def probabilistic_section(
+    cfg: Config, settings: ReportSettings, fig_dir: Path
+) -> tuple[str, dict]:
+    """CRPS comparison, quantile reliability and interval methods.
+
+    Uses the same heteroscedastic scenario as the conformal section, because
+    on the nearly noise-free supplied data every predictive distribution is
+    a narrow spike and the comparison carries no information.
+    """
+    train, _ = load_modeling_data(
+        cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
+    )
+    scenario = SCENARIOS[settings.conformal_scenario]
+    fit = simulate(train, scenario, n=settings.study_n, seed=cfg.cv.seed).frame
+    test = simulate(
+        train, scenario, n=settings.conformal_test_n, seed=cfg.cv.seed + 1
+    ).frame
+    X, y = split_xy(fit)
+    X_test, y_test = split_xy(test)
+    splits = make_splits(len(y), settings.study_splits, 1, cfg.cv.seed)
+    results = [
+        cross_validate_distribution(name, FORECASTERS[name], X, y, splits)
+        for name in PROBABILISTIC_FORECASTERS
+    ]
+    crps = compare_distributions(results, "gaussian")
+    shares = {}
+    for name in PROBABILISTIC_FORECASTERS:
+        q = build_forecaster(name).fit(X, y).quantiles(X_test)
+        shares[name] = quantile_reliability(y_test, q, TAU_GRID)
+    figures.plot_quantile_reliability(
+        np.array(TAU_GRID), shares, fig_dir / "quantile_reliability.png"
+    )
+    intervals = compare_intervals(
+        X,
+        y,
+        X_test,
+        y_test,
+        alpha=cfg.conformal.alpha,
+        calibration_size=cfg.conformal.calibration_size,
+        seed=cfg.cv.seed,
+    )
+    crps_cols = [
+        "model",
+        "crps_mean",
+        "crps_diff",
+        "p_value",
+        "coverage_mean",
+        "interval_score_mean",
+        "pit_chi2_p_value",
+    ]
+    iv_cols = [
+        "method",
+        "coverage",
+        "mean_width",
+        "interval_score",
+        "worst_group_coverage",
+        "best_group_coverage",
+    ]
+    text = "\n\n".join(
+        [
+            f"## Probabilistic forecasts ({settings.conformal_scenario} scenario)",
+            "Cross-validated CRPS on a grid of 19 quantile levels; the 90% "
+            "interval uses the 5% and 95% levels.",
+            markdown_table(crps[crps_cols], 3),
+            "### Interval methods on new customers",
+            markdown_table(intervals[iv_cols], 3),
+        ]
+    )
+    summary = {
+        "crps": crps[crps_cols].to_dict("records"),
+        "intervals": intervals[iv_cols].to_dict("records"),
+    }
+    return text, summary
+
+
 def liability_section(cfg: Config, residuals: np.ndarray, fig_dir: Path) -> str:
     train, test = load_modeling_data(
         cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
@@ -216,7 +307,14 @@ def liability_section(cfg: Config, residuals: np.ndarray, fig_dir: Path) -> str:
 def build_report(
     cfg: Config | None = None,
     settings: ReportSettings | None = None,
-    sections: Sequence[str] = ("drivers", "lineage", "benchmark", "study", "conformal"),
+    sections: Sequence[str] = (
+        "drivers",
+        "lineage",
+        "benchmark",
+        "study",
+        "conformal",
+        "probabilistic",
+    ),
 ) -> Path:
     """Run the analysis and write ``reports/results.md`` with figures."""
     cfg = cfg or load_config()
@@ -240,6 +338,9 @@ def build_report(
         parts.append(study_section(cfg, settings, fig_dir))
     if "conformal" in sections:
         parts.append(conformal_section(cfg, settings, fig_dir))
+    if "probabilistic" in sections:
+        text, summary["probabilistic"] = probabilistic_section(cfg, settings, fig_dir)
+        parts.append(text)
     report_dir.mkdir(parents=True, exist_ok=True)
     path = report_dir / "results.md"
     path.write_text("\n\n".join(parts) + "\n")
