@@ -1,6 +1,6 @@
 # Methodology
 
-This document states the statistical design of the project: how the data are cleaned and checked, how the business question about tenure is tested, how models are compared, why a simulation study is needed, how prediction intervals are built and how reward cost is forecast. Implementation details are in the docstrings under `src/loyalty_spend`.
+This document states the statistical design of the project: how the data are cleaned and checked, how the business question about tenure is tested, how models are compared, why a simulation study is needed, how prediction intervals and full predictive distributions are built and scored, and how reward cost is forecast. Implementation details are in the docstrings under `src/loyalty_spend`.
 
 ## 1. Problem and notation
 
@@ -92,15 +92,44 @@ Conformal prediction gives intervals with finite-sample marginal coverage $\Pr(y
 
 **Conformalized quantile regression** (Romano et al., 2019). Gradient-boosted models estimate the $\alpha/2$ and $1-\alpha/2$ quantiles, and the conformity score $\max(\hat q_{\text{lo}}(x) - y, y - \hat q_{\text{hi}}(x))$ calibrates the band. The width adapts to each customer, which matters when the noise is heteroscedastic: constant-width intervals then over-cover low spenders and under-cover high spenders, even though the marginal coverage is correct. Coverage is therefore also reported by decile of predicted spend.
 
-## 8. Reward cost forecast
+## 8. Probabilistic forecasts
+
+An interval answers one question at one level. Budgeting reward cost needs the whole predictive distribution of each customer's spend, and the distributions have to be judged as distributions.
+
+**Scoring rules.** A scoring rule $S(F, y)$ is proper if the expected score under the true distribution $G$ is minimised by $F = G$ (Gneiting and Raftery, 2007), so a forecaster cannot gain by misreporting. Three proper rules are used. The pinball loss of a $\tau$ quantile forecast $q$ is
+
+$$\rho_\tau(y - q) = \max\{\tau (y-q),\; (\tau - 1)(y-q)\}.$$
+
+The continuous ranked probability score
+
+$$\mathrm{CRPS}(F, y) = \int \big(F(z) - \mathbb 1\{z \ge y\}\big)^2 dz = \mathbb E_F|X-y| - \tfrac12 \mathbb E_F|X-X'|$$
+
+is in the units of spend and reduces to the absolute error for a point forecast. It equals $2\int_0^1 \rho_\tau(y - F^{-1}(\tau))\,d\tau$, so every model is scored on a common grid of 19 levels $\tau \in \{0.05, 0.10, \dots, 0.95\}$, which treats quantile, Gaussian and conformal forecasts alike. For a normal forecast the closed form of Gneiting et al. (2005) is used in the tests; for samples, the sorted-sample identity $\mathbb E|X-X'| = \tfrac{2}{m^2}\sum_i (2i-m-1)x_{(i)}$ avoids the quadratic pairwise sum. The interval score of a central $1-\alpha$ interval,
+
+$$\mathrm{IS}_\alpha(\ell, u; y) = (u - \ell) + \tfrac{2}{\alpha}(\ell - y)\mathbb 1\{y < \ell\} + \tfrac{2}{\alpha}(y - u)\mathbb 1\{y > u\},$$
+
+rewards narrow intervals only as long as they keep their coverage.
+
+**Calibration.** If $F$ is the true conditional distribution, the probability integral transform $u = F(y)$ is uniform (Dawid, 1984). PIT values are tested for uniformity with a chi-square test over ten bins; a U-shape means intervals that are too narrow, a hump means intervals that are too wide. Quantile reliability plots the share of outcomes below each forecast quantile against its level.
+
+**Models.**
+
+- *Gaussian with constant variance:* OLS with the residual standard deviation, the reference model.
+- *Heteroscedastic Gaussian:* $y \mid x \sim \mathcal N(x^\top\beta, \exp(z^\top\gamma))$, fitted in two stages. The log of a squared Gaussian residual is biased by $\mathbb E[\log\chi^2_1] \approx -1.27$, so the variance is rescaled until the standardized training residuals have unit mean square.
+- *Quantile regression:* one linear programme per level (Koenker and Bassett, 1978) or gradient boosting with the pinball loss. Separately fitted quantiles can cross; each row is sorted, which is the monotone rearrangement of Chernozhukov et al. (2010) and never increases the distance to the true quantile curve.
+- *Conformal predictive distribution:* the distribution of $\hat y(x) + R$, where $R$ puts mass $1/(m+1)$ on each of the $m$ signed calibration residuals (Vovk et al., 2019). Its PIT is uniform up to $1/(m+1)$ under exchangeability, whatever the point model.
+
+Differences in cross-validated CRPS are tested with the corrected resampled $t$-test of Section 5.
+
+## 9. Reward cost forecast
 
 The reward of a customer is $r(y) = \rho_{t(y)}\, y$, where $t(y)$ is the highest tier whose threshold $y$ reaches and $\rho_t$ its rate. Because $r$ jumps at every threshold, $\mathbb E[r(Y)] \ne r(\mathbb E[Y])$ in general, and applying the schedule to point forecasts misstates cost for customers near a threshold. The forecast propagates uncertainty by simulation: for $b = 1,\dots,B$ draws,
 
 $$y_i^{(b)} = \hat y(x_i) + e^{(b)}_i, \qquad R^{(b)} = \sum_i r\big(y_i^{(b)}\big),$$
 
-where $e^{(b)}_i$ are resampled out-of-fold residuals of the model. The distribution of $R^{(b)}$ gives the expected total and its 5th and 95th percentiles; the share of draws in which a customer's tier differs from the tier of the point forecast identifies the customers that drive cost uncertainty. Residual resampling assumes that errors do not depend on $x$; under heteroscedastic noise the conformal quantile model of Section 7 is the better source of draws.
+where $e^{(b)}_i$ are resampled out-of-fold residuals of the model. The distribution of $R^{(b)}$ gives the expected total and its 5th and 95th percentiles; the share of draws in which a customer's tier differs from the tier of the point forecast identifies the customers that drive cost uncertainty. Residual resampling assumes that errors do not depend on $x$. Under heteroscedastic noise, draws come from a model of the conditional distribution instead: `loyalty-spend rewards --uncertainty heteroscedastic` uses the heteroscedastic Gaussian model of Section 8, and any other predictive sampler can be passed to the simulation.
 
-## 9. Assumptions and limitations
+## 10. Assumptions and limitations
 
 - The data are a small synthetic sample from a certification exercise. Results on `train.csv` describe that sample; the simulation study exists because those data cannot discriminate between methods.
 - All validation is cross-sectional. There is no time dimension, so drift between programme years is not tested.
@@ -113,16 +142,22 @@ where $e^{(b)}_i$ are resampled out-of-fold residuals of the model. The distribu
 - Akiba, T., Sano, S., Yanase, T., Ohta, T., and Koyama, M. (2019). Optuna: A next-generation hyperparameter optimization framework. *Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 2623-2631.
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
 - Cawley, G. C., and Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
+- Chernozhukov, V., Fernandez-Val, I., and Galichon, A. (2010). Quantile and probability curves without crossing. *Econometrica*, 78(3), 1093-1125.
 - Chen, T., and Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785-794.
+- Dawid, A. P. (1984). Statistical theory: The prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2), 278-292.
+- Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
+- Gneiting, T., Raftery, A. E., Westveld, A. H., and Goldman, T. (2005). Calibrated probabilistic forecasting using ensemble model output statistics and minimum CRPS estimation. *Monthly Weather Review*, 133(5), 1098-1118.
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *Advances in Neural Information Processing Systems*, 34.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *Advances in Neural Information Processing Systems*, 35.
 - Grinsztajn, L., Oyallon, E., and Varoquaux, G. (2022). Why do tree-based models still outperform deep learning on typical tabular data? *Advances in Neural Information Processing Systems*, 35, Datasets and Benchmarks Track.
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1), 1-27.
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
 - Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., and Liu, T.-Y. (2017). LightGBM: A highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30.
+- Koenker, R., and Bassett, G. (1978). Regression quantiles. *Econometrica*, 46(1), 33-50.
 - Lakshminarayanan, B., Pritzel, A., and Blundell, C. (2017). Simple and scalable predictive uncertainty estimation using deep ensembles. *Advances in Neural Information Processing Systems*, 30.
 - Lei, J., G'Sell, M., Rinaldo, A., Tibshirani, R. J., and Wasserman, L. (2018). Distribution-free predictive inference for regression. *Journal of the American Statistical Association*, 113(523), 1094-1111.
 - Lindeman, R. H., Merenda, P. F., and Gold, R. Z. (1980). *Introduction to Bivariate and Multivariate Analysis*. Scott, Foresman.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *Advances in Neural Information Processing Systems*, 32.
+- Vovk, V., Shen, J., Manokhin, V., and Xie, M. (2019). Nonparametric predictive distributions based on conformal prediction. *Machine Learning*, 108(3), 445-474.
 - Welch, B. L. (1951). On the comparison of several mean values: An alternative approach. *Biometrika*, 38(3/4), 330-336.
