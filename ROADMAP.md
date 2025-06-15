@@ -12,7 +12,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 3: Probabilistic forecasting
 
-- [ ] 3.17 Methodology: scoring rules and conformal extensions
 
 ## Phase 4: Effect of the sign-up promotion
 
@@ -169,3 +168,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-10: 3.14 Quantile reliability figure
 - [x] 2025-06-15: 3.15 Draw reward cost simulations from a predictive distribution
 - [x] 2025-06-15: 3.16 Report section on probabilistic evaluation
+- [x] 2025-06-15: 3.17 Methodology: scoring rules and conformal extensions

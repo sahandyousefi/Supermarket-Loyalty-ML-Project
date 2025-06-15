@@ -92,6 +92,12 @@ Conformal prediction gives intervals with finite-sample marginal coverage $\Pr(y
 
 **Conformalized quantile regression** (Romano et al., 2019). Gradient-boosted models estimate the $\alpha/2$ and $1-\alpha/2$ quantiles, and the conformity score $\max(\hat q_{\text{lo}}(x) - y, y - \hat q_{\text{hi}}(x))$ calibrates the band. The width adapts to each customer, which matters when the noise is heteroscedastic: constant-width intervals then over-cover low spenders and under-cover high spenders, even though the marginal coverage is correct. Coverage is therefore also reported by decile of predicted spend.
 
+**Group-conditional coverage.** Marginal coverage can hide systematic failure for a subgroup. *Mondrian* conformal prediction (Vovk et al., 2005) computes the calibration quantile separately within groups $g$, which gives $\Pr(y \in C(x) \mid G(x) = g) \ge 1-\alpha$ for every group. Groups are either a feature such as the tenure band or quantile bins of the point forecast; groups with fewer than 30 calibration points fall back to the pooled quantile, because the conformal quantile of a very small group is infinite.
+
+**Normalized scores.** With the score $s_i = |y_i - \hat y(x_i)| / (\hat\sigma(x_i) + \beta)$ the half-width becomes $\hat q\,(\hat\sigma(x) + \beta)$ and widens where errors are large (Papadopoulos et al., 2008). The difficulty model $\hat\sigma$ is gradient boosting with the absolute loss, fitted to out-of-fold absolute residuals of the proper training set; in-sample residuals of a flexible model would understate the difficulty. Marginal coverage holds for any $\hat\sigma$; a good one makes coverage more even across customers.
+
+**Covariate shift.** If the customers to be scored differ in their features but not in how spend depends on the features, exchangeability fails. Weighted conformal prediction (Tibshirani et al., 2019) restores coverage by giving calibration point $i$ the weight $w(X_i) = dP_{\text{new}}/dP_{\text{train}}(X_i)$ and using the $1-\alpha$ quantile of $\sum_i p_i(x)\delta_{s_i} + p_{m+1}(x)\delta_{\infty}$ with $p_i(x) = w(X_i) / (\sum_j w(X_j) + w(x))$. The likelihood ratio is estimated from the domain classifier of Section 10 as $\frac{\hat p(x)}{1-\hat p(x)}\cdot\frac{m}{n_{\text{new}}}$, clipped to $[1/20, 20]$ because a few extreme weights would otherwise make the intervals infinite. Estimation error in the weights makes the intervals slightly conservative in the tests.
+
 ## 8. Probabilistic forecasts
 
 An interval answers one question at one level. Budgeting reward cost needs the whole predictive distribution of each customer's spend, and the distributions have to be judged as distributions.
@@ -129,18 +135,33 @@ $$y_i^{(b)} = \hat y(x_i) + e^{(b)}_i, \qquad R^{(b)} = \sum_i r\big(y_i^{(b)}\b
 
 where $e^{(b)}_i$ are resampled out-of-fold residuals of the model. The distribution of $R^{(b)}$ gives the expected total and its 5th and 95th percentiles; the share of draws in which a customer's tier differs from the tier of the point forecast identifies the customers that drive cost uncertainty. Residual resampling assumes that errors do not depend on $x$. Under heteroscedastic noise, draws come from a model of the conditional distribution instead: `loyalty-spend rewards --uncertainty heteroscedastic` uses the heteroscedastic Gaussian model of Section 8, and any other predictive sampler can be passed to the simulation.
 
-## 10. Assumptions and limitations
+## 10. Data contracts and drift monitoring
+
+**Contracts.** `configs/contracts.yaml` states, column by column, the kind, the allowed range or levels, uniqueness and a budget for missing values. `loyalty-spend validate` checks a cleaned extract against a contract and lists every violation at once, so a broken extract fails before it reaches a model.
+
+**Univariate drift.** For a feature binned into $B$ bins with reference shares $e_b$ and new shares $a_b$, the population stability index is
+
+$$\mathrm{PSI} = \sum_b (a_b - e_b)\log\frac{a_b}{e_b},$$
+
+the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric features use ten quantile bins of the reference; categorical features use one bin per declared level. Both get extra bins for missing values and for unseen levels, so a rise in missingness or a new region counts as drift. Under no drift, $\mathrm{PSI} \approx \chi^2_{B-1}\,(1/n_1 + 1/n_2)$, so PSI alone overstates drift in small samples: with 250 scoring rows and 13 joining-month levels its expected value is about 0.06. A feature is therefore flagged only when the PSI exceeds the moderate (0.1) or large (0.25) band *and* its two-sample test (Kolmogorov-Smirnov for numeric, chi-square for categorical features) is significant after Benjamini-Hochberg adjustment across features (Benjamini and Hochberg, 1995).
+
+**Joint drift.** A shift in the joint distribution can leave every marginal unchanged, for example if long-tenure members start to come from a different region. A gradient-boosted classifier is trained to separate reference from new rows; its out-of-fold AUC is 0.5 under no shift, and the Mann-Whitney test on the out-of-fold scores gives a p-value. The same classifier provides the density ratios used by weighted conformal prediction.
+
+**Prediction and performance drift.** The PSI and KS test are applied to model outputs, and, once spend is observed for a new cohort, to the target. The change in RMSE is reported as a ratio with a bootstrap percentile interval.
+
+## 11. Assumptions and limitations
 
 - The data are a small synthetic sample from a certification exercise. Results on `train.csv` describe that sample; the simulation study exists because those data cannot discriminate between methods.
 - All validation is cross-sectional. There is no time dimension, so drift between programme years is not tested.
 - The reward schedule in `configs/default.yaml` is an illustrative assumption; the brief does not state the real one.
-- Conformal guarantees are marginal and assume exchangeability between calibration and scoring customers. They do not hold under a change in the customer mix.
+- Conformal guarantees are marginal and assume exchangeability between calibration and scoring customers. Under a change in the customer mix that leaves the relation between features and spend intact, weighted conformal prediction restores coverage only as far as the density ratio is estimated well; a change in that relation itself is not covered by any of the methods.
 - Shapley decompositions of $R^2$ describe a linear model's explained variance, not causal effects. Tenure is associated with spend; whether extending a customer's tenure would raise spend is a different, causal question.
 
 ## References
 
 - Akiba, T., Sano, S., Yanase, T., Ohta, T., and Koyama, M. (2019). Optuna: A next-generation hyperparameter optimization framework. *Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 2623-2631.
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
+- Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
 - Cawley, G. C., and Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
 - Chernozhukov, V., Fernandez-Val, I., and Galichon, A. (2010). Quantile and probability curves without crossing. *Econometrica*, 78(3), 1093-1125.
 - Chen, T., and Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785-794.
@@ -158,6 +179,9 @@ where $e^{(b)}_i$ are resampled out-of-fold residuals of the model. The distribu
 - Lei, J., G'Sell, M., Rinaldo, A., Tibshirani, R. J., and Wasserman, L. (2018). Distribution-free predictive inference for regression. *Journal of the American Statistical Association*, 113(523), 1094-1111.
 - Lindeman, R. H., Merenda, P. F., and Gold, R. Z. (1980). *Introduction to Bivariate and Multivariate Analysis*. Scott, Foresman.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
+- Papadopoulos, H., Gammerman, A., and Vovk, V. (2008). Normalized nonconformity measures for regression conformal prediction. *Proceedings of the IASTED International Conference on Artificial Intelligence and Applications*, 64-69.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *Advances in Neural Information Processing Systems*, 32.
+- Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *Advances in Neural Information Processing Systems*, 32.
+- Vovk, V., Gammerman, A., and Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer.
 - Vovk, V., Shen, J., Manokhin, V., and Xie, M. (2019). Nonparametric predictive distributions based on conformal prediction. *Machine Learning*, 108(3), 445-474.
 - Welch, B. L. (1951). On the comparison of several mean values: An alternative approach. *Biometrika*, 38(3/4), 330-336.
