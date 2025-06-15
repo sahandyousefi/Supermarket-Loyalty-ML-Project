@@ -103,6 +103,29 @@ Both methods meet the marginal target. Split conformal uses one width for everyo
 
 <img src="reports/figures/conditional_coverage.png" width="60%" alt="Coverage by decile of predicted spend">
 
+### Predictive distributions
+
+Budgeting needs each customer's whole spend distribution, not one interval. Five forecasters are scored on the same heteroscedastic scenario with the continuous ranked probability score (CRPS) on a grid of 19 quantile levels (5-fold CV, 2,000 customers), and the interval methods are compared on 5,000 new customers. Coverage by group uses quintiles of predicted spend.
+
+| Forecaster | CRPS | Difference to Gaussian | p-value | 90% coverage | PIT uniformity p |
+| --- | --- | --- | --- | --- | --- |
+| Linear quantile regression | 3.048 | -0.056 | 0.091 | 0.884 | 0.757 |
+| Heteroscedastic Gaussian | 3.062 | -0.042 | 0.020 | 0.901 | < 0.001 |
+| Conformal predictive distribution | 3.090 | -0.014 | 0.356 | 0.888 | 0.352 |
+| Gaussian, constant variance | 3.104 | | | 0.909 | < 0.001 |
+| Gradient boosting quantiles | 3.180 | 0.076 | 0.146 | 0.826 | < 0.001 |
+
+| Interval method | Coverage | Mean width | Interval score | Worst quintile | Best quintile |
+| --- | --- | --- | --- | --- | --- |
+| Split conformal | 0.910 | 17.98 | 25.49 | 0.857 | 0.987 |
+| Mondrian, prediction bins | 0.908 | 17.73 | 24.55 | 0.898 | 0.923 |
+| Normalized conformal | 0.900 | 18.91 | 26.20 | 0.880 | 0.926 |
+| CQR | 0.888 | 19.68 | 27.97 | 0.850 | 0.910 |
+
+Modelling the variance lowers CRPS significantly, but the Gaussian shape is wrong for this scenario's heavy-tailed noise: both Gaussian models fail the PIT uniformity test, while linear quantile regression and the conformal predictive distribution pass it. Uncalibrated gradient-boosting quantiles are too narrow on 2,000 rows and cover only 83%. Among the intervals, calibrating within bins of predicted spend (Mondrian) keeps every quintile between 90% and 92%, where split conformal ranges from 86% to 99%, and it also has the best interval score.
+
+<img src="reports/figures/quantile_reliability.png" width="50%" alt="Observed against nominal quantile level for each forecaster">
+
 ### Reward cost
 
 With the illustrative schedule in `configs/default.yaml` (2% from 100, 3% from 125, 5% from 140 of annual spend):
@@ -141,6 +164,10 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 
 **Uncertainty.** Split conformal prediction, CV+ (Barber et al., 2021) and conformalized quantile regression (Romano et al., 2019) give intervals with finite-sample coverage guarantees under exchangeability. Coverage is reported by decile of predicted spend as well as overall, since a correct average can hide systematic under-coverage of high spenders.
 
+**Predictive distributions.** Pinball loss, CRPS and the interval score are proper scoring rules, so no forecaster gains by misreporting its uncertainty. A heteroscedastic Gaussian model, linear and gradient-boosting quantile regression with monotone rearrangement, and conformal predictive distributions are compared on one quantile grid, with PIT uniformity as the calibration check. Mondrian, normalized and covariate-shift weighted conformal intervals extend the split conformal guarantee to groups of customers and to a changed customer mix.
+
+**Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
+
 **Reward cost.** For each simulation draw $b$, spend is $\hat y_i + e^{(b)}_i$ with resampled out-of-fold residuals. The tier schedule is applied to every draw and the rewards are summed, which gives the distribution of total cost and each customer's probability of changing tier.
 
 **Explainability.** Exact additive contributions for linear pipelines, TreeSHAP for tree ensembles (Lundberg et al., 2020) and permutation importance, all aggregated back to the raw features.
@@ -158,13 +185,14 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── cli.py                  loyalty-spend command
 │   ├── config.py               typed YAML configuration
 │   ├── tasks.py                the four deliverables of the brief
-│   ├── data/                   schema, cleaning, IO, lineage check, simulator
+│   ├── data/                   schema, contracts, profiles, cleaning, IO, lineage, simulator
 │   ├── features/               preprocessing shared by all models
 │   ├── analysis/               bootstrap, Welch ANOVA, Tukey HSD, LMG decomposition
-│   ├── models/                 registry, linear, trees, tuning, persistence
+│   ├── models/                 registry, linear, trees, quantile and distributional models, tuning, persistence
 │   │   └── deep/               encoder, MLP, PLR embeddings, FT-Transformer, training
-│   ├── evaluation/             metrics, repeated CV, corrected t-test, simulation study
-│   ├── uncertainty/            split conformal, CV+, CQR
+│   ├── evaluation/             metrics, scoring rules, repeated CV, corrected t-test, simulation study
+│   ├── uncertainty/            split, Mondrian, normalized and weighted conformal, CQR, predictive distributions
+│   ├── monitoring/             PSI, drift tests, domain classifier
 │   ├── explain/                additive contributions, TreeSHAP, permutation importance
 │   ├── business/               reward schedule and Monte Carlo cost forecast
 │   └── reporting/              figures and the results report
@@ -191,6 +219,10 @@ loyalty-spend tune --model lightgbm --trials 50 --nested
 loyalty-spend train --model ols
 loyalty-spend predict data/raw/test.csv predictions.csv
 loyalty-spend rewards data/raw/test.csv --output rewards.csv
+loyalty-spend rewards data/raw/test.csv --uncertainty heteroscedastic
+loyalty-spend validate --input data/raw/test.csv      # data contract check
+loyalty-spend drift --fail-on large                   # test.csv against train.csv
+loyalty-spend intervals --scenario noisy              # interval methods side by side
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
 ```
 
@@ -217,6 +249,8 @@ The tests check the cleaning rules against the data dictionary, Welch's ANOVA ag
 ## References
 
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
+- Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
+- Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *NeurIPS*.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *NeurIPS*.
 - Grinsztajn, L., Oyallon, E., and Varoquaux, G. (2022). Why do tree-based models still outperform deep learning on typical tabular data? *NeurIPS Datasets and Benchmarks*.
@@ -226,6 +260,8 @@ The tests check the cleaning rules against the data dictionary, Welch's ANOVA ag
 - Lundberg, S. M., et al. (2020). From local explanations to global understanding with explainable AI for trees. *Nature Machine Intelligence*, 2, 56-67.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *NeurIPS*.
+- Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *NeurIPS*.
+- Vovk, V., Shen, J., Manokhin, V., and Xie, M. (2019). Nonparametric predictive distributions based on conformal prediction. *Machine Learning*, 108(3), 445-474.
 - Welch, B. L. (1951). On the comparison of several mean values: An alternative approach. *Biometrika*, 38(3/4), 330-336.
 
 ## License
