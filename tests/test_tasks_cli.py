@@ -112,3 +112,13 @@ def test_verbosity_sets_the_log_level():
         configure_logging(count)
         assert logging.getLogger().level == level
     configure_logging(0)
+
+
+def test_rewards_with_heteroscedastic_uncertainty(cfg, raw_dir, tmp_path, capsys):
+    out = tmp_path / "rewards.csv"
+    args = ["rewards", "--config", str(cfg), str(raw_dir / "test.csv")]
+    assert main([*args, "--uncertainty", "heteroscedastic", "--output", str(out)]) == 0
+    table = pd.read_csv(out)
+    assert len(table) == 250
+    assert table["tier_change_probability"].between(0, 1).all()
+    assert "expected_total" in capsys.readouterr().out

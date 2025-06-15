@@ -302,26 +302,59 @@ def _rewards_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("input", help="CSV of customers to cost")
     p.add_argument("--model", default="artifacts/model.joblib")
     p.add_argument("--output", default=None, help="per-customer CSV")
+    p.add_argument(
+        "--uncertainty",
+        choices=["residual", "heteroscedastic"],
+        default="residual",
+        help="residual bootstrap around the saved model, or a heteroscedastic "
+        "Gaussian model fitted to train.csv",
+    )
 
 
 @command("rewards", "forecast the reward cost of a customer file", _rewards_args)
 def _rewards(args: argparse.Namespace) -> int:
-    from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
+    from loyalty_spend.business.rewards import (
+        RewardSchedule,
+        forecast_liability,
+        gaussian_sampler,
+        simulate_liability,
+    )
     from loyalty_spend.data.io import load_clean
     from loyalty_spend.data.schema import ID
-    from loyalty_spend.models.persistence import load_bundle
+    from loyalty_spend.features.preprocess import feature_frame, split_xy
 
     cfg = load_config(args.config)
-    bundle = load_bundle(args.model)
     frame, _ = load_clean(args.input, impute=False, require_target=False)
-    fc = forecast_liability(
-        frame[ID],
-        bundle.predict(frame),
-        bundle.residuals,
-        RewardSchedule(cfg.rewards.tiers),
-        cfg.rewards.n_simulations,
-        cfg.rewards.seed,
-    )
+    schedule = RewardSchedule(cfg.rewards.tiers)
+    if args.uncertainty == "heteroscedastic":
+        from loyalty_spend.models.distributional import (
+            HeteroscedasticGaussianRegressor,
+        )
+
+        train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+        model = HeteroscedasticGaussianRegressor().fit(*split_xy(train))
+        X = feature_frame(frame)
+        mean, sigma = model.predict(X), model.predict_sigma(X)
+        fc = simulate_liability(
+            frame[ID],
+            mean,
+            gaussian_sampler(mean, sigma),
+            schedule,
+            cfg.rewards.n_simulations,
+            cfg.rewards.seed,
+        )
+    else:
+        from loyalty_spend.models.persistence import load_bundle
+
+        bundle = load_bundle(args.model)
+        fc = forecast_liability(
+            frame[ID],
+            bundle.predict(frame),
+            bundle.residuals,
+            schedule,
+            cfg.rewards.n_simulations,
+            cfg.rewards.seed,
+        )
     if args.output:
         fc.per_customer.to_csv(args.output, index=False)
     print(json.dumps({k: round(v, 2) for k, v in fc.summary().items()}, indent=2))
