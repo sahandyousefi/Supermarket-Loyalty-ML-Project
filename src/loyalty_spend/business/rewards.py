@@ -10,7 +10,7 @@ simulation and reports the distribution of total programme cost.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -69,37 +69,48 @@ class LiabilityForecast:
         return out
 
 
-def forecast_liability(
+Sampler = Callable[[np.random.Generator, int], np.ndarray]
+
+
+def residual_sampler(predicted_spend: ArrayLike, residuals: ArrayLike) -> Sampler:
+    """Spend as point forecast plus a resampled out-of-sample residual."""
+    pred = np.asarray(predicted_spend, float)
+    resid = np.asarray(residuals, float)
+
+    def draw(rng: np.random.Generator, m: int) -> np.ndarray:
+        return pred[None, :] + rng.choice(resid, size=(m, len(pred)))
+
+    return draw
+
+
+def gaussian_sampler(mean: ArrayLike, sigma: ArrayLike) -> Sampler:
+    """Spend from a per-customer normal predictive distribution."""
+    mu = np.asarray(mean, float)
+    sd = np.broadcast_to(np.asarray(sigma, float), mu.shape)
+
+    def draw(rng: np.random.Generator, m: int) -> np.ndarray:
+        return mu[None, :] + sd[None, :] * rng.standard_normal((m, len(mu)))
+
+    return draw
+
+
+def simulate_liability(
     customer_ids: ArrayLike,
     predicted_spend: ArrayLike,
-    residuals: ArrayLike,
+    sampler: Sampler,
     schedule: RewardSchedule,
     n_simulations: int = 5000,
     seed: int = 0,
     batch: int = 500,
 ) -> LiabilityForecast:
-    """Monte Carlo distribution of reward cost.
+    """Monte Carlo distribution of reward cost for any predictive sampler.
 
-    Spend for each customer is simulated as ``prediction + e`` with ``e``
-    drawn from out-of-sample residuals (a residual bootstrap), the schedule
-    is applied to every draw, and the draws are summed over customers.
-
-    Parameters
-    ----------
-    customer_ids : array-like
-    predicted_spend : array-like
-        Point forecasts for the customers to be costed.
-    residuals : array-like
-        Out-of-fold residuals of the forecasting model.
-    schedule : RewardSchedule
-    n_simulations : int
-    seed : int
-    batch : int
-        Simulations per chunk, to bound memory.
+    ``sampler(rng, m)`` returns ``m`` joint draws of annual spend, one column
+    per customer. Draws are clipped at zero, the schedule is applied to each
+    draw and the rewards are summed over customers.
     """
     rng = np.random.default_rng(seed)
     pred = np.asarray(predicted_spend, float)
-    resid = np.asarray(residuals, float)
     n = len(pred)
     totals = np.empty(n_simulations)
     reward_sum = np.zeros(n)
@@ -107,7 +118,7 @@ def forecast_liability(
     base_tier = schedule.tier(pred)
     for start in range(0, n_simulations, batch):
         m = min(batch, n_simulations - start)
-        spend = np.clip(pred[None, :] + rng.choice(resid, size=(m, n)), 0.0, None)
+        spend = np.clip(sampler(rng, m), 0.0, None)
         rewards = schedule.reward(spend)
         totals[start : start + m] = rewards.sum(axis=1)
         reward_sum += rewards.sum(axis=0)
@@ -122,6 +133,34 @@ def forecast_liability(
         }
     )
     return LiabilityForecast(per_customer, totals)
+
+
+def forecast_liability(
+    customer_ids: ArrayLike,
+    predicted_spend: ArrayLike,
+    residuals: ArrayLike,
+    schedule: RewardSchedule,
+    n_simulations: int = 5000,
+    seed: int = 0,
+    batch: int = 500,
+) -> LiabilityForecast:
+    """Monte Carlo distribution of reward cost with a residual bootstrap.
+
+    Spend for each customer is simulated as ``prediction + e`` with ``e``
+    drawn from out-of-sample residuals, which assumes the same error
+    distribution for every customer. Use ``simulate_liability`` with
+    ``gaussian_sampler`` or another sampler when the uncertainty differs
+    between customers.
+    """
+    return simulate_liability(
+        customer_ids,
+        predicted_spend,
+        residual_sampler(predicted_spend, residuals),
+        schedule,
+        n_simulations,
+        seed,
+        batch,
+    )
 
 
 def near_threshold(

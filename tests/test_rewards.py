@@ -4,7 +4,10 @@ import pytest
 from loyalty_spend.business.rewards import (
     RewardSchedule,
     forecast_liability,
+    gaussian_sampler,
     near_threshold,
+    residual_sampler,
+    simulate_liability,
 )
 
 SCHEDULE = RewardSchedule(((0.0, 0.0), (100.0, 0.02), (125.0, 0.03), (140.0, 0.05)))
@@ -45,3 +48,31 @@ def test_summary_quantiles_are_ordered():
     fc = forecast_liability(range(50), np.full(50, 130.0), resid, SCHEDULE, 1000, 0)
     s = fc.summary()
     assert s["p05"] <= s["p50"] <= s["p95"]
+
+
+def test_residual_bootstrap_is_a_special_case_of_the_sampler():
+    rng = np.random.default_rng(9)
+    pred = rng.uniform(90, 150, size=40)
+    resid = rng.normal(scale=5, size=300)
+    a = forecast_liability(range(40), pred, resid, SCHEDULE, 700, 3, batch=128)
+    b = simulate_liability(
+        range(40), pred, residual_sampler(pred, resid), SCHEDULE, 700, 3, batch=128
+    )
+    np.testing.assert_allclose(a.total_draws, b.total_draws)
+
+
+def test_customer_specific_uncertainty_changes_the_cost():
+    # Same point forecast and the same average noise, but one customer is
+    # far less predictable: only the heteroscedastic sampler sees that the
+    # uncertain customer may cross the top threshold.
+    mean = np.array([130.0, 130.0])
+    flat = simulate_liability(
+        [1, 2], mean, gaussian_sampler(mean, np.sqrt(50.0)), SCHEDULE, 20000, 0
+    )
+    uneven = simulate_liability(
+        [1, 2], mean, gaussian_sampler(mean, [1.0, np.sqrt(99.0)]), SCHEDULE, 20000, 0
+    )
+    p_flat = flat.per_customer["tier_change_probability"].to_numpy()
+    p_uneven = uneven.per_customer["tier_change_probability"].to_numpy()
+    assert p_flat[0] == pytest.approx(p_flat[1], abs=0.02)
+    assert p_uneven[0] < 0.01 and p_uneven[1] > 0.3
