@@ -6,8 +6,15 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-06-15
+
 ### Added
 
+- Proper scoring rules: pinball loss, CRPS (closed form, sample and quantile-grid versions), interval score, PIT values and a uniformity test, quantile reliability.
+- Distributional models: linear and gradient-boosting quantile regression with monotone rearrangement, a heteroscedastic Gaussian linear model and split conformal predictive distributions, behind one quantile-grid interface with cross-validated CRPS comparison.
+- Mondrian, normalized and covariate-shift weighted conformal intervals, and `loyalty-spend intervals` to compare all interval methods with group coverage.
+- Reward cost simulation from any predictive sampler; `loyalty-spend rewards --uncertainty heteroscedastic`.
+- Probabilistic forecasting section in the report and the methodology.
 - Roadmap for the work after 1.0 (`ROADMAP.md`), contributing notes and a citation file.
 - Declarative data contracts in `configs/contracts.yaml` and `loyalty-spend validate`.
 - Column profiles with a Markdown renderer.
@@ -35,5 +42,6 @@ First complete release.
 - `loyalty-spend` command line interface, results report, model card and Dockerfile.
 - CI with ruff and pytest on Python 3.10 and 3.12.
 
-[Unreleased]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/releases/tag/v1.0.0

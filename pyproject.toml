@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loyalty-spend"
-version = "1.0.0"
+version = "1.1.0"
 description = "Annual spend forecasting and reward liability estimation for a supermarket loyalty programme"
 readme = "README.md"
 requires-python = ">=3.10"
