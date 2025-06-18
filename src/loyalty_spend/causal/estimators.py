@@ -10,11 +10,15 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 
 import numpy as np
+import pandas as pd
 from numpy.typing import ArrayLike
 from scipy import stats
+from sklearn.base import BaseEstimator, clone
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import Pipeline
 
 from loyalty_spend.causal.data import CausalData
-from loyalty_spend.causal.propensity import crossfit_propensity
+from loyalty_spend.causal.propensity import crossfit_propensity, design
 
 ESTIMANDS = ("ate", "att")
 
@@ -109,6 +113,60 @@ def ipw(
     lo, hi = np.quantile(draws, [0.025, 0.975])
     return EffectEstimate(
         "IPW",
+        estimand,
+        est,
+        float(draws.std(ddof=1)),
+        float(lo),
+        float(hi),
+        len(data.y),
+    )
+
+
+def outcome_model(X: pd.DataFrame) -> Pipeline:
+    """Linear outcome model on the covariate design."""
+    return Pipeline([("design", design(X)), ("model", LinearRegression())])
+
+
+def _g_computation(
+    X: pd.DataFrame, t: np.ndarray, y: np.ndarray, estimand: str, model: BaseEstimator
+) -> float:
+    mu0 = clone(model).fit(X[t == 0], y[t == 0]).predict(X)
+    if estimand == "att":
+        treated = t == 1
+        return float(np.mean(y[treated] - mu0[treated]))
+    mu1 = clone(model).fit(X[t == 1], y[t == 1]).predict(X)
+    return float(np.mean(mu1 - mu0))
+
+
+def regression_adjustment(
+    data: CausalData,
+    estimand: str = "ate",
+    model: BaseEstimator | None = None,
+    n_boot: int = 300,
+    seed: int = 0,
+) -> EffectEstimate:
+    """G-computation with separate outcome models for treated and controls.
+
+    The ATE averages the difference of the two fitted regressions over all
+    units; the ATT compares the treated outcomes with their predicted spend
+    without the promotion. Consistent when the outcome models are correct,
+    whatever the propensity.
+    """
+    _check_estimand(estimand)
+    model = model if model is not None else outcome_model(data.X)
+    est = _g_computation(data.X, data.t, data.y, estimand, model)
+    draws = _bootstrap(
+        lambda i: _g_computation(
+            data.X.iloc[i].reset_index(drop=True), data.t[i], data.y[i], estimand, model
+        ),
+        len(data.y),
+        n_boot,
+        seed,
+        data.t,
+    )
+    lo, hi = np.quantile(draws, [0.025, 0.975])
+    return EffectEstimate(
+        "Regression adjustment",
         estimand,
         est,
         float(draws.std(ddof=1)),

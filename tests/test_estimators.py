@@ -2,7 +2,12 @@ import numpy as np
 import pytest
 
 from loyalty_spend.causal.data import from_frame
-from loyalty_spend.causal.estimators import EffectEstimate, hajek_ipw, ipw
+from loyalty_spend.causal.estimators import (
+    EffectEstimate,
+    hajek_ipw,
+    ipw,
+    regression_adjustment,
+)
 from loyalty_spend.causal.simulate import simulate_promotion
 
 
@@ -37,3 +42,13 @@ def test_estimate_record_and_invalid_estimand(confounded):
     assert np.isnan(rec.p_value)
     with pytest.raises(ValueError):
         ipw(data, "atc")
+
+
+@pytest.mark.parametrize("estimand", ["ate", "att"])
+def test_regression_adjustment_recovers_the_effect(confounded, estimand):
+    study, data = confounded
+    result = regression_adjustment(data, estimand, n_boot=100)
+    truth = study.true_ate if estimand == "ate" else study.true_att
+    assert result.ci_lower < truth < result.ci_upper
+    # A correct linear outcome model is far more precise than weighting.
+    assert result.se < ipw(data, estimand, n_boot=100).se
