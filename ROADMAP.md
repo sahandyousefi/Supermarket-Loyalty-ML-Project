@@ -15,7 +15,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 4: Effect of the sign-up promotion
 
-- [ ] 4.2 Simulator option for a promotion effect with confounding
 - [ ] 4.3 Cross-fitted propensity model
 - [ ] 4.4 Overlap diagnostics and propensity trimming
 - [ ] 4.5 Covariate balance with standardized mean differences
@@ -169,3 +168,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-15: 3.16 Report section on probabilistic evaluation
 - [x] 2025-06-15: 3.17 Methodology: scoring rules and conformal extensions
 - [x] 2025-06-18: 4.1 Causal module with the estimands and the identification assumptions
+- [x] 2025-06-18: 4.2 Simulator option for a promotion effect with confounding
