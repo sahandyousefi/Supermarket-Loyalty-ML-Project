@@ -15,7 +15,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 4: Effect of the sign-up promotion
 
-- [ ] 4.6 Inverse probability weighting estimator with bootstrap intervals
 - [ ] 4.7 Regression adjustment estimator
 - [ ] 4.8 Augmented IPW estimator with cross-fitting and influence-function errors
 - [ ] 4.9 Double machine learning for the partially linear model
@@ -169,3 +168,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-18: 4.3 Cross-fitted propensity model
 - [x] 2025-06-18: 4.4 Overlap diagnostics and propensity trimming
 - [x] 2025-06-18: 4.5 Covariate balance with standardized mean differences
+- [x] 2025-06-18: 4.6 Inverse probability weighting estimator with bootstrap intervals
