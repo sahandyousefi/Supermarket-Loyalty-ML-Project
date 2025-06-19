@@ -15,7 +15,7 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 4: Effect of the sign-up promotion
 
-- [ ] 4.8 Augmented IPW estimator with cross-fitting and influence-function errors
+- [ ] 4.8b Augmented IPW estimator of the ATT
 - [ ] 4.9 Double machine learning for the partially linear model
 - [ ] 4.10 Sensitivity analysis with the robustness value of Cinelli and Hazlett
 - [ ] 4.11 Placebo test with permuted treatment
@@ -169,3 +169,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-18: 4.5 Covariate balance with standardized mean differences
 - [x] 2025-06-18: 4.6 Inverse probability weighting estimator with bootstrap intervals
 - [x] 2025-06-18: 4.7 Regression adjustment estimator
+- [x] 2025-06-19: 4.8a Cross-fitted nuisance functions and the augmented IPW estimator of the ATE
