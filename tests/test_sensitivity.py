@@ -6,6 +6,7 @@ from loyalty_spend.causal.data import CausalData, from_frame
 from loyalty_spend.causal.sensitivity import (
     RegressionFit,
     adjusted_estimates,
+    benchmark_bounds,
     bias_bound,
     robustness_value,
     sensitivity_summary,
@@ -55,3 +56,27 @@ def test_summary_and_adjusted_grid(train_df):
     assert grid.loc[0, "adjusted_estimate"] == pytest.approx(summary["estimate"])
     with pytest.raises(ValueError):
         bias_bound(treatment_regression(data), 0.5, 1.0)
+
+
+def test_benchmark_bounds_grow_with_k(train_df):
+    study = simulate_promotion(train_df, n=3000, effect=6.0, confounding=1.0, seed=12)
+    data = from_frame(study.frame)
+    once = benchmark_bounds(data, kd=1).set_index("benchmark")
+    twice = benchmark_bounds(data, kd=2).set_index("benchmark")
+    assert set(once.index) == set(data.X.columns)
+    assert (twice["bias_bound"] >= once["bias_bound"]).all()
+    assert (once["r2_tz"] >= 0).all() and (once["r2_yz"] <= 1).all()
+
+
+def test_an_irrelevant_covariate_gives_a_small_bound():
+    rng = np.random.default_rng(1)
+    n = 3000
+    x = rng.integers(0, 4, size=n)
+    noise = rng.integers(0, 4, size=n)
+    t = (rng.uniform(size=n) < 0.2 + 0.15 * x).astype(int)
+    y = 3.0 * t + 2.0 * x + rng.normal(size=n)
+    data = CausalData(
+        pd.DataFrame({"x": x.astype(str), "noise": noise.astype(str)}), t, y
+    )
+    bounds = benchmark_bounds(data).set_index("benchmark")
+    assert bounds.loc["noise", "bias_bound"] < 0.1 * bounds.loc["x", "bias_bound"]

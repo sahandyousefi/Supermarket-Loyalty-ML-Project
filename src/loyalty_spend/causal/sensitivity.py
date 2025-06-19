@@ -118,3 +118,70 @@ def adjusted_estimates(
             }
         )
     return pd.DataFrame(rows)
+
+
+def _rss(Z: np.ndarray, v: np.ndarray) -> float:
+    Z = np.column_stack([np.ones(len(v)), Z]) if Z.size else np.ones((len(v), 1))
+    beta, *_ = np.linalg.lstsq(Z, v, rcond=None)
+    r = v - Z @ beta
+    return float(r @ r)
+
+
+def _partial_r2(v: np.ndarray, full: np.ndarray, reduced: np.ndarray) -> float:
+    rss_reduced = _rss(reduced, v)
+    return (rss_reduced - _rss(full, v)) / rss_reduced if rss_reduced > 0 else 0.0
+
+
+def benchmark_bounds(
+    data: CausalData, kd: float = 1.0, ky: float | None = None
+) -> pd.DataFrame:
+    r"""Bounds on a confounder ``k`` times as strong as each observed covariate.
+
+    For covariate group :math:`j` let :math:`a = R^2_{T\sim X_j \mid X_{-j}}`
+    and :math:`b = R^2_{Y\sim X_j \mid T, X_{-j}}`. A confounder :math:`k_D`
+    times as strong as :math:`X_j` in explaining the treatment and
+    :math:`k_Y` times as strong in explaining the outcome satisfies
+    (Cinelli and Hazlett, 2020, Section 6)
+
+    .. math::
+
+        R^2_{T\sim Z\mid X} = \frac{k_D\, a}{1 - a}, \qquad
+        R^2_{Y\sim Z\mid T,X} \le
+        \left(\frac{\sqrt{k_Y} + \sqrt{\eta}}{\sqrt{1-\eta}}\right)^2
+        \frac{b}{1 - b},
+        \qquad \eta = \frac{k_D\, a^2}{(1 - k_D a)(1 - a)}.
+    """
+    ky = kd if ky is None else ky
+    fit = treatment_regression(data)
+    blocks = {c: indicator_frame(data.X[[c]]).to_numpy() for c in data.X.columns}
+    t = data.t.astype(float)
+    rows = []
+    for name, block in blocks.items():
+        others = [b for c, b in blocks.items() if c != name]
+        rest = np.column_stack(others) if others else np.empty((len(t), 0))
+        r2_tx = _partial_r2(t, np.column_stack([rest, block]), rest)
+        with_t = np.column_stack([t, rest])
+        r2_yx = _partial_r2(data.y, np.column_stack([with_t, block]), with_t)
+        r2_tz = kd * r2_tx / (1 - r2_tx)
+        if r2_tz >= 1:
+            raise ValueError(f"kd too large for covariate '{name}'")
+        eta = kd * r2_tx**2 / ((1 - kd * r2_tx) * (1 - r2_tx))
+        r2_yz = min(
+            1.0,
+            ((np.sqrt(ky) + np.sqrt(eta)) / np.sqrt(1 - eta)) ** 2
+            * r2_yx
+            / (1 - r2_yx),
+        )
+        bias = bias_bound(fit, r2_yz, r2_tz)
+        rows.append(
+            {
+                "benchmark": name,
+                "kd": kd,
+                "ky": ky,
+                "r2_tz": r2_tz,
+                "r2_yz": r2_yz,
+                "bias_bound": bias,
+                "adjusted_estimate": fit.estimate - np.sign(fit.estimate) * bias,
+            }
+        )
+    return pd.DataFrame(rows)
