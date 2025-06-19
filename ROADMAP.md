@@ -15,7 +15,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 4: Effect of the sign-up promotion
 
-- [ ] 4.12 Estimator comparison table
 - [ ] 4.13 `loyalty-spend effect` command
 - [ ] 4.14 Figure of effect estimates and intervals
 - [ ] 4.15 Methodology and README sections on the promotion effect
@@ -171,3 +170,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-19: 4.10a Partial R-squared, robustness value and omitted-variable bias of the regression estimate
 - [x] 2025-06-19: 4.10b Bounds on confounding as strong as an observed covariate
 - [x] 2025-06-19: 4.11 Placebo test with permuted treatment
+- [x] 2025-06-19: 4.12 Estimator comparison table
