@@ -15,7 +15,7 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 4: Effect of the sign-up promotion
 
-- [ ] 4.10 Sensitivity analysis with the robustness value of Cinelli and Hazlett
+- [ ] 4.10b Bounds on confounding as strong as an observed covariate
 - [ ] 4.11 Placebo test with permuted treatment
 - [ ] 4.12 Estimator comparison table
 - [ ] 4.13 `loyalty-spend effect` command
@@ -170,3 +170,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-19: 4.8a Cross-fitted nuisance functions and the augmented IPW estimator of the ATE
 - [x] 2025-06-19: 4.8b Augmented IPW estimator of the ATT
 - [x] 2025-06-19: 4.9 Double machine learning for the partially linear model
+- [x] 2025-06-19: 4.10a Partial R-squared, robustness value and omitted-variable bias of the regression estimate
