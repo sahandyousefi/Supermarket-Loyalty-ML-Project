@@ -6,7 +6,13 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
 
 from loyalty_spend.causal.data import from_frame
-from loyalty_spend.causal.doubly_robust import aipw, aipw_scores, crossfit_nuisance
+from loyalty_spend.causal.doubly_robust import (
+    aipw,
+    aipw_att,
+    aipw_scores,
+    crossfit_nuisance,
+    frame_of,
+)
 from loyalty_spend.causal.simulate import simulate_promotion
 
 
@@ -45,3 +51,20 @@ def test_scores_reduce_to_the_difference_of_predictions_without_residuals(confou
     np.testing.assert_allclose(
         aipw_scores(fitted, nuisance), nuisance.mu1 - nuisance.mu0
     )
+
+
+def test_aipw_att_covers_the_effect_on_the_treated(train_df):
+    # With an effect that differs between who takes the promotion and who
+    # does not, ATE and ATT differ; the ATT estimator must target the latter.
+    study = simulate_promotion(train_df, n=4000, effect=6.0, confounding=1.5, seed=7)
+    data = from_frame(study.frame)
+    result = aipw_att(data)
+    assert result.estimand == "att"
+    assert result.ci_lower < study.true_att < result.ci_upper
+
+
+def test_frame_of_estimates(confounded):
+    _, data = confounded
+    table = frame_of([aipw(data), aipw_att(data)])
+    assert list(table["estimand"]) == ["ate", "att"]
+    assert {"estimate", "se", "p_value"} <= set(table.columns)

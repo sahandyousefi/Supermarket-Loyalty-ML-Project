@@ -92,5 +92,32 @@ def aipw(
     return _estimate("AIPW", "ate", psi, float(psi.mean()))
 
 
+def aipw_att(
+    data: CausalData,
+    nuisance: Nuisance | None = None,
+    seed: int = 0,
+) -> EffectEstimate:
+    r"""Doubly robust estimate of the effect on the treated.
+
+    With :math:`p = \Pr(T = 1)`, the estimate is
+
+    .. math::
+
+        \hat\tau_{\mathrm{ATT}} = \frac{1}{n p} \sum_i \Big[t_i (y_i - \hat\mu_0(x_i))
+        - (1 - t_i)\frac{\hat e(x_i)}{1 - \hat e(x_i)}(y_i - \hat\mu_0(x_i))\Big],
+
+    which needs only the control outcome model. The standard error comes from
+    the influence function :math:`(\phi_i - t_i \hat\tau) / p`.
+    """
+    nuisance = nuisance or crossfit_nuisance(data, seed=seed)
+    t, y = data.t, data.y
+    e, mu0 = nuisance.e, nuisance.mu0
+    p = t.mean()
+    phi = t * (y - mu0) - (1 - t) * e / (1 - e) * (y - mu0)
+    tau = float(phi.mean() / p)
+    influence = (phi - t * tau) / p
+    return _estimate("AIPW", "att", influence, tau)
+
+
 def frame_of(estimates: list[EffectEstimate]) -> pd.DataFrame:
     return pd.DataFrame([e.to_dict() for e in estimates])
