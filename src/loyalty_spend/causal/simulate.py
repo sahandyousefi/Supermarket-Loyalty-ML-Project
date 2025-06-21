@@ -17,7 +17,7 @@ import pandas as pd
 from scipy.special import expit, logit
 
 from loyalty_spend.causal.data import PRE_TREATMENT, TREATMENT
-from loyalty_spend.data.schema import FEATURES, ID, TARGET
+from loyalty_spend.data.schema import FEATURES, ID, LOYALTY_ORDER, TARGET
 from loyalty_spend.features.preprocess import split_xy
 
 
@@ -57,9 +57,10 @@ def simulate_promotion(
     confounding: float = 1.0,
     treated_share: float = 0.4,
     noise: float = 0.1,
+    heterogeneity: float = 0.0,
     seed: int = 0,
 ) -> SimulatedStudy:
-    """Draw a study with a constant promotion effect.
+    """Draw a study with a known, possibly heterogeneous, promotion effect.
 
     Parameters
     ----------
@@ -75,6 +76,11 @@ def simulate_promotion(
         Share of members taking the promotion when ``confounding`` is zero.
     noise : float
         Noise standard deviation as a share of the spend standard deviation.
+    heterogeneity : float
+        Change in the effect per tenure band. Bands are coded 0 to 4 and
+        centred at the middle band, so ``effect`` stays the effect for a
+        member of 3-5 years and the effect for new members is
+        ``effect - 2 * heterogeneity``.
     """
     from loyalty_spend.models.linear import ols
 
@@ -88,7 +94,10 @@ def simulate_promotion(
     z = _pre_treatment_signal(train, X)
     propensity = expit(logit(treated_share) + confounding * z)
     t = rng.uniform(size=n) < propensity
-    tau = np.full(n, float(effect))
+    band = pd.Categorical(
+        X["loyalty_years"].astype(str), categories=LOYALTY_ORDER
+    ).codes
+    tau = float(effect) + float(heterogeneity) * (band - 2.0)
 
     baseline = reference.predict(X)
     sd = noise * float(y_ref.std())

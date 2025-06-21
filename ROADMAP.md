@@ -18,7 +18,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 5: Heterogeneous effects and targeting
 
-- [ ] 5.1 Simulator option for effects that vary with tenure
 - [ ] 5.2 S-learner and T-learner
 - [ ] 5.3 X-learner
 - [ ] 5.4 DR-learner
@@ -172,3 +171,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-21: 4.14 Figure of effect estimates and intervals
 - [x] 2025-06-21: 4.15a Methodology section on the promotion effect
 - [x] 2025-06-21: 4.15b README section on the promotion effect
+- [x] 2025-06-21: 5.1 Simulator option for effects that vary with tenure
