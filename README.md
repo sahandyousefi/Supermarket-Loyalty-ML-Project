@@ -27,6 +27,8 @@ This project answers that question end to end. It cleans and validates the raw e
 4. **Flexible models win only when the data demand them.** In a simulation calibrated to the real feature distribution, gradient boosting cuts the excess error over the irreducible noise from 2.6 times to 0.11 times the Bayes error once interactions are present. A plain MLP trails, and periodic numeric embeddings close most of that gap.
 5. **Point forecasts misstate reward cost.** Rewards jump at tier thresholds, so the expected cost differs from the cost of the expected spend. For the 250 customers in `test.csv` the Monte Carlo forecast gives an expected total of 1,219.7 with a 90% interval of [1,215.3, 1,223.9], against 1,221.0 from plugging in point forecasts.
 
+6. **The sign-up promotion has no detectable effect on spend.** Members who joined through the promotion spend 0.99 less on average, but the difference disappears once region, joining month and tenure are accounted for: augmented IPW gives -0.015 with a 95% interval of [-0.056, 0.026], on a mean spend of about 120. Effects larger than 0.06 in either direction are ruled out under unconfoundedness.
+
 ## Results
 
 All figures below are produced by `loyalty-spend report`; the full tables are in [reports/results.md](reports/results.md).
@@ -138,6 +140,23 @@ The distribution is lumpy because a handful of customers sit close to a tier thr
 
 <img src="reports/figures/liability.png" width="60%" alt="Distribution of total reward cost">
 
+### Effect of the sign-up promotion
+
+The covariates are the attributes fixed at sign-up (region, joining month, tenure band); first-month spend is measured after joining and is left out because it may itself respond to the promotion. 494 of the 996 members in `train.csv` joined through the promotion.
+
+| Estimator | Estimand | Estimate | Std. error | 95% interval |
+| --- | --- | --- | --- | --- |
+| Difference in means | ATE | -0.994 | 1.700 | [-4.326, 2.339] |
+| Regression adjustment | ATE | -0.017 | 0.020 | [-0.055, 0.020] |
+| IPW (Hajek) | ATE | 0.124 | 1.616 | [-2.995, 3.553] |
+| Augmented IPW | ATE | -0.015 | 0.021 | [-0.056, 0.026] |
+| Double ML, partially linear | ATE | 0.009 | 0.064 | [-0.116, 0.134] |
+| Augmented IPW | ATT | -0.016 | 0.023 | [-0.060, 0.028] |
+
+Overlap is good (propensities between 0.24 and 0.68) and weighting brings every standardized mean difference to 0.011 or less. The outcome models explain almost all of the variance in spend, which is why the estimators that use them are about 80 times more precise than weighting alone. On simulated data with strong confounding, the same estimators recover a known effect that the naive comparison overstates by a factor of two (see `tests/test_causal_analysis.py`). The robustness value of the regression estimate is 0.027: a confounder would need to explain 2.7% of the residual variance of both promotion uptake and spend to move the estimate to zero, but since the estimate is already indistinguishable from zero the more useful statement is the interval itself.
+
+<img src="reports/figures/promotion_effect.png" width="60%" alt="Promotion effect estimates with 95% intervals">
+
 ## Approach
 
 Full notation, derivations and references are in [docs/methodology.md](docs/methodology.md); the model card is in [docs/model_card.md](docs/model_card.md).
@@ -165,6 +184,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 **Uncertainty.** Split conformal prediction, CV+ (Barber et al., 2021) and conformalized quantile regression (Romano et al., 2019) give intervals with finite-sample coverage guarantees under exchangeability. Coverage is reported by decile of predicted spend as well as overall, since a correct average can hide systematic under-coverage of high spenders.
 
 **Predictive distributions.** Pinball loss, CRPS and the interval score are proper scoring rules, so no forecaster gains by misreporting its uncertainty. A heteroscedastic Gaussian model, linear and gradient-boosting quantile regression with monotone rearrangement, and conformal predictive distributions are compared on one quantile grid, with PIT uniformity as the calibration check. Mondrian, normalized and covariate-shift weighted conformal intervals extend the split conformal guarantee to groups of customers and to a changed customer mix.
+
+**Promotion effect.** Regression adjustment, Hajek IPW, cross-fitted augmented IPW (Robins et al., 1994) and double machine learning (Chernozhukov et al., 2018) estimate the ATE and the ATT under unconfoundedness given the sign-up attributes. Overlap, covariate balance, a permutation placebo test and the omitted-variable-bias bounds of Cinelli and Hazlett (2020) check the assumptions as far as data can.
 
 **Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
 
@@ -194,6 +215,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── uncertainty/            split, Mondrian, normalized and weighted conformal, CQR, predictive distributions
 │   ├── monitoring/             PSI, drift tests, domain classifier
 │   ├── explain/                additive contributions, TreeSHAP, permutation importance
+│   ├── causal/                 propensity, balance, IPW, AIPW, DML, sensitivity, placebo
 │   ├── business/               reward schedule and Monte Carlo cost forecast
 │   └── reporting/              figures and the results report
 └── tests/                      unit and integration tests
@@ -223,6 +245,7 @@ loyalty-spend rewards data/raw/test.csv --uncertainty heteroscedastic
 loyalty-spend validate --input data/raw/test.csv      # data contract check
 loyalty-spend drift --fail-on large                   # test.csv against train.csv
 loyalty-spend intervals --scenario noisy              # interval methods side by side
+loyalty-spend effect --output-dir artifacts/effect     # promotion effect with diagnostics
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
 ```
 
@@ -250,6 +273,8 @@ The tests check the cleaning rules against the data dictionary, Welch's ANOVA ag
 
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
 - Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
+- Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., and Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1-C68.
+- Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
 - Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *NeurIPS*.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *NeurIPS*.
@@ -259,6 +284,7 @@ The tests check the cleaning rules against the data dictionary, Welch's ANOVA ag
 - Lakshminarayanan, B., Pritzel, A., and Blundell, C. (2017). Simple and scalable predictive uncertainty estimation using deep ensembles. *NeurIPS*.
 - Lundberg, S. M., et al. (2020). From local explanations to global understanding with explainable AI for trees. *Nature Machine Intelligence*, 2, 56-67.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
+- Robins, J. M., Rotnitzky, A., and Zhao, L. P. (1994). Estimation of regression coefficients when some regressors are not always observed. *Journal of the American Statistical Association*, 89(427), 846-866.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *NeurIPS*.
 - Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *NeurIPS*.
 - Vovk, V., Shen, J., Manokhin, V., and Xie, M. (2019). Nonparametric predictive distributions based on conformal prediction. *Machine Learning*, 108(3), 445-474.
