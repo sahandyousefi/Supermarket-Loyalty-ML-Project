@@ -96,7 +96,7 @@ Conformal prediction gives intervals with finite-sample marginal coverage $\Pr(y
 
 **Normalized scores.** With the score $s_i = |y_i - \hat y(x_i)| / (\hat\sigma(x_i) + \beta)$ the half-width becomes $\hat q\,(\hat\sigma(x) + \beta)$ and widens where errors are large (Papadopoulos et al., 2008). The difficulty model $\hat\sigma$ is gradient boosting with the absolute loss, fitted to out-of-fold absolute residuals of the proper training set; in-sample residuals of a flexible model would understate the difficulty. Marginal coverage holds for any $\hat\sigma$; a good one makes coverage more even across customers.
 
-**Covariate shift.** If the customers to be scored differ in their features but not in how spend depends on the features, exchangeability fails. Weighted conformal prediction (Tibshirani et al., 2019) restores coverage by giving calibration point $i$ the weight $w(X_i) = dP_{\text{new}}/dP_{\text{train}}(X_i)$ and using the $1-\alpha$ quantile of $\sum_i p_i(x)\delta_{s_i} + p_{m+1}(x)\delta_{\infty}$ with $p_i(x) = w(X_i) / (\sum_j w(X_j) + w(x))$. The likelihood ratio is estimated from the domain classifier of Section 10 as $\frac{\hat p(x)}{1-\hat p(x)}\cdot\frac{m}{n_{\text{new}}}$, clipped to $[1/20, 20]$ because a few extreme weights would otherwise make the intervals infinite. Estimation error in the weights makes the intervals slightly conservative in the tests.
+**Covariate shift.** If the customers to be scored differ in their features but not in how spend depends on the features, exchangeability fails. Weighted conformal prediction (Tibshirani et al., 2019) restores coverage by giving calibration point $i$ the weight $w(X_i) = dP_{\text{new}}/dP_{\text{train}}(X_i)$ and using the $1-\alpha$ quantile of $\sum_i p_i(x)\delta_{s_i} + p_{m+1}(x)\delta_{\infty}$ with $p_i(x) = w(X_i) / (\sum_j w(X_j) + w(x))$. The likelihood ratio is estimated from the domain classifier of Section 11 as $\frac{\hat p(x)}{1-\hat p(x)}\cdot\frac{m}{n_{\text{new}}}$, clipped to $[1/20, 20]$ because a few extreme weights would otherwise make the intervals infinite. Estimation error in the weights makes the intervals slightly conservative in the tests.
 
 ## 8. Probabilistic forecasts
 
@@ -135,7 +135,32 @@ $$y_i^{(b)} = \hat y(x_i) + e^{(b)}_i, \qquad R^{(b)} = \sum_i r\big(y_i^{(b)}\b
 
 where $e^{(b)}_i$ are resampled out-of-fold residuals of the model. The distribution of $R^{(b)}$ gives the expected total and its 5th and 95th percentiles; the share of draws in which a customer's tier differs from the tier of the point forecast identifies the customers that drive cost uncertainty. Residual resampling assumes that errors do not depend on $x$. Under heteroscedastic noise, draws come from a model of the conditional distribution instead: `loyalty-spend rewards --uncertainty heteroscedastic` uses the heteroscedastic Gaussian model of Section 8, and any other predictive sampler can be passed to the simulation.
 
-## 10. Data contracts and drift monitoring
+## 10. Effect of the sign-up promotion
+
+Members who joined through the promotion could spend more or less than other members for two reasons: the promotion changed their behaviour, or different people took it up. Only the first is an effect of the promotion.
+
+**Estimands and identification.** With potential outcomes $Y(1)$ and $Y(0)$, the average treatment effect is $\tau_{\text{ATE}} = \mathbb E[Y(1) - Y(0)]$ and the effect on the treated is $\tau_{\text{ATT}} = \mathbb E[Y(1)-Y(0)\mid T=1]$. Both are identified under consistency, unconfoundedness $(Y(0),Y(1)) \perp T \mid X$ and overlap $0 < e(x) = \Pr(T=1\mid X=x) < 1$. The covariates are the attributes fixed at sign-up: region, joining month and tenure band. First-month spend and basket size are measured after joining and may themselves respond to the promotion; adjusting for them would remove part of the effect being estimated, so they are left out.
+
+**Estimators.**
+
+- *Regression adjustment* fits separate linear outcome models $\hat\mu_1, \hat\mu_0$ and averages $\hat\mu_1(x) - \hat\mu_0(x)$ (ATE) or $y - \hat\mu_0(x)$ over the treated (ATT).
+- *Inverse probability weighting* with normalised (Hajek) weights $1/\hat e$ and $1/(1-\hat e)$ for the ATE, and $\hat e/(1-\hat e)$ for the controls for the ATT. Propensities are predicted out of fold.
+- *Augmented IPW* adds the weighted residuals to the outcome-model contrast,
+  $$\psi_i = \hat\mu_1(x_i) - \hat\mu_0(x_i) + \frac{t_i(y_i - \hat\mu_1(x_i))}{\hat e(x_i)} - \frac{(1-t_i)(y_i - \hat\mu_0(x_i))}{1 - \hat e(x_i)},$$
+  is consistent if either nuisance model is correct, and with cross-fitted nuisances has standard error $\mathrm{sd}(\psi)/\sqrt n$ (Robins et al., 1994; Chernozhukov et al., 2018).
+- *Double machine learning* for $Y = \theta T + g(X) + \varepsilon$ regresses $y - \hat\ell(x)$ on $t - \hat m(x)$ with cross-fitted gradient boosting for $\ell$ and logistic regression for $m$, and takes the median over three sample splits.
+
+**Diagnostics.** Overlap is checked by the range of the propensity in each group and the Kish effective sample size of the weights; the trimming rule of Crump et al. (2009) is available when overlap is poor. Balance is checked by standardized mean differences of every covariate level before and after weighting, with $|d| < 0.1$ as the threshold. A placebo test re-estimates the effect after permuting the promotion labels, within tenure bands if required.
+
+**Sensitivity.** Unconfoundedness cannot be tested. Following Cinelli and Hazlett (2020), the regression estimate is compared with what an omitted confounder $Z$ would do. If $Z$ explains a share $R^2_{T\sim Z\mid X}$ of the residual variance of the promotion and $R^2_{Y\sim Z\mid T,X}$ of the residual variance of spend, the bias is at most
+
+$$\mathrm{se}(\hat\tau)\sqrt{\mathrm{df}}\,\sqrt{\frac{R^2_{Y\sim Z\mid T,X}\,R^2_{T\sim Z\mid X}}{1 - R^2_{T\sim Z\mid X}}}.$$
+
+The robustness value $\mathrm{RV}_q$ is the common value of the two partial $R^2$ that would reduce the estimate by $100q\%$, and bounds for a confounder $k$ times as strong as an observed covariate translate the question into terms of variables the business knows.
+
+**Validation.** `causal/simulate.py` resamples covariates from `train.csv`, generates spend without the promotion from the OLS fit, and assigns the promotion with a logistic propensity that rises with expected spend. With strong confounding the naive difference overstates a true effect of 6 by more than 5, while regression adjustment, AIPW and DML recover it within their intervals; the tests check this for every estimator.
+
+## 11. Data contracts and drift monitoring
 
 **Contracts.** `configs/contracts.yaml` states, column by column, the kind, the allowed range or levels, uniqueness and a budget for missing values. `loyalty-spend validate` checks a cleaned extract against a contract and lists every violation at once, so a broken extract fails before it reaches a model.
 
@@ -149,7 +174,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 
 **Prediction and performance drift.** The PSI and KS test are applied to model outputs, and, once spend is observed for a new cohort, to the target. The change in RMSE is reported as a ratio with a bootstrap percentile interval.
 
-## 11. Assumptions and limitations
+## 12. Assumptions and limitations
 
 - The data are a small synthetic sample from a certification exercise. Results on `train.csv` describe that sample; the simulation study exists because those data cannot discriminate between methods.
 - All validation is cross-sectional. There is no time dimension, so drift between programme years is not tested.
@@ -161,10 +186,14 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 
 - Akiba, T., Sano, S., Yanase, T., Ohta, T., and Koyama, M. (2019). Optuna: A next-generation hyperparameter optimization framework. *Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 2623-2631.
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
+- Austin, P. C. (2009). Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. *Statistics in Medicine*, 28(25), 3083-3107.
 - Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
 - Cawley, G. C., and Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
-- Chernozhukov, V., Fernandez-Val, I., and Galichon, A. (2010). Quantile and probability curves without crossing. *Econometrica*, 78(3), 1093-1125.
 - Chen, T., and Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785-794.
+- Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., and Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1-C68.
+- Chernozhukov, V., Fernandez-Val, I., and Galichon, A. (2010). Quantile and probability curves without crossing. *Econometrica*, 78(3), 1093-1125.
+- Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
+- Crump, R. K., Hotz, V. J., Imbens, G. W., and Mitnik, O. A. (2009). Dealing with limited overlap in estimation of average treatment effects. *Biometrika*, 96(1), 187-199.
 - Dawid, A. P. (1984). Statistical theory: The prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2), 278-292.
 - Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
 - Gneiting, T., Raftery, A. E., Westveld, A. H., and Goldman, T. (2005). Calibrated probabilistic forecasting using ensemble model output statistics and minimum CRPS estimation. *Monthly Weather Review*, 133(5), 1098-1118.
@@ -180,6 +209,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Lindeman, R. H., Merenda, P. F., and Gold, R. Z. (1980). *Introduction to Bivariate and Multivariate Analysis*. Scott, Foresman.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
 - Papadopoulos, H., Gammerman, A., and Vovk, V. (2008). Normalized nonconformity measures for regression conformal prediction. *Proceedings of the IASTED International Conference on Artificial Intelligence and Applications*, 64-69.
+- Robins, J. M., Rotnitzky, A., and Zhao, L. P. (1994). Estimation of regression coefficients when some regressors are not always observed. *Journal of the American Statistical Association*, 89(427), 846-866.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *Advances in Neural Information Processing Systems*, 32.
 - Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *Advances in Neural Information Processing Systems*, 32.
 - Vovk, V., Gammerman, A., and Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer.
