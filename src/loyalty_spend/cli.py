@@ -187,6 +187,51 @@ def _intervals(args: argparse.Namespace) -> int:
     return 0
 
 
+def _effect_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument(
+        "--input", default=None, help="CSV with spend, defaults to train.csv"
+    )
+    p.add_argument("--n-boot", type=int, default=300)
+    p.add_argument("--output-dir", default=None, help="write tables to this folder")
+
+
+@command("effect", "estimate the effect of the sign-up promotion", _effect_args)
+def _effect(args: argparse.Namespace) -> int:
+    from loyalty_spend.causal.analysis import analyse_promotion
+    from loyalty_spend.causal.data import from_frame
+    from loyalty_spend.data.io import load_clean
+
+    cfg = load_config(args.config)
+    path = args.input or cfg.paths.raw(cfg.paths.train_file)
+    frame, _ = load_clean(path, impute=False)
+    data = from_frame(frame)
+    result = analyse_promotion(data, n_boot=args.n_boot, seed=cfg.cv.seed)
+    cols = ["method", "estimand", "estimate", "se", "ci_lower", "ci_upper", "p_value"]
+    print(f"{path}: {data.n_treated} treated, {data.n_control} control")
+    print(
+        result.estimates[cols].to_string(index=False, float_format=lambda v: f"{v:.3f}")
+    )
+    ov = result.overlap
+    print(
+        f"propensity range {min(ov['treated_min'], ov['control_min']):.3f} to "
+        f"{max(ov['treated_max'], ov['control_max']):.3f}; "
+        f"largest |SMD| after weighting "
+        f"{result.balance['smd_weighted'].abs().max():.3f}"
+    )
+    sens = result.sensitivity
+    print(f"robustness value {sens['rv']:.4f} (RV at 5%: {sens['rv_alpha']:.4f})")
+    if args.output_dir:
+        out = Path(args.output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        result.estimates.to_csv(out / "effect_estimates.csv", index=False)
+        result.balance.to_csv(out / "balance.csv", index=False)
+        (out / "effect_diagnostics.json").write_text(
+            json.dumps({"overlap": ov, "sensitivity": sens}, indent=2)
+        )
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
