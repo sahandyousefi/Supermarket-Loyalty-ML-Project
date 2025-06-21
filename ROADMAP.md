@@ -15,7 +15,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 4: Effect of the sign-up promotion
 
-- [ ] 4.14 Figure of effect estimates and intervals
 - [ ] 4.15 Methodology and README sections on the promotion effect
 
 ## Phase 5: Heterogeneous effects and targeting
@@ -171,3 +170,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-19: 4.11 Placebo test with permuted treatment
 - [x] 2025-06-19: 4.12 Estimator comparison table
 - [x] 2025-06-21: 4.13 `loyalty-spend effect` command
+- [x] 2025-06-21: 4.14 Figure of effect estimates and intervals

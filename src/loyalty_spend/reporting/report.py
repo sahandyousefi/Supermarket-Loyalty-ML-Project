@@ -18,6 +18,8 @@ from loyalty_spend.analysis.drivers import (
     welch_anova,
 )
 from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
+from loyalty_spend.causal.analysis import analyse_promotion
+from loyalty_spend.causal.data import from_frame
 from loyalty_spend.config import Config, load_config
 from loyalty_spend.data.io import load_clean, load_modeling_data
 from loyalty_spend.data.lineage import compare_extracts
@@ -276,6 +278,31 @@ def probabilistic_section(
     return text, summary
 
 
+def promotion_section(cfg: Config, fig_dir: Path) -> tuple[str, dict]:
+    """Observational estimates of the promotion effect on train.csv."""
+    train, _ = load_modeling_data(
+        cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
+    )
+    result = analyse_promotion(from_frame(train), seed=cfg.cv.seed)
+    figures.plot_effect_estimates(result.estimates, fig_dir / "promotion_effect.png")
+    cols = ["method", "estimand", "estimate", "se", "ci_lower", "ci_upper", "p_value"]
+    text = "\n\n".join(
+        [
+            "## Effect of the sign-up promotion (train.csv)",
+            markdown_table(result.estimates[cols], 3),
+            f"Largest absolute standardized mean difference after weighting: "
+            f"{result.balance['smd_weighted'].abs().max():.3f}. Robustness value "
+            f"RV = {result.sensitivity['rv']:.4f}.",
+        ]
+    )
+    summary = {
+        "estimates": result.estimates[cols].to_dict("records"),
+        "overlap": result.overlap,
+        "sensitivity": result.sensitivity,
+    }
+    return text, summary
+
+
 def liability_section(cfg: Config, residuals: np.ndarray, fig_dir: Path) -> str:
     train, test = load_modeling_data(
         cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
@@ -314,6 +341,7 @@ def build_report(
         "study",
         "conformal",
         "probabilistic",
+        "promotion",
     ),
 ) -> Path:
     """Run the analysis and write ``reports/results.md`` with figures."""
@@ -338,6 +366,9 @@ def build_report(
         parts.append(study_section(cfg, settings, fig_dir))
     if "conformal" in sections:
         parts.append(conformal_section(cfg, settings, fig_dir))
+    if "promotion" in sections:
+        text, summary["promotion"] = promotion_section(cfg, fig_dir)
+        parts.append(text)
     if "probabilistic" in sections:
         text, summary["probabilistic"] = probabilistic_section(cfg, settings, fig_dir)
         parts.append(text)

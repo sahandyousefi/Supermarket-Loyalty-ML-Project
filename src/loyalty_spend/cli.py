@@ -450,6 +450,7 @@ REPORT_SECTIONS = (
     "study",
     "conformal",
     "probabilistic",
+    "promotion",
 )
 
 

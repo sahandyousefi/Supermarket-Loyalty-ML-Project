@@ -195,3 +195,26 @@ def plot_quantile_reliability(
     ax.set_ylim(0, 1)
     _style(ax, "Quantile reliability", "Nominal level", "Observed share below")
     return _save(fig, path)
+
+
+def plot_effect_estimates(table: pd.DataFrame, path: str | Path) -> Path:
+    """Forest plot of effect estimates with 95% intervals, ATE above ATT."""
+    rows = table.sort_values(["estimand", "method"], ascending=[True, False])
+    labels = [f"{m} ({e.upper()})" for m, e in zip(rows["method"], rows["estimand"])]
+    y = np.arange(len(rows))
+    fig, ax = plt.subplots(figsize=(6.4, 0.42 * len(rows) + 1.0))
+    ax.axvline(0.0, color=MUTED, linewidth=0.8, linestyle="--")
+    ax.errorbar(
+        rows["estimate"],
+        y,
+        xerr=[rows["estimate"] - rows["ci_lower"], rows["ci_upper"] - rows["estimate"]],
+        fmt="o",
+        color=SINGLE,
+        ecolor=SINGLE,
+        elinewidth=1.4,
+        capsize=0,
+        markersize=4,
+    )
+    ax.set_yticks(y, labels)
+    _style(ax, "Effect of the promotion on annual spend", "Effect (95% interval)")
+    return _save(fig, path)
