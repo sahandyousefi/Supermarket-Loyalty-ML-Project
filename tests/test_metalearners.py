@@ -2,7 +2,13 @@ import numpy as np
 import pytest
 
 from loyalty_spend.causal.data import from_frame
-from loyalty_spend.causal.metalearners import SLearner, TLearner, XLearner, pehe
+from loyalty_spend.causal.metalearners import (
+    DRLearner,
+    SLearner,
+    TLearner,
+    XLearner,
+    pehe,
+)
 from loyalty_spend.causal.simulate import simulate_promotion
 
 
@@ -44,3 +50,11 @@ def test_x_learner_helps_when_one_arm_is_small(train_df):
     t_err = pehe(TLearner().fit(data.X, data.t, data.y).effect(data.X), study.effect)
     x_err = pehe(XLearner().fit(data.X, data.t, data.y).effect(data.X), study.effect)
     assert x_err < t_err
+
+
+def test_dr_learner_pseudo_outcomes_average_to_the_ate(hetero):
+    study, data = hetero
+    learner = DRLearner().fit(data.X, data.t, data.y)
+    assert learner.pseudo_outcome_.mean() == pytest.approx(study.true_ate, abs=1.0)
+    tau_hat = learner.effect(data.X)
+    assert np.corrcoef(tau_hat, study.effect)[0, 1] > 0.7

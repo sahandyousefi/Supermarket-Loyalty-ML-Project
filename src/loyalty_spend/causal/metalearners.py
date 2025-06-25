@@ -129,3 +129,39 @@ class XLearner:
     def effect(self, X: pd.DataFrame) -> np.ndarray:
         e = self.propensity_.predict_proba(X)[:, 1]
         return e * self.tau0_.predict(X) + (1 - e) * self.tau1_.predict(X)
+
+
+class DRLearner:
+    """Kennedy (2023): regress the doubly robust pseudo-outcome on X.
+
+    The AIPW score of every unit, built from cross-fitted nuisances, has
+    conditional mean ``tau(x)`` when either nuisance is correct, so a
+    regression of the scores on the covariates estimates the CATE with an
+    error that depends on the product of the nuisance errors.
+    """
+
+    def __init__(
+        self,
+        learner: BaseEstimator | None = None,
+        n_folds: int = 5,
+        seed: int = 0,
+    ) -> None:
+        self.learner = learner
+        self.n_folds = n_folds
+        self.seed = seed
+
+    def fit(self, X: pd.DataFrame, t: ArrayLike, y: ArrayLike) -> DRLearner:
+        from loyalty_spend.causal.data import CausalData
+        from loyalty_spend.causal.doubly_robust import aipw_scores, crossfit_nuisance
+
+        data = CausalData(
+            X.reset_index(drop=True), np.asarray(t, int), np.asarray(y, float)
+        )
+        nuisance = crossfit_nuisance(data, n_folds=self.n_folds, seed=self.seed)
+        self.pseudo_outcome_ = aipw_scores(data, nuisance)
+        learner = self.learner or base_learner(X, self.seed)
+        self.model_ = clone(learner).fit(data.X, self.pseudo_outcome_)
+        return self
+
+    def effect(self, X: pd.DataFrame) -> np.ndarray:
+        return self.model_.predict(X)

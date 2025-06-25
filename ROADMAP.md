@@ -18,7 +18,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 5: Heterogeneous effects and targeting
 
-- [ ] 5.4 DR-learner
 - [ ] 5.5 R-learner
 - [ ] 5.6 Qini curve and area under the uplift curve
 - [ ] 5.7 Uplift by decile of predicted effect
@@ -173,3 +172,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-25: 5.2a S-learner and the PEHE error measure
 - [x] 2025-06-25: 5.2b T-learner
 - [x] 2025-06-25: 5.3 X-learner
+- [x] 2025-06-25: 5.4 DR-learner
