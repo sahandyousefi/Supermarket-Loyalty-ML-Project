@@ -94,3 +94,38 @@ class TLearner:
 
     def effect(self, X: pd.DataFrame) -> np.ndarray:
         return self.mu1_.predict(X) - self.mu0_.predict(X)
+
+
+class XLearner:
+    """Kunzel et al. (2019): impute individual effects, then smooth them.
+
+    Treated members get the imputed effect ``y - mu0(x)`` and controls get
+    ``mu1(x) - y``. A second-stage model is fitted to each set, and the two
+    are combined with the propensity as weight,
+    ``tau(x) = e(x) tau0(x) + (1 - e(x)) tau1(x)``, which leans on the model
+    fitted to the larger group where the other group is sparse.
+    """
+
+    def __init__(self, learner: BaseEstimator | None = None, seed: int = 0) -> None:
+        self.learner = learner
+        self.seed = seed
+
+    def fit(self, X: pd.DataFrame, t: ArrayLike, y: ArrayLike) -> XLearner:
+        from loyalty_spend.causal.propensity import propensity_model
+
+        t = np.asarray(t, int)
+        y = np.asarray(y, float)
+        learner = self.learner or base_learner(X, self.seed)
+        X0, X1 = X[t == 0], X[t == 1]
+        mu0 = clone(learner).fit(X0, y[t == 0])
+        mu1 = clone(learner).fit(X1, y[t == 1])
+        d1 = y[t == 1] - mu0.predict(X1)
+        d0 = mu1.predict(X0) - y[t == 0]
+        self.tau1_ = clone(learner).fit(X1, d1)
+        self.tau0_ = clone(learner).fit(X0, d0)
+        self.propensity_ = propensity_model(X).fit(X, t)
+        return self
+
+    def effect(self, X: pd.DataFrame) -> np.ndarray:
+        e = self.propensity_.predict_proba(X)[:, 1]
+        return e * self.tau0_.predict(X) + (1 - e) * self.tau1_.predict(X)
