@@ -4,6 +4,7 @@ import pytest
 from loyalty_spend.causal.data import from_frame
 from loyalty_spend.causal.metalearners import (
     DRLearner,
+    RLearner,
     SLearner,
     TLearner,
     XLearner,
@@ -58,3 +59,11 @@ def test_dr_learner_pseudo_outcomes_average_to_the_ate(hetero):
     assert learner.pseudo_outcome_.mean() == pytest.approx(study.true_ate, abs=1.0)
     tau_hat = learner.effect(data.X)
     assert np.corrcoef(tau_hat, study.effect)[0, 1] > 0.7
+
+
+@pytest.mark.parametrize("learner", [SLearner, TLearner, XLearner, DRLearner, RLearner])
+def test_every_learner_beats_a_constant_effect(hetero, learner):
+    study, data = hetero
+    tau_hat = learner().fit(data.X, data.t, data.y).effect(data.X)
+    constant = np.full(len(tau_hat), study.true_ate)
+    assert pehe(tau_hat, study.effect) < pehe(constant, study.effect)

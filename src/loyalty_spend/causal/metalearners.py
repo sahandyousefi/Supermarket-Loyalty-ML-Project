@@ -165,3 +165,55 @@ class DRLearner:
 
     def effect(self, X: pd.DataFrame) -> np.ndarray:
         return self.model_.predict(X)
+
+
+class RLearner:
+    r"""Nie and Wager (2021): minimise the Robinson residual loss.
+
+    With cross-fitted :math:`\hat\ell(x) = \mathbb E[Y\mid x]` and
+    :math:`\hat m(x) = \Pr(T = 1\mid x)`, the CATE minimises
+    :math:`\sum_i \big(\tilde y_i - \tau(x_i)\,\tilde t_i\big)^2`, which is a
+    regression of :math:`\tilde y_i / \tilde t_i` on :math:`x_i` with weights
+    :math:`\tilde t_i^2`. The final model needs ``sample_weight`` support.
+    """
+
+    def __init__(
+        self,
+        learner: BaseEstimator | None = None,
+        n_folds: int = 5,
+        seed: int = 0,
+    ) -> None:
+        self.learner = learner
+        self.n_folds = n_folds
+        self.seed = seed
+
+    def fit(self, X: pd.DataFrame, t: ArrayLike, y: ArrayLike) -> RLearner:
+        from sklearn.model_selection import KFold
+
+        from loyalty_spend.causal.propensity import propensity_model
+
+        t = np.asarray(t, int)
+        y = np.asarray(y, float)
+        y_res = np.empty(len(y))
+        t_res = np.empty(len(y))
+        outcome = base_learner(X, self.seed)
+        treatment = propensity_model(X)
+        for tr, te in KFold(self.n_folds, shuffle=True, random_state=self.seed).split(
+            X
+        ):
+            y_res[te] = y[te] - clone(outcome).fit(X.iloc[tr], y[tr]).predict(
+                X.iloc[te]
+            )
+            m = clone(treatment).fit(X.iloc[tr], t[tr]).predict_proba(X.iloc[te])[:, 1]
+            t_res[te] = t[te] - m
+        # Units with almost no treatment residual carry no information about
+        # the effect but would get huge pseudo-outcomes.
+        t_res = np.where(np.abs(t_res) < 1e-3, np.sign(t_res) * 1e-3 + 1e-12, t_res)
+        learner = self.learner or base_learner(X, self.seed)
+        self.model_ = clone(learner).fit(
+            X, y_res / t_res, model__sample_weight=t_res**2
+        )
+        return self
+
+    def effect(self, X: pd.DataFrame) -> np.ndarray:
+        return self.model_.predict(X)
