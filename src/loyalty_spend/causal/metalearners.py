@@ -71,3 +71,26 @@ class SLearner:
         treated = X.assign(**{TREATMENT_COLUMN: 1.0})
         control = X.assign(**{TREATMENT_COLUMN: 0.0})
         return self.model_.predict(treated) - self.model_.predict(control)
+
+
+class TLearner:
+    """Separate outcome models for treated and control members.
+
+    The CATE is the difference of the two fits, so it inherits the noise of
+    both; with a small treated group the treated model is the weak link.
+    """
+
+    def __init__(self, learner: BaseEstimator | None = None, seed: int = 0) -> None:
+        self.learner = learner
+        self.seed = seed
+
+    def fit(self, X: pd.DataFrame, t: ArrayLike, y: ArrayLike) -> TLearner:
+        t = np.asarray(t, int)
+        y = np.asarray(y, float)
+        learner = self.learner or base_learner(X, self.seed)
+        self.mu0_ = clone(learner).fit(X[t == 0], y[t == 0])
+        self.mu1_ = clone(learner).fit(X[t == 1], y[t == 1])
+        return self
+
+    def effect(self, X: pd.DataFrame) -> np.ndarray:
+        return self.mu1_.predict(X) - self.mu0_.predict(X)
