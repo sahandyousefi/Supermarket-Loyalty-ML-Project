@@ -64,3 +64,42 @@ def compare_policies(
         for name, rule in rules.items()
     ]
     return pd.DataFrame(rows)
+
+
+def budget_rule(
+    tau_hat: ArrayLike, max_share: float, cost: float = 0.0, margin: float = 1.0
+) -> np.ndarray:
+    """Offer the promotion to at most ``max_share`` of members, best first.
+
+    Members are ranked by predicted effect and only those whose predicted
+    profit exceeds the cost are eligible, so a generous budget is not spent
+    on members expected to lose money.
+    """
+    if not 0.0 <= max_share <= 1.0:
+        raise ValueError("max_share must be in [0, 1]")
+    tau = np.asarray(tau_hat, float)
+    k = int(np.floor(max_share * len(tau)))
+    chosen = np.zeros(len(tau), bool)
+    if k == 0:
+        return chosen
+    order = np.argsort(-tau, kind="stable")[:k]
+    chosen[order] = True
+    return chosen & threshold_rule(tau, cost, margin)
+
+
+def budget_curve(
+    tau_hat: ArrayLike,
+    scores: ArrayLike,
+    cost: float,
+    margin: float = 1.0,
+    shares: ArrayLike | None = None,
+) -> pd.DataFrame:
+    """Policy value as the budget grows from nobody to everybody eligible."""
+    shares = np.linspace(0.0, 1.0, 21) if shares is None else np.asarray(shares, float)
+    rows = []
+    for share in shares:
+        rule = budget_rule(tau_hat, float(share), cost, margin)
+        rows.append(
+            {"budget_share": float(share), **policy_value(rule, scores, cost, margin)}
+        )
+    return pd.DataFrame(rows)
