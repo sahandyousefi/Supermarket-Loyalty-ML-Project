@@ -18,7 +18,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 5: Heterogeneous effects and targeting
 
-- [ ] 5.12 `loyalty-spend uplift` command
 - [ ] 5.13 Report and methodology sections on targeting
 
 ## Phase 6: Customer segments
@@ -173,3 +172,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-27: 5.9 Sorted group average treatment effects
 - [x] 2025-06-27: 5.10 Targeting policy with a cost per promotion and a doubly robust policy value
 - [x] 2025-06-27: 5.11 Budget-constrained targeting
+- [x] 2025-06-27: 5.12 `loyalty-spend uplift` command

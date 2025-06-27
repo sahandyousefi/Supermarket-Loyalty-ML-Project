@@ -232,6 +232,52 @@ def _effect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _uplift_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument(
+        "--input", default=None, help="CSV with spend, defaults to train.csv"
+    )
+    p.add_argument("--learner", choices=["s", "t", "x", "dr", "r"], default="dr")
+    p.add_argument("--cost", type=float, default=0.0, help="cost of one promotion")
+    p.add_argument("--margin", type=float, default=1.0, help="profit per unit of spend")
+    p.add_argument("--output-dir", default=None, help="write tables to this folder")
+
+
+@command("uplift", "test effect heterogeneity and value targeting rules", _uplift_args)
+def _uplift(args: argparse.Namespace) -> int:
+    from loyalty_spend.causal.data import from_frame
+    from loyalty_spend.causal.targeting import analyse_targeting
+    from loyalty_spend.data.io import load_clean
+
+    cfg = load_config(args.config)
+    path = args.input or cfg.paths.raw(cfg.paths.train_file)
+    frame, _ = load_clean(path, impute=False)
+    result = analyse_targeting(
+        from_frame(frame), args.learner, args.cost, args.margin, seed=cfg.cv.seed
+    )
+    blp = result.blp
+    fmt = lambda v: f"{v:.3f}"  # noqa: E731
+    print(
+        f"BLP: ATE {blp['ate']:.3f} (se {blp['ate_se']:.3f}), heterogeneity "
+        f"loading {blp['heterogeneity']:.3f} (p = {blp['heterogeneity_p_value']:.3g})"
+    )
+    print(result.gates.to_string(index=False, float_format=fmt))
+    print(result.policies.to_string(index=False, float_format=fmt))
+    if args.output_dir:
+        out = Path(args.output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        result.gates.to_csv(out / "gates.csv", index=False)
+        result.profile.to_csv(out / "profile.csv", index=False)
+        result.policies.to_csv(out / "policies.csv", index=False)
+        result.budget.to_csv(out / "budget_curve.csv", index=False)
+        (out / "uplift_summary.json").write_text(
+            json.dumps(
+                {"blp": blp, "gates": result.gates_test, "qini": result.qini}, indent=2
+            )
+        )
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")

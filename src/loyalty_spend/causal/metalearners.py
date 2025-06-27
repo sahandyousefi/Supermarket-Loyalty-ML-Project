@@ -217,3 +217,12 @@ class RLearner:
 
     def effect(self, X: pd.DataFrame) -> np.ndarray:
         return self.model_.predict(X)
+
+
+LEARNERS = {
+    "s": SLearner,
+    "t": TLearner,
+    "x": XLearner,
+    "dr": DRLearner,
+    "r": RLearner,
+}
