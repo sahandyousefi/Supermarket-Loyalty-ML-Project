@@ -70,3 +70,49 @@ def blp_test(proxy: ArrayLike, scores: ArrayLike) -> dict[str, float]:
         "heterogeneity_se": float(se[1]),
         "heterogeneity_p_value": float(2 * stats.norm.sf(abs(beta[1] / se[1]))),
     }
+
+
+def gates(proxy: ArrayLike, scores: ArrayLike, n_groups: int = 5) -> dict[str, object]:
+    """Sorted group average treatment effects and the top-bottom difference.
+
+    Members are split into ``n_groups`` groups by the proxy; group 1 has the
+    largest predicted effects. The estimate in each group is the mean of the
+    doubly robust scores, and the difference between the first and last
+    group has a normal interval from the two independent group means.
+    """
+    from loyalty_spend.causal.uplift import effect_by_group
+
+    table = effect_by_group(proxy, scores, n_groups)
+    top, bottom = table.iloc[0], table.iloc[-1]
+    diff = float(top["estimated"] - bottom["estimated"])
+    se = float(np.hypot(top["se"], bottom["se"]))
+    return {
+        "groups": table,
+        "top_minus_bottom": diff,
+        "top_minus_bottom_se": se,
+        "p_value": float(2 * stats.norm.sf(abs(diff / se))) if se > 0 else float("nan"),
+    }
+
+
+def clan(X: pd.DataFrame, proxy: ArrayLike, n_groups: int = 5) -> pd.DataFrame:
+    """Covariate profile of the most and least affected groups.
+
+    The classification analysis of Chernozhukov et al. (2018) compares the
+    average characteristics of the top and bottom groups, which tells the
+    business who responds to the promotion.
+    """
+    from loyalty_spend.causal.balance import indicator_frame
+
+    s = np.asarray(proxy, float)
+    ranks = pd.Series(-s).rank(method="first").to_numpy()
+    groups = np.ceil(ranks * n_groups / len(s)).astype(int)
+    D = indicator_frame(X.reset_index(drop=True))
+    top = D[groups == 1].mean()
+    bottom = D[groups == n_groups].mean()
+    out = pd.DataFrame({"most_affected": top, "least_affected": bottom})
+    out["difference"] = out["most_affected"] - out["least_affected"]
+    return (
+        out.reindex(out["difference"].abs().sort_values(ascending=False).index)
+        .rename_axis("covariate")
+        .reset_index()
+    )
