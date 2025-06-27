@@ -65,3 +65,27 @@ def qini_coefficient(curve: pd.DataFrame, n: int) -> float:
     """Area between a gain curve and random targeting, per member."""
     diff = (curve["gain"] - curve["random"]).to_numpy()
     return float(np.trapezoid(diff, curve["fraction"].to_numpy()) / n)
+
+
+def effect_by_group(
+    tau_hat: ArrayLike, scores: ArrayLike, n_groups: int = 10
+) -> pd.DataFrame:
+    """Predicted and doubly robust estimated effect by quantile group of ``tau_hat``.
+
+    Group 1 holds the members with the largest predicted effect. If the
+    ranking carries information, the estimated effect falls from the first
+    group to the last; the standard errors come from the spread of the
+    scores within each group.
+    """
+    tau_hat, psi = np.asarray(tau_hat, float), np.asarray(scores, float)
+    ranks = pd.Series(-tau_hat).rank(method="first").to_numpy()
+    groups = np.ceil(ranks * n_groups / len(tau_hat)).astype(int)
+    frame = pd.DataFrame({"group": groups, "predicted": tau_hat, "score": psi})
+    out = frame.groupby("group").agg(
+        n=("score", "size"),
+        predicted=("predicted", "mean"),
+        estimated=("score", "mean"),
+        sd=("score", "std"),
+    )
+    out["se"] = out["sd"] / np.sqrt(out["n"])
+    return out.drop(columns="sd").reset_index()

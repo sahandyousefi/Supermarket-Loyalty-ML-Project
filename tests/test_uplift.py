@@ -1,7 +1,12 @@
 import numpy as np
 import pytest
 
-from loyalty_spend.causal.uplift import dr_gain_curve, qini_coefficient, qini_curve
+from loyalty_spend.causal.uplift import (
+    dr_gain_curve,
+    effect_by_group,
+    qini_coefficient,
+    qini_curve,
+)
 
 
 @pytest.fixture(scope="module")
@@ -42,3 +47,17 @@ def test_dr_gain_with_oracle_scores(experiment):
         np.sort(tau)[::-1][: int(0.5 * len(tau))].sum(), rel=0.02
     )
     assert qini_coefficient(curve, len(tau)) > 0
+
+
+def test_effect_by_group_is_ordered_for_a_good_ranking(experiment):
+    x, tau, t, y = experiment
+    # Oracle AIPW scores of a randomised experiment with known propensity 0.5.
+    mu0, mu1 = 100 + 10 * x, 100 + 10 * x + tau
+    psi = mu1 - mu0 + t * (y - mu1) / 0.5 - (1 - t) * (y - mu0) / 0.5
+    table = effect_by_group(tau, psi, n_groups=5)
+    assert list(table["group"]) == [1, 2, 3, 4, 5]
+    assert table["n"].sum() == len(tau)
+    assert table["estimated"].is_monotonic_decreasing
+    assert np.allclose(
+        table["estimated"], table["predicted"], atol=4 * table["se"].max()
+    )
