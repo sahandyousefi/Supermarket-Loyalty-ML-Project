@@ -157,6 +157,21 @@ Overlap is good (propensities between 0.24 and 0.68) and weighting brings every 
 
 <img src="reports/figures/promotion_effect.png" width="60%" alt="Promotion effect estimates with 95% intervals">
 
+### Does the promotion work for anyone?
+
+An average effect of zero could hide members who gain and members who lose. A DR-learner (Kennedy, 2023) predicts each member's effect; its predictions are tested with the best linear predictor and sorted group effects of Chernozhukov et al. (2018), over ten random splits that train on one half of `train.csv` and evaluate on the other.
+
+| Group by predicted effect | Members | Predicted | Estimated (doubly robust) | Std. error |
+| --- | --- | --- | --- | --- |
+| 1 (largest) | 99 | 0.275 | -0.019 | 0.077 |
+| 2 | 100 | 0.088 | -0.051 | 0.052 |
+| 3 | 99 | -0.012 | 0.010 | 0.059 |
+| 4 | 100 | -0.118 | 0.004 | 0.061 |
+| 5 (smallest) | 100 | -0.314 | 0.017 | 0.070 |
+
+The heterogeneity loading is -0.058 (se 0.164, p = 1.0): the predicted differences between members do not show up in held-out data, and targeting the half with the largest predicted effect is worth -0.014 per member [-0.052, 0.024]. On simulated data where the effect does vary with tenure, the same procedure detects it (p < 0.0001) and the targeted rule beats offering the promotion to everyone. An earlier version that cross-fitted the proxy and the scores on the full sample reported significant heterogeneity here; the effect was an artefact of shared training data and disappears with sample splitting.
+
+
 ## Approach
 
 Full notation, derivations and references are in [docs/methodology.md](docs/methodology.md); the model card is in [docs/model_card.md](docs/model_card.md).
@@ -187,6 +202,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 
 **Promotion effect.** Regression adjustment, Hajek IPW, cross-fitted augmented IPW (Robins et al., 1994) and double machine learning (Chernozhukov et al., 2018) estimate the ATE and the ATT under unconfoundedness given the sign-up attributes. Overlap, covariate balance, a permutation placebo test and the omitted-variable-bias bounds of Cinelli and Hazlett (2020) check the assumptions as far as data can.
 
+**Targeting.** S-, T-, X-, DR- and R-learners estimate each member's effect. Generic machine learning inference (best linear predictor, sorted group effects and a profile of the most and least affected members) tests whether the predictions are informative, and doubly robust policy values price a targeting rule against a cost per promotion and a budget.
+
 **Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
 
 **Reward cost.** For each simulation draw $b$, spend is $\hat y_i + e^{(b)}_i$ with resampled out-of-fold residuals. The tier schedule is applied to every draw and the rewards are summed, which gives the distribution of total cost and each customer's probability of changing tier.
@@ -215,7 +232,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── uncertainty/            split, Mondrian, normalized and weighted conformal, CQR, predictive distributions
 │   ├── monitoring/             PSI, drift tests, domain classifier
 │   ├── explain/                additive contributions, TreeSHAP, permutation importance
-│   ├── causal/                 propensity, balance, IPW, AIPW, DML, sensitivity, placebo
+│   ├── causal/                 propensity, balance, IPW, AIPW, DML, sensitivity, meta-learners, targeting
 │   ├── business/               reward schedule and Monte Carlo cost forecast
 │   └── reporting/              figures and the results report
 └── tests/                      unit and integration tests
@@ -246,6 +263,7 @@ loyalty-spend validate --input data/raw/test.csv      # data contract check
 loyalty-spend drift --fail-on large                   # test.csv against train.csv
 loyalty-spend intervals --scenario noisy              # interval methods side by side
 loyalty-spend effect --output-dir artifacts/effect     # promotion effect with diagnostics
+loyalty-spend uplift --learner dr --cost 0.5          # heterogeneity tests and targeting
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
 ```
 
@@ -275,12 +293,14 @@ The tests check the cleaning rules against the data dictionary, Welch's ANOVA ag
 - Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
 - Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., and Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1-C68.
 - Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
+- Chernozhukov, V., Demirer, M., Duflo, E., and Fernandez-Val, I. (2018). Generic machine learning inference on heterogeneous treatment effects in randomized experiments. *NBER Working Paper* 24678.
 - Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *NeurIPS*.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *NeurIPS*.
 - Grinsztajn, L., Oyallon, E., and Varoquaux, G. (2022). Why do tree-based models still outperform deep learning on typical tabular data? *NeurIPS Datasets and Benchmarks*.
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1).
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
+- Kennedy, E. H. (2023). Towards optimal doubly robust estimation of heterogeneous causal effects. *Electronic Journal of Statistics*, 17(2), 3008-3049.
 - Lakshminarayanan, B., Pritzel, A., and Blundell, C. (2017). Simple and scalable predictive uncertainty estimation using deep ensembles. *NeurIPS*.
 - Lundberg, S. M., et al. (2020). From local explanations to global understanding with explainable AI for trees. *Nature Machine Intelligence*, 2, 56-67.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
