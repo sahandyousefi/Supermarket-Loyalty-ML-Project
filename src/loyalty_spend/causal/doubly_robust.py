@@ -121,3 +121,24 @@ def aipw_att(
 
 def frame_of(estimates: list[EffectEstimate]) -> pd.DataFrame:
     return pd.DataFrame([e.to_dict() for e in estimates])
+
+
+def split_nuisance(
+    train: CausalData,
+    target: CausalData,
+    outcome: BaseEstimator | None = None,
+    propensity: BaseEstimator | None = None,
+    clip: float = 0.01,
+) -> Nuisance:
+    """Nuisances fitted on ``train`` and evaluated on ``target``.
+
+    Used for sample-splitting inference, where every model that touches the
+    target half is trained on the other half only.
+    """
+    outcome = outcome if outcome is not None else outcome_model(train.X)
+    propensity = propensity if propensity is not None else propensity_model(train.X)
+    t, y = train.t, train.y
+    e = clone(propensity).fit(train.X, t).predict_proba(target.X)[:, 1]
+    mu0 = clone(outcome).fit(train.X[t == 0], y[t == 0]).predict(target.X)
+    mu1 = clone(outcome).fit(train.X[t == 1], y[t == 1]).predict(target.X)
+    return Nuisance(np.clip(e, clip, 1 - clip), mu0, mu1)
