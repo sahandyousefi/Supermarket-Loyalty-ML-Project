@@ -20,6 +20,7 @@ from loyalty_spend.analysis.drivers import (
 from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
 from loyalty_spend.causal.analysis import analyse_promotion
 from loyalty_spend.causal.data import from_frame
+from loyalty_spend.causal.targeting import analyse_targeting
 from loyalty_spend.config import Config, load_config
 from loyalty_spend.data.io import load_clean, load_modeling_data
 from loyalty_spend.data.lineage import compare_extracts
@@ -303,6 +304,32 @@ def promotion_section(cfg: Config, fig_dir: Path) -> tuple[str, dict]:
     return text, summary
 
 
+def targeting_section(cfg: Config) -> tuple[str, dict]:
+    """Heterogeneity tests and targeting values on train.csv."""
+    train, _ = load_modeling_data(
+        cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
+    )
+    result = analyse_targeting(from_frame(train), "dr", seed=cfg.cv.seed)
+    blp = result.blp
+    text = "\n\n".join(
+        [
+            "## Heterogeneity of the promotion effect (train.csv, DR-learner)",
+            f"Best linear predictor: ATE {blp['ate']:.3f} (se {blp['ate_se']:.3f}), "
+            f"heterogeneity loading {blp['heterogeneity']:.3f} "
+            f"(se {blp['heterogeneity_se']:.3f}, "
+            f"p = {blp['heterogeneity_p_value']:.3g}).",
+            markdown_table(result.gates, 3),
+            markdown_table(result.policies, 3),
+        ]
+    )
+    summary = {
+        "blp": blp,
+        "gates": result.gates_test,
+        "policies": result.policies.to_dict("records"),
+    }
+    return text, summary
+
+
 def liability_section(cfg: Config, residuals: np.ndarray, fig_dir: Path) -> str:
     train, test = load_modeling_data(
         cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
@@ -342,6 +369,7 @@ def build_report(
         "conformal",
         "probabilistic",
         "promotion",
+        "targeting",
     ),
 ) -> Path:
     """Run the analysis and write ``reports/results.md`` with figures."""
@@ -368,6 +396,9 @@ def build_report(
         parts.append(conformal_section(cfg, settings, fig_dir))
     if "promotion" in sections:
         text, summary["promotion"] = promotion_section(cfg, fig_dir)
+        parts.append(text)
+    if "targeting" in sections:
+        text, summary["targeting"] = targeting_section(cfg)
         parts.append(text)
     if "probabilistic" in sections:
         text, summary["probabilistic"] = probabilistic_section(cfg, settings, fig_dir)

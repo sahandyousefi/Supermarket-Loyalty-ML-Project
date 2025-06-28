@@ -160,6 +160,12 @@ The robustness value $\mathrm{RV}_q$ is the common value of the two partial $R^2
 
 **Validation.** `causal/simulate.py` resamples covariates from `train.csv`, generates spend without the promotion from the OLS fit, and assigns the promotion with a logistic propensity that rises with expected spend. With strong confounding the naive difference overstates a true effect of 6 by more than 5, while regression adjustment, AIPW and DML recover it within their intervals; the tests check this for every estimator.
 
+**Who responds.** The conditional effect $\tau(x) = \mathbb E[Y(1)-Y(0)\mid X=x]$ is estimated with five meta-learners (Kunzel et al., 2019): the S-learner (one model with the treatment as a feature), the T-learner (one model per arm), the X-learner (imputed individual effects smoothed per arm and combined with the propensity), the DR-learner (a regression of the AIPW scores on $x$; Kennedy, 2023) and the R-learner (minimising $\sum_i(\tilde y_i - \tau(x_i)\tilde t_i)^2$ on cross-fitted residuals; Nie and Wager, 2021). Their accuracy is measured in simulation by $\mathrm{PEHE} = \{n^{-1}\sum_i(\hat\tau(x_i)-\tau(x_i))^2\}^{1/2}$.
+
+**Inference on heterogeneity.** A CATE model has no standard errors, so its predictions are treated as a proxy $S(x)$ and tested (Chernozhukov et al., 2018b). The best linear predictor $\psi_i = \beta_1 + \beta_2(S(x_i) - \bar S) + \epsilon_i$, with AIPW scores $\psi_i$, gives the ATE as $\beta_1$ and the informativeness of the proxy as $\beta_2$; sorted group average effects (GATES) compare the members with the largest and smallest predicted effects; the classification analysis (CLAN) describes who they are. Each of ten random splits trains the learner and the nuisance models on one half and evaluates on the other; estimates are medians over splits and p-values are twice the median p-value. Nested cross-fitting on the full sample is not used: it lets a unit's score and its neighbours' proxies share training data, and on `train.csv` it produced a significant but spurious heterogeneity loading that changed sign between seeds.
+
+**Targeting.** With margin $m$ and cost $c$ per promotion, the rule $\pi(x) = \mathbb 1\{m\hat\tau(x) > c\}$ is worth $V(\pi) = n^{-1}\sum_i \pi(x_i)(m\psi_i - c)$ per member relative to offering it to nobody, which is unbiased for a rule learned on other data (Athey and Wager, 2021). Under a budget, members are ranked by predicted effect and the top share with a positive predicted net gain is chosen; the value-budget curve shows where extra budget stops paying.
+
 ## 11. Data contracts and drift monitoring
 
 **Contracts.** `configs/contracts.yaml` states, column by column, the kind, the allowed range or levels, uniqueness and a budget for missing values. `loyalty-spend validate` checks a cleaned extract against a contract and lists every violation at once, so a broken extract fails before it reaches a model.
@@ -185,12 +191,14 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 ## References
 
 - Akiba, T., Sano, S., Yanase, T., Ohta, T., and Koyama, M. (2019). Optuna: A next-generation hyperparameter optimization framework. *Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 2623-2631.
+- Athey, S., and Wager, S. (2021). Policy learning with observational data. *Econometrica*, 89(1), 133-161.
 - Austin, P. C. (2009). Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. *Statistics in Medicine*, 28(25), 3083-3107.
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
 - Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
 - Cawley, G. C., and Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
 - Chen, T., and Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785-794.
 - Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., and Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1-C68.
+- Chernozhukov, V., Demirer, M., Duflo, E., and Fernandez-Val, I. (2018b). Generic machine learning inference on heterogeneous treatment effects in randomized experiments. *NBER Working Paper* 24678.
 - Chernozhukov, V., Fernandez-Val, I., and Galichon, A. (2010). Quantile and probability curves without crossing. *Econometrica*, 78(3), 1093-1125.
 - Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
 - Crump, R. K., Hotz, V. J., Imbens, G. W., and Mitnik, O. A. (2009). Dealing with limited overlap in estimation of average treatment effects. *Biometrika*, 96(1), 187-199.
@@ -203,11 +211,14 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1), 1-27.
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
 - Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., and Liu, T.-Y. (2017). LightGBM: A highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30.
+- Kennedy, E. H. (2023). Towards optimal doubly robust estimation of heterogeneous causal effects. *Electronic Journal of Statistics*, 17(2), 3008-3049.
 - Koenker, R., and Bassett, G. (1978). Regression quantiles. *Econometrica*, 46(1), 33-50.
+- Kunzel, S. R., Sekhon, J. S., Bickel, P. J., and Yu, B. (2019). Metalearners for estimating heterogeneous treatment effects using machine learning. *Proceedings of the National Academy of Sciences*, 116(10), 4156-4165.
 - Lakshminarayanan, B., Pritzel, A., and Blundell, C. (2017). Simple and scalable predictive uncertainty estimation using deep ensembles. *Advances in Neural Information Processing Systems*, 30.
 - Lei, J., G'Sell, M., Rinaldo, A., Tibshirani, R. J., and Wasserman, L. (2018). Distribution-free predictive inference for regression. *Journal of the American Statistical Association*, 113(523), 1094-1111.
 - Lindeman, R. H., Merenda, P. F., and Gold, R. Z. (1980). *Introduction to Bivariate and Multivariate Analysis*. Scott, Foresman.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
+- Nie, X., and Wager, S. (2021). Quasi-oracle estimation of heterogeneous treatment effects. *Biometrika*, 108(2), 299-319.
 - Papadopoulos, H., Gammerman, A., and Vovk, V. (2008). Normalized nonconformity measures for regression conformal prediction. *Proceedings of the IASTED International Conference on Artificial Intelligence and Applications*, 64-69.
 - Robins, J. M., Rotnitzky, A., and Zhao, L. P. (1994). Estimation of regression coefficients when some regressors are not always observed. *Journal of the American Statistical Association*, 89(427), 846-866.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *Advances in Neural Information Processing Systems*, 32.

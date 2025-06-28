@@ -497,6 +497,7 @@ REPORT_SECTIONS = (
     "conformal",
     "probabilistic",
     "promotion",
+    "targeting",
 )
 
 
