@@ -159,7 +159,7 @@ Overlap is good (propensities between 0.24 and 0.68) and weighting brings every 
 
 ### Does the promotion work for anyone?
 
-An average effect of zero could hide members who gain and members who lose. A DR-learner (Kennedy, 2023) predicts each member's effect; its predictions are tested with the best linear predictor and sorted group effects of Chernozhukov et al. (2018), over ten random splits that train on one half of `train.csv` and evaluate on the other.
+An average effect of zero could hide members who gain and members who lose. A DR-learner (Kennedy, 2023) predicts each member's effect; its predictions are tested with the best linear predictor and sorted group effects of Chernozhukov, Demirer, Duflo and Fernandez-Val (2018), over ten random splits that train on one half of `train.csv` and evaluate on the other.
 
 | Group by predicted effect | Members | Predicted | Estimated (doubly robust) | Std. error |
 | --- | --- | --- | --- | --- |
@@ -292,8 +292,8 @@ The tests check the cleaning rules against the data dictionary, Welch's ANOVA ag
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
 - Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
 - Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., and Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1-C68.
-- Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
 - Chernozhukov, V., Demirer, M., Duflo, E., and Fernandez-Val, I. (2018). Generic machine learning inference on heterogeneous treatment effects in randomized experiments. *NBER Working Paper* 24678.
+- Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
 - Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *NeurIPS*.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *NeurIPS*.

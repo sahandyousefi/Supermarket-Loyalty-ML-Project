@@ -6,6 +6,19 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-06-28
+
+### Added
+
+- Causal analysis of the sign-up promotion: estimands and identification assumptions, cross-fitted propensity scores, overlap diagnostics with the Crump et al. trimming rule, covariate balance, Hajek IPW, regression adjustment, cross-fitted AIPW for the ATE and ATT, double machine learning for the partially linear model, a permutation placebo test and Cinelli-Hazlett sensitivity analysis with covariate benchmarks.
+- Semi-synthetic promotion studies with known, optionally tenure-dependent effects and tunable confounding.
+- S-, T-, X-, DR- and R-learners for conditional effects; Qini and doubly robust gain curves; best linear predictor, sorted group effects and a profile of the most and least affected members by repeated sample splitting; targeting rules with doubly robust policy values under a cost and a budget.
+- `loyalty-spend effect` and `loyalty-spend uplift`, report sections and a forest plot for the promotion effect.
+
+### Fixed
+
+- Heterogeneity inference no longer cross-fits the CATE proxy and the scores on the same sample, which produced spurious findings.
+
 ## [1.1.0] - 2025-06-15
 
 ### Added
@@ -42,6 +55,7 @@ First complete release.
 - `loyalty-spend` command line interface, results report, model card and Dockerfile.
 - CI with ruff and pytest on Python 3.10 and 3.12.
 
-[Unreleased]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/releases/tag/v1.0.0
