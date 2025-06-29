@@ -278,6 +278,62 @@ def _uplift(args: argparse.Namespace) -> int:
     return 0
 
 
+def _segments_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument(
+        "--input", default=None, help="CSV to segment, defaults to loyalty.csv"
+    )
+    p.add_argument(
+        "--k", type=int, default=None, help="number of segments; chosen if omitted"
+    )
+    p.add_argument("--max-k", type=int, default=8)
+    p.add_argument(
+        "--n-boot", type=int, default=30, help="bootstrap resamples for stability"
+    )
+    p.add_argument("--output-dir", default=None, help="write tables to this folder")
+
+
+@command("segments", "segment members on their recorded attributes", _segments_args)
+def _segments(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean, read_raw
+    from loyalty_spend.data.schema import FEATURES, ID, TARGET
+    from loyalty_spend.segments.gower import gower_matrix
+    from loyalty_spend.segments.kmedoids import KMedoids
+    from loyalty_spend.segments.profiles import profile_segments
+    from loyalty_spend.segments.selection import choose_k, silhouette_table
+    from loyalty_spend.segments.stability import bootstrap_stability
+
+    cfg = load_config(args.config)
+    path = args.input or cfg.paths.raw(cfg.paths.loyalty_file)
+    has_spend = TARGET in read_raw(path).columns
+    frame, _ = load_clean(path, impute=False, require_target=has_spend)
+    X = frame[FEATURES].reset_index(drop=True)
+    D = gower_matrix(X)
+    table = silhouette_table(D, range(2, args.max_k + 1), seed=cfg.cv.seed)
+    k = args.k or choose_k(table, min_size=max(10, len(X) // 50))
+    model = KMedoids(k, seed=cfg.cv.seed).fit(D)
+    spend = frame.get(TARGET)
+    profiles = profile_segments(X, model.labels_, spend)
+    stability = bootstrap_stability(
+        D, model.labels_, n_boot=args.n_boot, seed=cfg.cv.seed
+    )
+    fmt = lambda v: f"{v:.3f}"  # noqa: E731
+    print(table.to_string(index=False, float_format=fmt))
+    print(f"\n{k} segments")
+    print(profiles.to_string(index=False, float_format=fmt))
+    print(stability.to_string(index=False, float_format=fmt))
+    if args.output_dir:
+        out = Path(args.output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        table.to_csv(out / "silhouette.csv", index=False)
+        profiles.to_csv(out / "profiles.csv", index=False)
+        stability.to_csv(out / "stability.csv", index=False)
+        frame[[ID]].assign(segment=model.labels_).to_csv(
+            out / "assignments.csv", index=False
+        )
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
