@@ -21,7 +21,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 6: Customer segments
 
-- [ ] 6.3 Choice of the number of segments by average silhouette width
 - [ ] 6.4 Segment stability by bootstrap Jaccard similarity
 - [ ] 6.5 Segment profiles
 - [ ] 6.6 Spend forecast and reward cost by segment
@@ -174,3 +173,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-28: 5.13b README section on targeting
 - [x] 2025-06-28: 6.1 Gower distance for mixed numeric and categorical data
 - [x] 2025-06-29: 6.2 K-medoids clustering on a precomputed distance matrix
+- [x] 2025-06-29: 6.3 Choice of the number of segments by average silhouette width
