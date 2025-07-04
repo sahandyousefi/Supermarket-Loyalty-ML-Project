@@ -98,7 +98,7 @@ def simulate_liability(
     customer_ids: ArrayLike,
     predicted_spend: ArrayLike,
     sampler: Sampler,
-    schedule: RewardSchedule,
+    schedule: RewardSchedule | MarginalSchedule,
     n_simulations: int = 5000,
     seed: int = 0,
     batch: int = 500,
@@ -139,7 +139,7 @@ def forecast_liability(
     customer_ids: ArrayLike,
     predicted_spend: ArrayLike,
     residuals: ArrayLike,
-    schedule: RewardSchedule,
+    schedule: RewardSchedule | MarginalSchedule,
     n_simulations: int = 5000,
     seed: int = 0,
     batch: int = 500,
@@ -171,3 +171,38 @@ def near_threshold(
     return pc[pc["tier_change_probability"] >= min_probability].sort_values(
         "tier_change_probability", ascending=False
     )
+
+
+@dataclass(frozen=True)
+class MarginalSchedule:
+    """Tier rates that apply only to the spend inside each band.
+
+    Like income tax brackets: with thresholds 100 and 125 and rates 2% and
+    3%, a member who spends 130 earns 2% of 25 plus 3% of 5. The reward is
+    continuous in spend, so members gain nothing by bunching just above a
+    threshold and the cost has no jumps, which a whole-spend schedule does.
+    """
+
+    tiers: tuple[tuple[float, float], ...]
+
+    def __post_init__(self) -> None:
+        RewardSchedule(self.tiers)
+
+    def tier(self, spend: ArrayLike) -> np.ndarray:
+        return RewardSchedule(self.tiers).tier(spend)
+
+    def reward(self, spend: ArrayLike) -> np.ndarray:
+        s = np.clip(np.asarray(spend, float), 0.0, None)
+        thresholds = [t for t, _ in self.tiers]
+        rates = [r for _, r in self.tiers]
+        upper = [*thresholds[1:], np.inf]
+        total = np.zeros_like(s)
+        for lo, hi, rate in zip(thresholds, upper, rates):
+            total += rate * np.clip(np.minimum(s, hi) - lo, 0.0, None)
+        return total
+
+    def rate(self, spend: ArrayLike) -> np.ndarray:
+        """Average rate, the reward as a share of spend."""
+        s = np.asarray(spend, float)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.where(s > 0, self.reward(s) / s, 0.0)

@@ -24,7 +24,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 7: Reward programme design
 
-- [ ] 7.1 Marginal tier schedules alongside whole-spend schedules
 - [ ] 7.2 Effective reward rate and cost-to-spend ratio
 - [ ] 7.3 Common random numbers for comparing schedules
 - [ ] 7.4 Sensitivity of expected cost to each threshold
@@ -175,3 +174,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-29: 6.6 Spend forecast and reward cost by segment
 - [x] 2025-06-29: 6.7a `loyalty-spend segments` command
 - [x] 2025-07-04: 6.7b Segment results in the README and methodology
+- [x] 2025-07-04: 7.1 Marginal tier schedules alongside whole-spend schedules

@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from loyalty_spend.business.rewards import (
+    MarginalSchedule,
     RewardSchedule,
     forecast_liability,
     gaussian_sampler,
@@ -76,3 +77,31 @@ def test_customer_specific_uncertainty_changes_the_cost():
     p_uneven = uneven.per_customer["tier_change_probability"].to_numpy()
     assert p_flat[0] == pytest.approx(p_flat[1], abs=0.02)
     assert p_uneven[0] < 0.01 and p_uneven[1] > 0.3
+
+
+def test_marginal_schedule_matches_a_hand_computation():
+    marginal = MarginalSchedule(SCHEDULE.tiers)
+    # 130: 2% of (125 - 100) + 3% of (130 - 125).
+    assert marginal.reward(130.0) == pytest.approx(0.02 * 25 + 0.03 * 5)
+    assert marginal.reward(90.0) == 0.0
+    assert marginal.reward(150.0) == pytest.approx(0.5 + 0.03 * 15 + 0.05 * 10)
+    assert marginal.rate(130.0) == pytest.approx(marginal.reward(130.0) / 130)
+    np.testing.assert_array_equal(marginal.tier([90, 130]), SCHEDULE.tier([90, 130]))
+
+
+def test_marginal_reward_is_continuous_where_whole_spend_jumps():
+    marginal = MarginalSchedule(SCHEDULE.tiers)
+    eps = 1e-6
+    for threshold in (100.0, 125.0, 140.0):
+        jump_whole = SCHEDULE.reward(threshold) - SCHEDULE.reward(threshold - eps)
+        jump_marginal = marginal.reward(threshold) - marginal.reward(threshold - eps)
+        assert jump_whole > 1.0
+        assert abs(jump_marginal) < 1e-6
+
+
+def test_marginal_schedule_works_in_the_simulation():
+    marginal = MarginalSchedule(SCHEDULE.tiers)
+    fc = forecast_liability(
+        [1, 2], [126.0, 141.0], np.linspace(-5, 5, 50), marginal, 500, 0
+    )
+    assert fc.summary()["expected_total"] > 0
