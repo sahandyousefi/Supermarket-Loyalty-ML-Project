@@ -36,15 +36,15 @@ def qini_curve(
     tau_hat: ArrayLike, t: ArrayLike, y: ArrayLike, n_points: int = 100, seed: int = 0
 ) -> pd.DataFrame:
     """Qini curve of a ranking on randomised data."""
-    tau_hat, t, y = np.asarray(tau_hat, float), np.asarray(t, int), np.asarray(y, float)
-    order = _order(tau_hat, seed)
-    t, y = t[order], y[order]
-    n_t, n_c = np.cumsum(t), np.cumsum(1 - t)
-    y_t, y_c = np.cumsum(y * t), np.cumsum(y * (1 - t))
+    order = _order(np.asarray(tau_hat, float), seed)
+    treated = np.asarray(t, int)[order]
+    outcome = np.asarray(y, float)[order]
+    n_t, n_c = np.cumsum(treated), np.cumsum(1 - treated)
+    y_t, y_c = np.cumsum(outcome * treated), np.cumsum(outcome * (1 - treated))
     with np.errstate(divide="ignore", invalid="ignore"):
         q = np.where(n_c > 0, y_t - y_c * n_t / n_c, 0.0)
-    idx = np.unique(np.linspace(0, len(y) - 1, n_points).round().astype(int))
-    frac = (idx + 1) / len(y)
+    idx = np.unique(np.linspace(0, len(outcome) - 1, n_points).round().astype(int))
+    frac = (idx + 1) / len(outcome)
     return pd.DataFrame({"fraction": frac, "gain": q[idx], "random": frac * q[-1]})
 
 

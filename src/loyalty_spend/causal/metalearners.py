@@ -208,10 +208,11 @@ class RLearner:
             t_res[te] = t[te] - m
         # Units with almost no treatment residual carry no information about
         # the effect but would get huge pseudo-outcomes.
-        t_res = np.where(np.abs(t_res) < 1e-3, np.sign(t_res) * 1e-3 + 1e-12, t_res)
+        small = np.abs(t_res) < 1e-3
+        t_safe = np.where(small, np.sign(t_res) * 1e-3 + 1e-12, t_res)
         learner = self.learner or base_learner(X, self.seed)
         self.model_ = clone(learner).fit(
-            X, y_res / t_res, model__sample_weight=t_res**2
+            X, y_res / t_safe, model__sample_weight=t_safe**2
         )
         return self
 
