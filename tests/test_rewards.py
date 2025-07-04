@@ -105,3 +105,16 @@ def test_marginal_schedule_works_in_the_simulation():
         [1, 2], [126.0, 141.0], np.linspace(-5, 5, 50), marginal, 500, 0
     )
     assert fc.summary()["expected_total"] > 0
+
+
+def test_cost_to_spend_ratio_and_tier_shares():
+    fc = forecast_liability(
+        range(3), [90.0, 130.0, 150.0], np.zeros(5), SCHEDULE, 50, 0
+    )
+    expected_cost = 0.0 + 0.03 * 130 + 0.05 * 150
+    assert fc.cost_to_spend() == pytest.approx(expected_cost / 370.0)
+    lo, hi = fc.ratio_interval()
+    assert lo == pytest.approx(hi)
+    # Shares: below the first threshold, then tiers from 0 upwards. The
+    # first threshold is 0, so nobody is below it.
+    np.testing.assert_allclose(fc.tier_shares, [0.0, 1 / 3, 0.0, 1 / 3, 1 / 3])

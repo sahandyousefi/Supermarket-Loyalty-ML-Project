@@ -56,6 +56,22 @@ class RewardSchedule:
 class LiabilityForecast:
     per_customer: pd.DataFrame
     total_draws: np.ndarray
+    spend_draws: np.ndarray | None = None
+    tier_shares: np.ndarray | None = None
+
+    def cost_to_spend(self) -> float:
+        """Expected reward cost as a share of expected total spend."""
+        if self.spend_draws is None:
+            raise ValueError("the forecast was made without spend totals")
+        return float(self.total_draws.mean() / self.spend_draws.mean())
+
+    def ratio_interval(self, level: float = 0.9) -> tuple[float, float]:
+        """Central interval of the cost-to-spend ratio over the draws."""
+        if self.spend_draws is None:
+            raise ValueError("the forecast was made without spend totals")
+        ratio = self.total_draws / self.spend_draws
+        lo, hi = np.quantile(ratio, [(1 - level) / 2, (1 + level) / 2])
+        return float(lo), float(hi)
 
     def summary(self, levels: Sequence[float] = (0.05, 0.5, 0.95)) -> dict[str, float]:
         q = np.quantile(self.total_draws, levels)
@@ -113,16 +129,23 @@ def simulate_liability(
     pred = np.asarray(predicted_spend, float)
     n = len(pred)
     totals = np.empty(n_simulations)
+    spend_totals = np.empty(n_simulations)
     reward_sum = np.zeros(n)
     upgrade = np.zeros(n)
+    n_tiers = len(schedule.tiers)
+    tier_counts = np.zeros(n_tiers + 1)
     base_tier = schedule.tier(pred)
     for start in range(0, n_simulations, batch):
         m = min(batch, n_simulations - start)
         spend = np.clip(sampler(rng, m), 0.0, None)
         rewards = schedule.reward(spend)
+        tiers = schedule.tier(spend)
         totals[start : start + m] = rewards.sum(axis=1)
+        spend_totals[start : start + m] = spend.sum(axis=1)
         reward_sum += rewards.sum(axis=0)
-        upgrade += (schedule.tier(spend) != base_tier[None, :]).sum(axis=0)
+        upgrade += (tiers != base_tier[None, :]).sum(axis=0)
+        # Index 0 counts spend below the first threshold (tier -1).
+        tier_counts += np.bincount((tiers + 1).ravel(), minlength=n_tiers + 1)
     per_customer = pd.DataFrame(
         {
             "customer_id": np.asarray(customer_ids),
@@ -132,7 +155,8 @@ def simulate_liability(
             "tier_change_probability": upgrade / n_simulations,
         }
     )
-    return LiabilityForecast(per_customer, totals)
+    shares = tier_counts / tier_counts.sum()
+    return LiabilityForecast(per_customer, totals, spend_totals, shares)
 
 
 def forecast_liability(
