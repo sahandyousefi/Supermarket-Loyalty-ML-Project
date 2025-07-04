@@ -76,3 +76,49 @@ def independent_difference_se(a: ArrayLike, b: ArrayLike) -> float:
     """Standard error of a difference of means from independent draws."""
     a, b = np.asarray(a, float), np.asarray(b, float)
     return float(np.sqrt(a.var(ddof=1) / len(a) + b.var(ddof=1) / len(b)))
+
+
+def _with_tier(
+    schedule: Schedule, index: int, threshold: float, rate: float
+) -> Schedule:
+    tiers = list(schedule.tiers)
+    tiers[index] = (threshold, rate)
+    return type(schedule)(tuple(tiers))
+
+
+def cost_sensitivity(
+    sampler: Sampler,
+    schedule: Schedule,
+    delta: float = 1.0,
+    rate_delta: float = 0.001,
+    n_simulations: int = 5000,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """Change in expected total cost per unit change of each threshold and rate.
+
+    Central differences on common random numbers; thresholds move by
+    ``delta`` and rates by ``rate_delta`` in each direction. A threshold
+    whose neighbourhood holds many members has a large (negative) slope:
+    raising it moves those members down a tier.
+    """
+    rows = []
+    for i, (threshold, rate) in enumerate(schedule.tiers):
+        variants: dict[str, Schedule] = {}
+        if i > 0:
+            variants["t+"] = _with_tier(schedule, i, threshold + delta, rate)
+            variants["t-"] = _with_tier(schedule, i, threshold - delta, rate)
+        variants["r+"] = _with_tier(
+            schedule, i, threshold, min(rate + rate_delta, 0.999)
+        )
+        variants["r-"] = _with_tier(schedule, i, threshold, max(rate - rate_delta, 0.0))
+        draws = schedule_cost_draws(sampler, variants, n_simulations, seed)
+        row: dict[str, float] = {"tier": i, "threshold": threshold, "rate": rate}
+        if i > 0:
+            d = (draws["t+"] - draws["t-"]) / (2 * delta)
+            row["d_cost_d_threshold"] = float(d.mean())
+            row["d_cost_d_threshold_se"] = float(d.std(ddof=1) / np.sqrt(len(d)))
+        step = variants["r+"].tiers[i][1] - variants["r-"].tiers[i][1]
+        d = (draws["r+"] - draws["r-"]) / step
+        row["d_cost_d_rate"] = float(d.mean())
+        rows.append(row)
+    return pd.DataFrame(rows)

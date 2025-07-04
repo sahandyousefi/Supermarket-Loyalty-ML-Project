@@ -3,6 +3,7 @@ import pytest
 
 from loyalty_spend.business.design import (
     compare_schedules,
+    cost_sensitivity,
     independent_difference_se,
     schedule_cost_draws,
 )
@@ -43,3 +44,22 @@ def test_marginal_schedule_costs_less_with_the_same_rates(sampler):
 def test_unknown_reference(sampler):
     with pytest.raises(KeyError):
         compare_schedules(sampler, {"a": RewardSchedule(TIERS)}, "b", n_simulations=10)
+
+
+def test_rate_sensitivity_is_the_spend_in_the_tier():
+    # Deterministic spend: d cost / d rate of a whole-spend tier is the total
+    # spend of the members in that tier.
+    spend = np.array([90.0, 130.0, 150.0, 160.0])
+    table = cost_sensitivity(
+        gaussian_sampler(spend, 1e-9), RewardSchedule(TIERS), n_simulations=20
+    )
+    by_tier = table.set_index("tier")
+    assert by_tier.loc[2, "d_cost_d_rate"] == pytest.approx(130.0, rel=1e-6)
+    assert by_tier.loc[3, "d_cost_d_rate"] == pytest.approx(310.0, rel=1e-6)
+
+
+def test_raising_a_crowded_threshold_lowers_cost(sampler):
+    table = cost_sensitivity(sampler, RewardSchedule(TIERS), n_simulations=1000)
+    by_tier = table.set_index("tier")
+    assert (by_tier.loc[[1, 2, 3], "d_cost_d_threshold"] < 0).all()
+    assert np.isnan(by_tier.loc[0, "d_cost_d_threshold"])

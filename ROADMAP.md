@@ -24,7 +24,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 7: Reward programme design
 
-- [ ] 7.4 Sensitivity of expected cost to each threshold
 - [ ] 7.5 Threshold search under a cost budget
 - [ ] 7.6 Behavioural response scenario with bunching below thresholds
 - [ ] 7.7 Monte Carlo standard errors and quasi-Monte Carlo draws
@@ -175,3 +174,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-04: 7.1 Marginal tier schedules alongside whole-spend schedules
 - [x] 2025-07-04: 7.2 Effective reward rate and cost-to-spend ratio
 - [x] 2025-07-04: 7.3 Common random numbers for comparing schedules
+- [x] 2025-07-04: 7.4 Sensitivity of expected cost to each threshold
