@@ -172,6 +172,19 @@ An average effect of zero could hide members who gain and members who lose. A DR
 The heterogeneity loading is -0.058 (se 0.164, p = 1.0): the predicted differences between members do not show up in held-out data, and targeting the half with the largest predicted effect is worth -0.014 per member [-0.052, 0.024]. On simulated data where the effect does vary with tenure, the same procedure detects it (p < 0.0001) and the targeted rule beats offering the promotion to everyone. An earlier version that cross-fitted the proxy and the scores on the full sample reported significant heterogeneity here; the effect was an artefact of shared training data and disappears with sample splitting.
 
 
+### Customer segments
+
+Members of `loyalty.csv` are clustered with k-medoids on Gower distances over all recorded attributes, and every segment is checked by bootstrap.
+
+| Segments | Average silhouette | Smallest segment |
+| --- | --- | --- |
+| 2 | 0.188 | 617 |
+| 4 | 0.148 | 270 |
+| 6 | 0.214 | 154 |
+| 8 | 0.323 | 137 |
+
+The best partition (8 segments) is essentially the grid of region by promotion uptake, every segment has a mean bootstrap Jaccard similarity between 0.47 and 0.72, below the 0.75 that marks a stable cluster, and mean spend differs by at most 6 between segments. The recorded attributes do not contain natural customer groups, so the segment tables in `loyalty-spend segments` are descriptive only; useful marketing segments would need behavioural data.
+
 ## Approach
 
 Full notation, derivations and references are in [docs/methodology.md](docs/methodology.md); the model card is in [docs/model_card.md](docs/model_card.md).
@@ -204,6 +217,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 
 **Targeting.** S-, T-, X-, DR- and R-learners estimate each member's effect. Generic machine learning inference (best linear predictor, sorted group effects and a profile of the most and least affected members) tests whether the predictions are informative, and doubly robust policy values price a targeting rule against a cost per promotion and a budget.
 
+**Segments.** Gower distance for mixed attributes, k-medoids with restarts, the number of segments by average silhouette width, and bootstrap Jaccard stability (Hennig, 2007) to tell real segments from artefacts of one sample.
+
 **Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
 
 **Reward cost.** For each simulation draw $b$, spend is $\hat y_i + e^{(b)}_i$ with resampled out-of-fold residuals. The tier schedule is applied to every draw and the rewards are summed, which gives the distribution of total cost and each customer's probability of changing tier.
@@ -233,6 +248,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── monitoring/             PSI, drift tests, domain classifier
 │   ├── explain/                additive contributions, TreeSHAP, permutation importance
 │   ├── causal/                 propensity, balance, IPW, AIPW, DML, sensitivity, meta-learners, targeting
+│   ├── segments/               Gower distance, k-medoids, silhouette, stability, profiles
 │   ├── business/               reward schedule and Monte Carlo cost forecast
 │   └── reporting/              figures and the results report
 └── tests/                      unit and integration tests
@@ -264,6 +280,7 @@ loyalty-spend drift --fail-on large                   # test.csv against train.c
 loyalty-spend intervals --scenario noisy              # interval methods side by side
 loyalty-spend effect --output-dir artifacts/effect     # promotion effect with diagnostics
 loyalty-spend uplift --learner dr --cost 0.5          # heterogeneity tests and targeting
+loyalty-spend segments --output-dir artifacts/segments
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
 ```
 
@@ -298,6 +315,7 @@ The tests check the cleaning rules against the data dictionary, Welch's ANOVA ag
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *NeurIPS*.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *NeurIPS*.
 - Grinsztajn, L., Oyallon, E., and Varoquaux, G. (2022). Why do tree-based models still outperform deep learning on typical tabular data? *NeurIPS Datasets and Benchmarks*.
+- Hennig, C. (2007). Cluster-wise assessment of cluster stability. *Computational Statistics and Data Analysis*, 52(1), 258-271.
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1).
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
 - Kennedy, E. H. (2023). Towards optimal doubly robust estimation of heterogeneous causal effects. *Electronic Journal of Statistics*, 17(2), 3008-3049.

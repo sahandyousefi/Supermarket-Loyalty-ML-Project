@@ -21,7 +21,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 6: Customer segments
 
-- [ ] 6.7b Segment results in the README and methodology
 
 ## Phase 7: Reward programme design
 
@@ -175,3 +174,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-06-29: 6.5 Segment profiles
 - [x] 2025-06-29: 6.6 Spend forecast and reward cost by segment
 - [x] 2025-06-29: 6.7a `loyalty-spend segments` command
+- [x] 2025-07-04: 6.7b Segment results in the README and methodology

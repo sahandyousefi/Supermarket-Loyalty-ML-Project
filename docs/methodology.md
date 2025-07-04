@@ -96,7 +96,7 @@ Conformal prediction gives intervals with finite-sample marginal coverage $\Pr(y
 
 **Normalized scores.** With the score $s_i = |y_i - \hat y(x_i)| / (\hat\sigma(x_i) + \beta)$ the half-width becomes $\hat q\,(\hat\sigma(x) + \beta)$ and widens where errors are large (Papadopoulos et al., 2008). The difficulty model $\hat\sigma$ is gradient boosting with the absolute loss, fitted to out-of-fold absolute residuals of the proper training set; in-sample residuals of a flexible model would understate the difficulty. Marginal coverage holds for any $\hat\sigma$; a good one makes coverage more even across customers.
 
-**Covariate shift.** If the customers to be scored differ in their features but not in how spend depends on the features, exchangeability fails. Weighted conformal prediction (Tibshirani et al., 2019) restores coverage by giving calibration point $i$ the weight $w(X_i) = dP_{\text{new}}/dP_{\text{train}}(X_i)$ and using the $1-\alpha$ quantile of $\sum_i p_i(x)\delta_{s_i} + p_{m+1}(x)\delta_{\infty}$ with $p_i(x) = w(X_i) / (\sum_j w(X_j) + w(x))$. The likelihood ratio is estimated from the domain classifier of Section 11 as $\frac{\hat p(x)}{1-\hat p(x)}\cdot\frac{m}{n_{\text{new}}}$, clipped to $[1/20, 20]$ because a few extreme weights would otherwise make the intervals infinite. Estimation error in the weights makes the intervals slightly conservative in the tests.
+**Covariate shift.** If the customers to be scored differ in their features but not in how spend depends on the features, exchangeability fails. Weighted conformal prediction (Tibshirani et al., 2019) restores coverage by giving calibration point $i$ the weight $w(X_i) = dP_{\text{new}}/dP_{\text{train}}(X_i)$ and using the $1-\alpha$ quantile of $\sum_i p_i(x)\delta_{s_i} + p_{m+1}(x)\delta_{\infty}$ with $p_i(x) = w(X_i) / (\sum_j w(X_j) + w(x))$. The likelihood ratio is estimated from the domain classifier of Section 12 as $\frac{\hat p(x)}{1-\hat p(x)}\cdot\frac{m}{n_{\text{new}}}$, clipped to $[1/20, 20]$ because a few extreme weights would otherwise make the intervals infinite. Estimation error in the weights makes the intervals slightly conservative in the tests.
 
 ## 8. Probabilistic forecasts
 
@@ -166,7 +166,17 @@ The robustness value $\mathrm{RV}_q$ is the common value of the two partial $R^2
 
 **Targeting.** With margin $m$ and cost $c$ per promotion, the rule $\pi(x) = \mathbb 1\{m\hat\tau(x) > c\}$ is worth $V(\pi) = n^{-1}\sum_i \pi(x_i)(m\psi_i - c)$ per member relative to offering it to nobody, which is unbiased for a rule learned on other data (Athey and Wager, 2021). Under a budget, members are ranked by predicted effect and the top share with a positive predicted net gain is chosen; the value-budget curve shows where extra budget stops paying.
 
-## 11. Data contracts and drift monitoring
+## 11. Customer segments
+
+**Distance.** Member attributes are mixed: two amounts, an ordinal tenure band and three nominal attributes. The Gower (1971) distance averages per-attribute dissimilarities in $[0,1]$: the absolute difference divided by the range for amounts, the rank difference divided by the number of levels minus one for tenure (Podani, 1999), and a mismatch indicator for nominal attributes. A missing value removes that attribute from the average for the pairs it is part of.
+
+**Clustering.** K-medoids on the distance matrix, with the alternating algorithm of Park and Jun (2009) and ten restarts from $k$-means++ style seeds; medoids are real members, which makes each segment easy to describe. The number of segments maximises the average silhouette width (Rousseeuw, 1987) among segmentations whose smallest segment holds at least 2% of members.
+
+**Stability.** Each of 30 bootstrap resamples is clustered again, and every original segment is matched with its most similar resampled segment by the Jaccard index on the members in the resample. A mean Jaccard above 0.75 indicates a stable segment and below 0.5 one that dissolves (Hennig, 2007).
+
+**Result on `loyalty.csv`.** Silhouette widths stay between 0.14 and 0.32 for 2 to 8 segments, well below the 0.5 usually read as reasonable structure. The best partition splits the members by region and promotion uptake, and no segment reaches a bootstrap Jaccard of 0.75. The recorded attributes do not contain natural customer groups; segments for marketing would have to come from behavioural data that the extract does not hold.
+
+## 12. Data contracts and drift monitoring
 
 **Contracts.** `configs/contracts.yaml` states, column by column, the kind, the allowed range or levels, uniqueness and a budget for missing values. `loyalty-spend validate` checks a cleaned extract against a contract and lists every violation at once, so a broken extract fails before it reaches a model.
 
@@ -180,7 +190,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 
 **Prediction and performance drift.** The PSI and KS test are applied to model outputs, and, once spend is observed for a new cohort, to the target. The change in RMSE is reported as a ratio with a bootstrap percentile interval.
 
-## 12. Assumptions and limitations
+## 13. Assumptions and limitations
 
 - The data are a small synthetic sample from a certification exercise. Results on `train.csv` describe that sample; the simulation study exists because those data cannot discriminate between methods.
 - All validation is cross-sectional. There is no time dimension, so drift between programme years is not tested.
@@ -207,9 +217,11 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Gneiting, T., Raftery, A. E., Westveld, A. H., and Goldman, T. (2005). Calibrated probabilistic forecasting using ensemble model output statistics and minimum CRPS estimation. *Monthly Weather Review*, 133(5), 1098-1118.
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *Advances in Neural Information Processing Systems*, 34.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *Advances in Neural Information Processing Systems*, 35.
+- Gower, J. C. (1971). A general coefficient of similarity and some of its properties. *Biometrics*, 27(4), 857-871.
 - Grinsztajn, L., Oyallon, E., and Varoquaux, G. (2022). Why do tree-based models still outperform deep learning on typical tabular data? *Advances in Neural Information Processing Systems*, 35, Datasets and Benchmarks Track.
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1), 1-27.
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
+- Hennig, C. (2007). Cluster-wise assessment of cluster stability. *Computational Statistics and Data Analysis*, 52(1), 258-271.
 - Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., and Liu, T.-Y. (2017). LightGBM: A highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30.
 - Kennedy, E. H. (2023). Towards optimal doubly robust estimation of heterogeneous causal effects. *Electronic Journal of Statistics*, 17(2), 3008-3049.
 - Koenker, R., and Bassett, G. (1978). Regression quantiles. *Econometrica*, 46(1), 33-50.
@@ -220,8 +232,11 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
 - Nie, X., and Wager, S. (2021). Quasi-oracle estimation of heterogeneous treatment effects. *Biometrika*, 108(2), 299-319.
 - Papadopoulos, H., Gammerman, A., and Vovk, V. (2008). Normalized nonconformity measures for regression conformal prediction. *Proceedings of the IASTED International Conference on Artificial Intelligence and Applications*, 64-69.
+- Park, H.-S., and Jun, C.-H. (2009). A simple and fast algorithm for K-medoids clustering. *Expert Systems with Applications*, 36(2), 3336-3341.
+- Podani, J. (1999). Extending Gower's general coefficient of similarity to ordinal characters. *Taxon*, 48(2), 331-340.
 - Robins, J. M., Rotnitzky, A., and Zhao, L. P. (1994). Estimation of regression coefficients when some regressors are not always observed. *Journal of the American Statistical Association*, 89(427), 846-866.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *Advances in Neural Information Processing Systems*, 32.
+- Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics*, 20, 53-65.
 - Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *Advances in Neural Information Processing Systems*, 32.
 - Vovk, V., Gammerman, A., and Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer.
 - Vovk, V., Shen, J., Manokhin, V., and Xie, M. (2019). Nonparametric predictive distributions based on conformal prediction. *Machine Learning*, 108(3), 445-474.
