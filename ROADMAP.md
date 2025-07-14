@@ -24,7 +24,7 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 7: Reward programme design
 
-- [ ] 7.7 Monte Carlo standard errors and quasi-Monte Carlo draws
+- [ ] 7.7b Quasi-Monte Carlo draws for Gaussian predictive distributions
 - [ ] 7.8 Value at risk and expected shortfall of total reward cost
 - [ ] 7.9 Reward cost by segment and region
 - [ ] 7.10 `loyalty-spend design` command
@@ -175,3 +175,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-04: 7.4 Sensitivity of expected cost to each threshold
 - [x] 2025-07-14: 7.5 Threshold search under a cost budget
 - [x] 2025-07-14: 7.6 Behavioural response scenario with bunching below thresholds
+- [x] 2025-07-14: 7.7a Monte Carlo standard errors of the cost summaries

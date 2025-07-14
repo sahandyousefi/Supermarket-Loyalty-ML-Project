@@ -118,3 +118,20 @@ def test_cost_to_spend_ratio_and_tier_shares():
     # Shares: below the first threshold, then tiers from 0 upwards. The
     # first threshold is 0, so nobody is below it.
     np.testing.assert_allclose(fc.tier_shares, [0.0, 1 / 3, 0.0, 1 / 3, 1 / 3])
+
+
+def test_monte_carlo_errors_shrink_with_more_draws():
+    rng = np.random.default_rng(3)
+    pred = rng.uniform(95, 150, size=100)
+    resid = rng.normal(scale=6, size=400)
+    small = forecast_liability(
+        range(100), pred, resid, SCHEDULE, 400, 0
+    ).standard_errors()
+    large = forecast_liability(
+        range(100), pred, resid, SCHEDULE, 6400, 0
+    ).standard_errors()
+    for key in ("expected_total", "p05", "p50", "p95"):
+        assert large[key] < small[key]
+    assert large["expected_total"] == pytest.approx(
+        small["expected_total"] / 4, rel=0.3
+    )

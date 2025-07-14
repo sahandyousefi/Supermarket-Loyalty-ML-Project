@@ -59,6 +59,27 @@ class LiabilityForecast:
     spend_draws: np.ndarray | None = None
     tier_shares: np.ndarray | None = None
 
+    def standard_errors(
+        self, levels: Sequence[float] = (0.05, 0.5, 0.95), n_batches: int = 20
+    ) -> dict[str, float]:
+        """Monte Carlo standard errors of the summary statistics.
+
+        The mean uses the sample standard deviation over draws. Quantiles use
+        batch means: the draws are cut into ``n_batches`` consecutive
+        batches, the quantile is computed in each, and the spread of the
+        batch quantiles divided by the square root of the number of batches
+        estimates the error of the full-sample quantile.
+        """
+        draws = self.total_draws
+        out = {"expected_total": float(draws.std(ddof=1) / np.sqrt(len(draws)))}
+        batches = np.array_split(draws, n_batches)
+        for lv in levels:
+            per_batch = np.array([np.quantile(b, lv) for b in batches])
+            out[f"p{int(round(100 * lv)):02d}"] = float(
+                per_batch.std(ddof=1) / np.sqrt(n_batches)
+            )
+        return out
+
     def cost_to_spend(self) -> float:
         """Expected reward cost as a share of expected total spend."""
         if self.spend_draws is None:
