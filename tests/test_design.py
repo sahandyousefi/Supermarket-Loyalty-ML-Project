@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 
 from loyalty_spend.business.design import (
+    apply_bunching,
+    behavioural_cost,
     compare_schedules,
     cost_sensitivity,
     independent_difference_se,
@@ -81,3 +83,21 @@ def test_threshold_search_respects_the_budget(sampler):
     for name in table["thresholds"]:
         values = [float(v) for v in name.split(",")]
         assert values == sorted(set(values))
+
+
+def test_bunching_moves_spend_up_to_notches_only():
+    rng = np.random.default_rng(0)
+    spend = np.array([[96.0, 99.0, 120.0, 138.0, 150.0]])
+    whole = apply_bunching(
+        spend, RewardSchedule(TIERS), rng, window=5.0, probability=1.0
+    )
+    np.testing.assert_allclose(whole, [[100.0, 100.0, 125.0, 140.0, 150.0]])
+    marginal = apply_bunching(spend, MarginalSchedule(TIERS), rng, probability=1.0)
+    np.testing.assert_allclose(marginal, spend)
+
+
+def test_behavioural_response_raises_cost_under_whole_spend_tiers(sampler):
+    whole = behavioural_cost(sampler, RewardSchedule(TIERS), n_simulations=500)
+    marginal = behavioural_cost(sampler, MarginalSchedule(TIERS), n_simulations=500)
+    assert whole["cost_increase"] > 0 and whole["extra_spend"] > 0
+    assert marginal["cost_increase"] == 0.0

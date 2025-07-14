@@ -175,3 +175,53 @@ def search_thresholds(
     return table.sort_values(
         ["feasible", "reach", "expected_cost"], ascending=[False, False, True]
     ).reset_index(drop=True)
+
+
+def apply_bunching(
+    spend: np.ndarray,
+    schedule: Schedule,
+    rng: np.random.Generator,
+    window: float = 5.0,
+    probability: float = 0.5,
+) -> np.ndarray:
+    """Move some spend just below a threshold up to the threshold.
+
+    A whole-spend schedule pays a jump in reward at each threshold, so a
+    member a few units short has a reason to spend the difference; this is
+    the bunching seen below kinks and notches in tax schedules (Kleven, 2016).
+    Members within ``window`` below a threshold where the reward jumps move
+    up to it with ``probability``. Thresholds where the reward is continuous,
+    as in marginal schedules, give no such reason and are left alone.
+    """
+    out = spend.copy()
+    for threshold, _ in schedule.tiers[1:]:
+        jump = float(schedule.reward(threshold) - schedule.reward(threshold - 1e-9))
+        if jump <= 1e-9:
+            continue
+        near = (out >= threshold - window) & (out < threshold)
+        move = near & (rng.uniform(size=out.shape) < probability)
+        out = np.where(move, threshold, out)
+    return out
+
+
+def behavioural_cost(
+    sampler: Sampler,
+    schedule: Schedule,
+    window: float = 5.0,
+    probability: float = 0.5,
+    n_simulations: int = 2000,
+    seed: int = 0,
+) -> dict[str, float]:
+    """Expected cost without and with bunching, on the same spend draws."""
+    rng = np.random.default_rng(seed)
+    spend = np.clip(sampler(rng, n_simulations), 0.0, None)
+    static = schedule.reward(spend).sum(axis=1)
+    moved = apply_bunching(spend, schedule, rng, window, probability)
+    response = schedule.reward(moved).sum(axis=1)
+    extra_spend = (moved - spend).sum(axis=1)
+    return {
+        "expected_cost_static": float(static.mean()),
+        "expected_cost_with_response": float(response.mean()),
+        "cost_increase": float((response - static).mean()),
+        "extra_spend": float(extra_spend.mean()),
+    }
