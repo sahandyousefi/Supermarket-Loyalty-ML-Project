@@ -6,6 +6,7 @@ from loyalty_spend.business.design import (
     cost_sensitivity,
     independent_difference_se,
     schedule_cost_draws,
+    search_thresholds,
 )
 from loyalty_spend.business.rewards import (
     MarginalSchedule,
@@ -63,3 +64,20 @@ def test_raising_a_crowded_threshold_lowers_cost(sampler):
     by_tier = table.set_index("tier")
     assert (by_tier.loc[[1, 2, 3], "d_cost_d_threshold"] < 0).all()
     assert np.isnan(by_tier.loc[0, "d_cost_d_threshold"])
+
+
+def test_threshold_search_respects_the_budget(sampler):
+    current = RewardSchedule(TIERS)
+    base_cost = compare_schedules(sampler, {"c": current}, "c", n_simulations=1000)
+    budget = float(base_cost["p95"].iloc[0]) * 0.9
+    table = search_thresholds(
+        sampler, current, budget, offsets=(-5.0, 0.0, 5.0), n_simulations=1000
+    )
+    best = table.iloc[0]
+    assert best["feasible"]
+    assert best["cost_quantile"] <= budget
+    assert table["feasible"].any() and not table["feasible"].all()
+    # Thresholds stay strictly increasing in every candidate.
+    for name in table["thresholds"]:
+        values = [float(v) for v in name.split(",")]
+        assert values == sorted(set(values))

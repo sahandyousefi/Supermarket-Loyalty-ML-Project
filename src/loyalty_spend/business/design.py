@@ -122,3 +122,56 @@ def cost_sensitivity(
         row["d_cost_d_rate"] = float(d.mean())
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def search_thresholds(
+    sampler: Sampler,
+    schedule: Schedule,
+    budget: float,
+    offsets: ArrayLike = (-10.0, -5.0, 0.0, 5.0, 10.0),
+    quantile: float = 0.95,
+    n_simulations: int = 2000,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """Grid search over threshold shifts under a cost budget.
+
+    Every combination of ``offsets`` added to the thresholds above the
+    first is costed on the same draws. A schedule is feasible when the
+    ``quantile`` of its total cost stays within ``budget``; among feasible
+    schedules the one that rewards the most members (expected share of
+    members above the first paid threshold) comes first. Thresholds must
+    stay strictly increasing, so some combinations are skipped.
+    """
+    import itertools
+
+    offsets = np.asarray(offsets, float)
+    base = list(schedule.tiers)
+    paid = next((i for i, (_, r) in enumerate(base) if r > 0), 1)
+    candidates: dict[str, Schedule] = {}
+    for shift in itertools.product(offsets, repeat=len(base) - 1):
+        tiers = [base[0]] + [(t + d, r) for (t, r), d in zip(base[1:], shift)]
+        thresholds = [t for t, _ in tiers]
+        if thresholds != sorted(thresholds) or len(set(thresholds)) < len(thresholds):
+            continue
+        candidates[",".join(f"{t:g}" for t in thresholds[1:])] = type(schedule)(
+            tuple(tiers)
+        )
+    rng = np.random.default_rng(seed)
+    spend = np.clip(sampler(rng, n_simulations), 0.0, None)
+    rows = []
+    for name, cand in candidates.items():
+        cost = cand.reward(spend).sum(axis=1)
+        reach = (cand.tier(spend) >= paid).mean()
+        rows.append(
+            {
+                "thresholds": name,
+                "expected_cost": float(cost.mean()),
+                "cost_quantile": float(np.quantile(cost, quantile)),
+                "reach": float(reach),
+                "feasible": bool(np.quantile(cost, quantile) <= budget),
+            }
+        )
+    table = pd.DataFrame(rows)
+    return table.sort_values(
+        ["feasible", "reach", "expected_cost"], ascending=[False, False, True]
+    ).reset_index(drop=True)
