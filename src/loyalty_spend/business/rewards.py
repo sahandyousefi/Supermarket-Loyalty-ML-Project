@@ -80,6 +80,28 @@ class LiabilityForecast:
             )
         return out
 
+    def tail_risk(self, level: float = 0.95) -> dict[str, float]:
+        """Value at risk and expected shortfall of total reward cost.
+
+        ``var`` is the ``level`` quantile of the cost, the budget that is
+        exceeded with probability ``1 - level``; ``expected_shortfall`` is
+        the mean cost in the draws at or above it, the average overrun when
+        that budget is exceeded (Acerbi and Tasche, 2002).
+        """
+        if not 0.0 < level < 1.0:
+            raise ValueError("level must be in (0, 1)")
+        draws = self.total_draws
+        var = float(np.quantile(draws, level))
+        es = float(draws[draws >= var].mean())
+        mean = float(draws.mean())
+        return {
+            "level": level,
+            "var": var,
+            "expected_shortfall": es,
+            "var_over_expected": var - mean,
+            "shortfall_over_expected": es - mean,
+        }
+
     def cost_to_spend(self) -> float:
         """Expected reward cost as a share of expected total spend."""
         if self.spend_draws is None:

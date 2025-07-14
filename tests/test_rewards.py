@@ -1,7 +1,9 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from loyalty_spend.business.rewards import (
+    LiabilityForecast,
     MarginalSchedule,
     RewardSchedule,
     forecast_liability,
@@ -171,3 +173,19 @@ def test_quasi_monte_carlo_estimates_vary_less_than_monte_carlo():
             )
     assert np.std(qmc) < np.std(mc)
     assert np.mean(qmc) == pytest.approx(np.mean(mc), rel=0.01)
+
+
+def test_tail_risk_matches_the_normal_formulas():
+    from scipy import stats
+
+    draws = stats.norm.ppf((np.arange(200000) + 0.5) / 200000, loc=1000, scale=20)
+    fc = LiabilityForecast(pd.DataFrame(), draws)
+    risk = fc.tail_risk(0.95)
+    z = stats.norm.ppf(0.95)
+    assert risk["var"] == pytest.approx(1000 + 20 * z, rel=1e-4)
+    assert risk["expected_shortfall"] == pytest.approx(
+        1000 + 20 * stats.norm.pdf(z) / 0.05, rel=1e-3
+    )
+    assert risk["expected_shortfall"] > risk["var"]
+    with pytest.raises(ValueError):
+        fc.tail_risk(1.0)
