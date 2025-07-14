@@ -131,6 +131,29 @@ def gaussian_sampler(mean: ArrayLike, sigma: ArrayLike) -> Sampler:
     return draw
 
 
+def gaussian_qmc_sampler(mean: ArrayLike, sigma: ArrayLike, seed: int = 0) -> Sampler:
+    """Normal draws from a scrambled Sobol sequence.
+
+    Quasi-Monte Carlo points fill the unit cube more evenly than independent
+    uniforms, so means of smooth functions converge faster than the
+    ``1 / sqrt(B)`` of plain Monte Carlo (Owen, 2003). Reward schedules have
+    jumps, which limits the gain, but the total over many customers is
+    smooth enough for a clear improvement. The sampler ignores the generator
+    passed by the simulation and keeps its own sequence.
+    """
+    from scipy.stats import norm, qmc
+
+    mu = np.asarray(mean, float)
+    sd = np.broadcast_to(np.asarray(sigma, float), mu.shape)
+    engine = qmc.Sobol(d=len(mu), scramble=True, seed=seed)
+
+    def draw(rng: np.random.Generator, m: int) -> np.ndarray:
+        u = np.clip(engine.random(m), 1e-12, 1 - 1e-12)
+        return mu[None, :] + sd[None, :] * norm.ppf(u)
+
+    return draw
+
+
 def simulate_liability(
     customer_ids: ArrayLike,
     predicted_spend: ArrayLike,

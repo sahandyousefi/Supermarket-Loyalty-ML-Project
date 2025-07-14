@@ -5,6 +5,7 @@ from loyalty_spend.business.rewards import (
     MarginalSchedule,
     RewardSchedule,
     forecast_liability,
+    gaussian_qmc_sampler,
     gaussian_sampler,
     near_threshold,
     residual_sampler,
@@ -135,3 +136,38 @@ def test_monte_carlo_errors_shrink_with_more_draws():
     assert large["expected_total"] == pytest.approx(
         small["expected_total"] / 4, rel=0.3
     )
+
+
+def test_quasi_monte_carlo_estimates_vary_less_than_monte_carlo():
+    import warnings
+
+    rng = np.random.default_rng(4)
+    mean = rng.uniform(95, 150, size=50)
+    mc, qmc = [], []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # Sobol warns when m is not a power of two
+        for rep in range(12):
+            mc.append(
+                simulate_liability(
+                    range(50),
+                    mean,
+                    gaussian_sampler(mean, 8.0),
+                    SCHEDULE,
+                    256,
+                    rep,
+                    batch=256,
+                ).total_draws.mean()
+            )
+            qmc.append(
+                simulate_liability(
+                    range(50),
+                    mean,
+                    gaussian_qmc_sampler(mean, 8.0, seed=rep),
+                    SCHEDULE,
+                    256,
+                    0,
+                    batch=256,
+                ).total_draws.mean()
+            )
+    assert np.std(qmc) < np.std(mc)
+    assert np.mean(qmc) == pytest.approx(np.mean(mc), rel=0.01)
