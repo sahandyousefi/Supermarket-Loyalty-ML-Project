@@ -172,6 +172,22 @@ An average effect of zero could hide members who gain and members who lose. A DR
 The heterogeneity loading is -0.058 (se 0.164, p = 1.0): the predicted differences between members do not show up in held-out data, and targeting the half with the largest predicted effect is worth -0.014 per member [-0.052, 0.024]. On simulated data where the effect does vary with tenure, the same procedure detects it (p < 0.0001) and the targeted rule beats offering the promotion to everyone. An earlier version that cross-fitted the proxy and the scores on the full sample reported significant heterogeneity here; the effect was an artefact of shared training data and disappears with sample splitting.
 
 
+### Reward programme design
+
+`loyalty-spend design` costs the schedule for the 250 customers in `test.csv` on 5,000 draws from the heteroscedastic Gaussian model, then looks for alternatives.
+
+| Question | Answer |
+| --- | --- |
+| Expected cost of the current schedule | 1,218.42, which is 3.79% of expected spend |
+| 95% value at risk / expected shortfall | 1,223.47 / 1,224.36 |
+| Cost change per unit increase of the 140 threshold | -22.59 (s.e. 0.03) |
+| Cost change per unit increase of the 125 threshold | -0.97 |
+| Same rates applied marginally (tax-bracket style) | 218.59 |
+| Cost if members within 5 of a threshold close half of the gap | +59.97 (+4.9%), with 49.53 of extra spend |
+| Cheapest schedule with the same reach and no more risk | thresholds 100, 135, 150: 917.54 (-24.7%) |
+
+Almost all of the cost sensitivity sits at the top threshold, where many customers are predicted to land. Moving it from 140 to 150 leaves the share of members who earn a reward unchanged (80.8%), because no customer is predicted between 94 and 110, and cuts the expected cost by a quarter. The behavioural scenario is a stress test, not an estimate: the data cannot tell how members respond to a threshold, but it bounds what a whole-spend schedule could cost if they do, and a marginal schedule has no such exposure.
+
 ### Customer segments
 
 Members of `loyalty.csv` are clustered with k-medoids on Gower distances over all recorded attributes, and every segment is checked by bootstrap.
@@ -216,6 +232,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 **Promotion effect.** Regression adjustment, Hajek IPW, cross-fitted augmented IPW (Robins et al., 1994) and double machine learning (Chernozhukov et al., 2018) estimate the ATE and the ATT under unconfoundedness given the sign-up attributes. Overlap, covariate balance, a permutation placebo test and the omitted-variable-bias bounds of Cinelli and Hazlett (2020) check the assumptions as far as data can.
 
 **Targeting.** S-, T-, X-, DR- and R-learners estimate each member's effect. Generic machine learning inference (best linear predictor, sorted group effects and a profile of the most and least affected members) tests whether the predictions are informative, and doubly robust policy values price a targeting rule against a cost per promotion and a budget.
+
+**Programme design.** Whole-spend and marginal schedules are compared on common random numbers; cost sensitivities to every threshold and rate, value at risk and expected shortfall, a bunching stress scenario and a threshold search under a budget on the 95th percentile of cost turn the cost forecast into a design tool.
 
 **Segments.** Gower distance for mixed attributes, k-medoids with restarts, the number of segments by average silhouette width, and bootstrap Jaccard stability (Hennig, 2007) to tell real segments from artefacts of one sample.
 
@@ -281,6 +299,7 @@ loyalty-spend intervals --scenario noisy              # interval methods side by
 loyalty-spend effect --output-dir artifacts/effect     # promotion effect with diagnostics
 loyalty-spend uplift --learner dr --cost 0.5          # heterogeneity tests and targeting
 loyalty-spend segments --output-dir artifacts/segments
+loyalty-spend design --output-dir artifacts/design     # schedule comparison, risk, threshold search
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
 ```
 
