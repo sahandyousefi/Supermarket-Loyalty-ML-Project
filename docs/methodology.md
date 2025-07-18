@@ -135,6 +135,22 @@ $$y_i^{(b)} = \hat y(x_i) + e^{(b)}_i, \qquad R^{(b)} = \sum_i r\big(y_i^{(b)}\b
 
 where $e^{(b)}_i$ are resampled out-of-fold residuals of the model. The distribution of $R^{(b)}$ gives the expected total and its 5th and 95th percentiles; the share of draws in which a customer's tier differs from the tier of the point forecast identifies the customers that drive cost uncertainty. Residual resampling assumes that errors do not depend on $x$. Under heteroscedastic noise, draws come from a model of the conditional distribution instead: `loyalty-spend rewards --uncertainty heteroscedastic` uses the heteroscedastic Gaussian model of Section 8, and any other predictive sampler can be passed to the simulation.
 
+### 9.1 Designing the schedule
+
+Costing the current schedule is one question; choosing a schedule is another.
+
+**Schedule types.** Under a *whole-spend* schedule the rate of the highest tier reached applies to all of a member's spend, so the reward jumps at every threshold. Under a *marginal* schedule each rate applies only to the spend inside its band, like income tax brackets, and the reward is continuous. With the same rates a marginal schedule is far cheaper; the comparison of interest is between schedules tuned to the same budget.
+
+**Common random numbers.** All schedules are costed on the same draws of spend. The Monte Carlo variance of a difference is $\mathrm{Var}(A) + \mathrm{Var}(B) - 2\,\mathrm{Cov}(A, B)$, and the covariance is large because every schedule pays more when spend is high, so differences between similar schedules are resolved with a fraction of the draws that independent simulations would need.
+
+**Sensitivities.** The derivative of expected cost with respect to each threshold $t_k$ and rate $\rho_k$ is estimated by central differences on common random numbers. For a whole-spend schedule, $\partial\,\mathbb E[R]/\partial \rho_k$ is the expected spend of members in tier $k$, and $\partial\,\mathbb E[R]/\partial t_k$ is approximately $-f_S(t_k)\,(\rho_k - \rho_{k-1})\,t_k$ summed over members, large where many members are expected near the threshold.
+
+**Search under a budget.** Threshold shifts on a grid are costed on shared draws. A schedule is feasible if the 95th percentile of total cost stays within the budget; feasible schedules are ranked by reach, the expected share of members above the first paid threshold, and then by expected cost.
+
+**Behavioural response.** A whole-spend schedule gives a member just below a threshold a reason to spend the difference: the reward jumps by $\Delta\rho\, t_k$ for an extra spend of at most the gap. In a stress scenario, members within 5 units below a threshold with a jump move up to it with probability 0.5, which is the bunching documented below notches in tax schedules (Kleven, 2016). Marginal schedules have no jumps and are left unchanged.
+
+**Risk.** The 95% value at risk of total cost is the budget exceeded with probability 5%; the expected shortfall is the mean cost when it is exceeded (Acerbi and Tasche, 2002). Monte Carlo standard errors are reported for the mean (sample standard deviation over draws) and for quantiles (batch means). For Gaussian predictive distributions, scrambled Sobol points replace independent draws and lower the variance of the estimated mean (Owen, 2003).
+
 ## 10. Effect of the sign-up promotion
 
 Members who joined through the promotion could spend more or less than other members for two reasons: the promotion changed their behaviour, or different people took it up. Only the first is an effect of the promotion.
@@ -201,6 +217,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 ## References
 
 - Akiba, T., Sano, S., Yanase, T., Ohta, T., and Koyama, M. (2019). Optuna: A next-generation hyperparameter optimization framework. *Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 2623-2631.
+- Acerbi, C., and Tasche, D. (2002). On the coherence of expected shortfall. *Journal of Banking and Finance*, 26(7), 1487-1503.
 - Athey, S., and Wager, S. (2021). Policy learning with observational data. *Econometrica*, 89(1), 133-161.
 - Austin, P. C. (2009). Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. *Statistics in Medicine*, 28(25), 3083-3107.
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
@@ -224,6 +241,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Hennig, C. (2007). Cluster-wise assessment of cluster stability. *Computational Statistics and Data Analysis*, 52(1), 258-271.
 - Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., and Liu, T.-Y. (2017). LightGBM: A highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30.
 - Kennedy, E. H. (2023). Towards optimal doubly robust estimation of heterogeneous causal effects. *Electronic Journal of Statistics*, 17(2), 3008-3049.
+- Kleven, H. J. (2016). Bunching. *Annual Review of Economics*, 8, 435-464.
 - Koenker, R., and Bassett, G. (1978). Regression quantiles. *Econometrica*, 46(1), 33-50.
 - Kunzel, S. R., Sekhon, J. S., Bickel, P. J., and Yu, B. (2019). Metalearners for estimating heterogeneous treatment effects using machine learning. *Proceedings of the National Academy of Sciences*, 116(10), 4156-4165.
 - Lakshminarayanan, B., Pritzel, A., and Blundell, C. (2017). Simple and scalable predictive uncertainty estimation using deep ensembles. *Advances in Neural Information Processing Systems*, 30.
@@ -231,6 +249,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Lindeman, R. H., Merenda, P. F., and Gold, R. Z. (1980). *Introduction to Bivariate and Multivariate Analysis*. Scott, Foresman.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
 - Nie, X., and Wager, S. (2021). Quasi-oracle estimation of heterogeneous treatment effects. *Biometrika*, 108(2), 299-319.
+- Owen, A. B. (2003). Quasi-Monte Carlo sampling. In *Monte Carlo Ray Tracing: SIGGRAPH 2003 Course 44*, 69-88.
 - Papadopoulos, H., Gammerman, A., and Vovk, V. (2008). Normalized nonconformity measures for regression conformal prediction. *Proceedings of the IASTED International Conference on Artificial Intelligence and Applications*, 64-69.
 - Park, H.-S., and Jun, C.-H. (2009). A simple and fast algorithm for K-medoids clustering. *Expert Systems with Applications*, 36(2), 3336-3341.
 - Podani, J. (1999). Extending Gower's general coefficient of similarity to ordinal characters. *Taxon*, 48(2), 331-340.
