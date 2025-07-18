@@ -34,3 +34,15 @@ def sim_df(train_df):
 @pytest.fixture(scope="session")
 def xy(sim_df):
     return sim_df[FEATURES], sim_df["spend"]
+
+
+@pytest.fixture
+def cfg_small(raw_dir, tmp_path):
+    """Configuration with the supplied data and small simulation sizes."""
+    path = tmp_path / "small.yaml"
+    path.write_text(
+        f"paths:\n  raw_dir: {raw_dir}\n  output_dir: {tmp_path / 'art'}\n"
+        "cv:\n  n_splits: 3\n  n_repeats: 1\n"
+        "rewards:\n  n_simulations: 300\n"
+    )
+    return path

@@ -334,6 +334,59 @@ def _segments(args: argparse.Namespace) -> int:
     return 0
 
 
+def _design_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument(
+        "--input", default=None, help="customers to cost, defaults to test.csv"
+    )
+    p.add_argument(
+        "--budget", type=float, default=None, help="cap on the 95th percentile"
+    )
+    p.add_argument("--offsets", type=float, nargs="+", default=[-10, -5, 0, 5, 10])
+    p.add_argument("--output-dir", default=None, help="write tables to this folder")
+
+
+@command("design", "compare reward schedules and search thresholds", _design_args)
+def _design(args: argparse.Namespace) -> int:
+    from loyalty_spend.business.programme import design_programme
+    from loyalty_spend.data.io import load_clean
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    path = args.input or cfg.paths.raw(cfg.paths.test_file)
+    customers, _ = load_clean(path, impute=False, require_target=False)
+    result = design_programme(
+        train,
+        customers,
+        cfg.rewards.tiers,
+        budget=args.budget,
+        offsets=tuple(args.offsets),
+        n_simulations=cfg.rewards.n_simulations,
+        seed=cfg.rewards.seed,
+    )
+    fmt = lambda v: f"{v:.3f}"  # noqa: E731
+    print(result.schedules.to_string(index=False, float_format=fmt))
+    risk = result.tail_risk
+    print(
+        f"95% value at risk {risk['var']:.2f}, expected shortfall "
+        f"{risk['expected_shortfall']:.2f}; cost is {result.cost_to_spend:.2%} of spend"
+    )
+    print(result.sensitivity.to_string(index=False, float_format=fmt))
+    print(f"best schedules within a budget of {result.budget:.2f}:")
+    print(result.search.head(5).to_string(index=False, float_format=fmt))
+    if args.output_dir:
+        out = Path(args.output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        result.schedules.to_csv(out / "schedules.csv", index=False)
+        result.sensitivity.to_csv(out / "sensitivity.csv", index=False)
+        result.behaviour.to_csv(out / "behaviour.csv", index=False)
+        result.search.to_csv(out / "threshold_search.csv", index=False)
+        (out / "risk.json").write_text(
+            json.dumps({**risk, "cost_to_spend": result.cost_to_spend}, indent=2)
+        )
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
