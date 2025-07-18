@@ -19,3 +19,16 @@ def test_targeting_section(raw_dir, tmp_path):
     assert "## Heterogeneity of the promotion effect" in path.read_text()
     summary = json.loads((tmp_path / "summary.json").read_text())
     assert {"blp", "gates", "policies"} <= set(summary["targeting"])
+
+
+def test_design_section(raw_dir, tmp_path):
+    from loyalty_spend.config import RewardConfig
+
+    cfg = Config(
+        paths=PathsConfig(raw_dir=str(raw_dir), report_dir=str(tmp_path)),
+        rewards=RewardConfig(n_simulations=200),
+    )
+    path = build_report(cfg, sections=("design",))
+    assert "## Reward programme design" in path.read_text()
+    summary = json.loads((tmp_path / "summary.json").read_text())
+    assert summary["design"]["tail_risk"]["level"] == 0.95

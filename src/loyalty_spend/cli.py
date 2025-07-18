@@ -607,6 +607,7 @@ REPORT_SECTIONS = (
     "probabilistic",
     "promotion",
     "targeting",
+    "design",
 )
 
 

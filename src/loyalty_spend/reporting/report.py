@@ -17,6 +17,7 @@ from loyalty_spend.analysis.drivers import (
     tukey_table,
     welch_anova,
 )
+from loyalty_spend.business.programme import design_programme
 from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
 from loyalty_spend.causal.analysis import analyse_promotion
 from loyalty_spend.causal.data import from_frame
@@ -330,6 +331,41 @@ def targeting_section(cfg: Config) -> tuple[str, dict]:
     return text, summary
 
 
+def design_section(cfg: Config) -> tuple[str, dict]:
+    """Schedule comparison, sensitivities, risk and threshold search for test.csv."""
+    train, test = load_modeling_data(
+        cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
+    )
+    result = design_programme(
+        train,
+        test,
+        cfg.rewards.tiers,
+        n_simulations=cfg.rewards.n_simulations,
+        seed=cfg.rewards.seed,
+    )
+    risk = result.tail_risk
+    text = "\n\n".join(
+        [
+            f"## Reward programme design ({len(test)} customers in test.csv)",
+            markdown_table(result.schedules, 3),
+            f"95% value at risk {risk['var']:.2f}, expected shortfall "
+            f"{risk['expected_shortfall']:.2f}; expected cost is "
+            f"{result.cost_to_spend:.2%} of expected spend.",
+            markdown_table(result.sensitivity, 3),
+            markdown_table(result.behaviour, 3),
+            f"Best schedules with a 95th percentile cost within {result.budget:.2f}:",
+            markdown_table(result.search.head(10), 3),
+        ]
+    )
+    summary = {
+        "schedules": result.schedules.to_dict("records"),
+        "tail_risk": risk,
+        "cost_to_spend": result.cost_to_spend,
+        "best": result.search.head(10).to_dict("records"),
+    }
+    return text, summary
+
+
 def liability_section(cfg: Config, residuals: np.ndarray, fig_dir: Path) -> str:
     train, test = load_modeling_data(
         cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
@@ -370,6 +406,7 @@ def build_report(
         "probabilistic",
         "promotion",
         "targeting",
+        "design",
     ),
 ) -> Path:
     """Run the analysis and write ``reports/results.md`` with figures."""
@@ -399,6 +436,9 @@ def build_report(
         parts.append(text)
     if "targeting" in sections:
         text, summary["targeting"] = targeting_section(cfg)
+        parts.append(text)
+    if "design" in sections:
+        text, summary["design"] = design_section(cfg)
         parts.append(text)
     if "probabilistic" in sections:
         text, summary["probabilistic"] = probabilistic_section(cfg, settings, fig_dir)

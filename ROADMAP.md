@@ -24,7 +24,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 7: Reward programme design
 
-- [ ] 7.11b Report section on programme design
 - [ ] 7.11c README section on programme design
 
 ## Phase 8: Model operations
@@ -179,3 +178,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-18: 7.10a Programme design analysis in one call
 - [x] 2025-07-18: 7.10b `loyalty-spend design` command
 - [x] 2025-07-18: 7.11a Methodology section on programme design
+- [x] 2025-07-18: 7.11b Report section on programme design
