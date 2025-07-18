@@ -24,7 +24,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 7: Reward programme design
 
-- [ ] 7.9 Reward cost by segment and region
 - [ ] 7.10 `loyalty-spend design` command
 - [ ] 7.11 Report and methodology sections on programme design
 
@@ -176,3 +175,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-14: 7.7a Monte Carlo standard errors of the cost summaries
 - [x] 2025-07-14: 7.7b Quasi-Monte Carlo draws for Gaussian predictive distributions
 - [x] 2025-07-14: 7.8 Value at risk and expected shortfall of total reward cost
+- [x] 2025-07-18: 7.9 Reward cost by segment and region
