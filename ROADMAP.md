@@ -27,7 +27,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 8: Model operations
 
-- [ ] 8.4 Reproducibility manifest with package versions and data fingerprints
 - [ ] 8.5 Batch scoring with intervals and contract checks
 - [ ] 8.6 Optional MLflow tracking
 - [ ] 8.7 FastAPI service with health and version endpoints
@@ -180,3 +179,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-19: 8.2 Stage promotion and rollback
 - [x] 2025-07-19: 8.3a Paired champion-challenger test on a holdout
 - [x] 2025-07-19: 8.3b Promote a challenger through the registry only when it wins
+- [x] 2025-07-19: 8.4 Reproducibility manifest with package versions and data fingerprints
