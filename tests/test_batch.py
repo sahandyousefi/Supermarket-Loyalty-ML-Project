@@ -14,7 +14,8 @@ def bundle_and_test(raw_dir):
     train, _ = load_modeling_data(raw_dir / "train.csv", raw_dir / "test.csv")
     X, y = split_xy(train)
     model = build_model("ols").fit(X.iloc[:700], y.iloc[:700])
-    resid = y.iloc[700:].to_numpy() - model.predict(X.iloc[700:])
+    # Rows 700 to 849 calibrate the intervals; rows 850 on stay untouched.
+    resid = y.iloc[700:850].to_numpy() - model.predict(X.iloc[700:850])
     test, _ = load_clean(raw_dir / "test.csv", impute=False, require_target=False)
     return ModelBundle("ols", model, resid), test, train
 

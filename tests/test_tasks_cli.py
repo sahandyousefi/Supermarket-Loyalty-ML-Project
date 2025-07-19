@@ -122,3 +122,17 @@ def test_rewards_with_heteroscedastic_uncertainty(cfg, raw_dir, tmp_path, capsys
     assert len(table) == 250
     assert table["tier_change_probability"].between(0, 1).all()
     assert "expected_total" in capsys.readouterr().out
+
+
+def test_predict_with_intervals_and_validation(cfg, raw_dir, tmp_path):
+    model = tmp_path / "m.joblib"
+    assert (
+        main(["train", "--config", str(cfg), "--model", "ols", "--output", str(model)])
+        == 0
+    )
+    out = tmp_path / "pred.csv"
+    args = ["predict", str(raw_dir / "test.csv"), str(out), "--model", str(model)]
+    assert main([*args, "--alpha", "0.1", "--validate"]) == 0
+    scores = pd.read_csv(out)
+    assert list(scores.columns) == ["customer_id", "spend", "lower", "upper"]
+    assert (scores["lower"] <= scores["upper"]).all()

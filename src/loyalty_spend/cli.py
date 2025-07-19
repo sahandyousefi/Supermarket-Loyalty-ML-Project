@@ -478,6 +478,17 @@ def _predict_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("input", help="CSV of customers to score")
     p.add_argument("output")
     p.add_argument("--model", default="artifacts/model.joblib")
+    p.add_argument(
+        "--alpha",
+        type=float,
+        default=None,
+        help="add 1 - alpha prediction intervals from the model's residuals",
+    )
+    p.add_argument(
+        "--validate",
+        action="store_true",
+        help="check the batch against the scoring contract and stop on errors",
+    )
 
 
 @command("predict", "score customers with a saved model", _predict_args)
@@ -490,8 +501,18 @@ def _predict(args: argparse.Namespace) -> int:
 
     bundle = load_bundle(args.model)
     frame, _ = load_clean(args.input, impute=False, require_target=False)
-    pred = bundle.predict(frame)
-    out = pd.DataFrame({ID: frame[ID], TARGET: pred.round(2)})
+    if args.alpha is not None or args.validate:
+        from loyalty_spend.data.contracts import load_contracts
+        from loyalty_spend.ops.batch import score_batch
+
+        contract = load_contracts()["scoring"] if args.validate else None
+        result = score_batch(bundle, frame, args.alpha or 0.1, contract)
+        out = result.scores.rename(columns={"prediction": TARGET}).round(2)
+        if args.alpha is None:
+            out = out[[ID, TARGET]]
+    else:
+        pred = bundle.predict(frame)
+        out = pd.DataFrame({ID: frame[ID], TARGET: pred.round(2)})
     out.to_csv(args.output, index=False)
     print(f"scored {len(out)} customers with '{bundle.name}', wrote {args.output}")
     return 0
