@@ -132,3 +132,49 @@ class ModelRegistry:
 
     def summary(self) -> list[dict[str, Any]]:
         return [{**asdict(r), "tag": r.tag} for r in self.records()]
+
+
+def promote_if_better(
+    registry: ModelRegistry,
+    challenger_version: int,
+    X: Any,
+    y: Any,
+    margin: float = 0.0,
+    seed: int = 0,
+) -> tuple[bool, dict[str, float]]:
+    """Promote ``challenger_version`` to production only if it beats the champion.
+
+    Without a production model the challenger is promoted directly. The
+    comparison and the decision are written into the challenger's record.
+    """
+    from loyalty_spend.ops.champion import challenge
+
+    champion = registry.current("production")
+    record = registry.get(challenger_version)
+    if champion is None:
+        registry.promote(challenger_version)
+        return True, {}
+    result = challenge(
+        registry.load(champion.version),
+        registry.load(challenger_version),
+        X,
+        y,
+        margin,
+        seed,
+    )
+    summary = {
+        "champion_version": float(champion.version),
+        "champion_rmse": result.champion_rmse,
+        "challenger_rmse": result.challenger_rmse,
+        "ci_lower": result.ci_lower,
+        "ci_upper": result.ci_upper,
+        "p_value": result.p_value,
+    }
+    record = registry.get(challenger_version)
+    record.metrics.update({f"challenge_{k}": v for k, v in summary.items()})
+    registry._write(record)
+    if result.challenger_wins:
+        registry.promote(challenger_version)
+        return True, summary
+    registry.promote(challenger_version, "archived")
+    return False, summary
