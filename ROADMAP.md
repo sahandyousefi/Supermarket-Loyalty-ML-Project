@@ -27,7 +27,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 8: Model operations
 
-- [ ] 8.6 Optional MLflow tracking
 - [ ] 8.7 FastAPI service with health and version endpoints
 - [ ] 8.8 Prediction endpoint with intervals
 - [ ] 8.9 Reward cost endpoint
@@ -181,3 +180,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-19: 8.4 Reproducibility manifest with package versions and data fingerprints
 - [x] 2025-07-19: 8.5a Batch scoring with intervals and contract checks
 - [x] 2025-07-19: 8.5b Interval and contract options for the predict command
+- [x] 2025-07-19: 8.6 Optional MLflow tracking

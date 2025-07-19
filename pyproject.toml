@@ -34,6 +34,7 @@ gbm = ["xgboost>=2.0", "lightgbm>=4.0"]
 deep = ["torch>=2.1"]
 tune = ["optuna>=3.4"]
 explain = ["shap>=0.44"]
+tracking = ["mlflow>=2.10"]
 all = ["loyalty-spend[gbm,deep,tune,explain]"]
 
 [project.scripts]
