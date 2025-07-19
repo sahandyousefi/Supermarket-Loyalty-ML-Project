@@ -35,3 +35,30 @@ def test_versions_increase_and_round_trip(bundle, xy, tmp_path):
 def test_missing_version(tmp_path):
     with pytest.raises(KeyError):
         ModelRegistry(tmp_path).load(3)
+
+
+def test_promotion_keeps_one_production_version(bundle, tmp_path):
+    registry = ModelRegistry(tmp_path / "reg")
+    for _ in range(3):
+        registry.register(bundle)
+    registry.promote(1)
+    registry.promote(2)
+    assert registry.current().version == 2
+    assert registry.get(1).stage == "archived"
+    registry.promote(3, "staging")
+    assert registry.current("staging").version == 3
+    with pytest.raises(ValueError):
+        registry.promote(3, "live")
+
+
+def test_rollback_restores_the_previous_production(bundle, tmp_path):
+    registry = ModelRegistry(tmp_path / "reg")
+    registry.register(bundle)
+    registry.register(bundle)
+    with pytest.raises(RuntimeError):
+        registry.rollback()
+    registry.promote(1)
+    registry.promote(2)
+    restored = registry.rollback()
+    assert restored.version == 1 and registry.current().version == 1
+    assert registry.get(2).stage == "archived"

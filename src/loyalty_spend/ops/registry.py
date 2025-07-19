@@ -90,5 +90,45 @@ class ModelRegistry:
         self.get(version)
         return load_bundle(self._dir(version) / "model.joblib")
 
+    def promote(self, version: int, stage: str = "production") -> ModelRecord:
+        """Move ``version`` to ``stage``.
+
+        Only one version can be in production; the version it replaces is
+        archived, with a note of when, so that it can be restored.
+        """
+        if stage not in STAGES:
+            raise ValueError(f"stage must be one of {STAGES}")
+        record = self.get(version)
+        if stage == "production":
+            for other in self.records():
+                if other.stage == "production" and other.version != version:
+                    other.stage = "archived"
+                    other.notes = (other.notes + f" replaced by v{version:04d}").strip()
+                    self._write(other)
+        record.stage = stage
+        self._write(record)
+        return record
+
+    def current(self, stage: str = "production") -> ModelRecord | None:
+        matches = [r for r in self.records() if r.stage == stage]
+        return matches[-1] if matches else None
+
+    def rollback(self) -> ModelRecord:
+        """Restore the most recently archived version to production."""
+        current = self.current("production")
+        archived = [r for r in self.records() if r.stage == "archived"]
+        if current is not None:
+            archived = [r for r in archived if r.version != current.version]
+        if not archived:
+            raise RuntimeError("no archived version to roll back to")
+        target = max(archived, key=lambda r: r.version)
+        self.promote(target.version, "production")
+        if current is not None:
+            current = self.get(current.version)
+            current.stage = "archived"
+            current.notes = (current.notes + " rolled back").strip()
+            self._write(current)
+        return self.get(target.version)
+
     def summary(self) -> list[dict[str, Any]]:
         return [{**asdict(r), "tag": r.tag} for r in self.records()]
