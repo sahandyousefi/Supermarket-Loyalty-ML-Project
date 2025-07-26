@@ -35,7 +35,8 @@ deep = ["torch>=2.1"]
 tune = ["optuna>=3.4"]
 explain = ["shap>=0.44"]
 tracking = ["mlflow>=2.10"]
-all = ["loyalty-spend[gbm,deep,tune,explain]"]
+serve = ["fastapi>=0.110", "uvicorn>=0.27", "httpx>=0.27"]
+all = ["loyalty-spend[gbm,deep,tune,explain,serve]"]
 
 [project.scripts]
 loyalty-spend = "loyalty_spend.cli:main"
