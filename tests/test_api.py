@@ -87,3 +87,32 @@ def test_reward_endpoint(client):
     assert sum(c["expected_reward"] for c in out["customers"]) == pytest.approx(
         out["expected_total"], abs=0.05
     )
+
+
+def test_invalid_requests_are_rejected(client):
+    bad_level = {"customers": [{**CUSTOMER, "region": "Mars"}]}
+    assert client.post("/predict", json=bad_level).status_code == 422
+    negative = {"customers": [{**CUSTOMER, "first_month": -3}]}
+    assert client.post("/predict", json=negative).status_code == 422
+    assert client.post("/predict", json={"customers": []}).status_code == 422
+    twice = {"customers": [CUSTOMER, CUSTOMER]}
+    response = client.post("/predict", json=twice)
+    assert response.status_code == 422 and "duplicated" in response.json()["detail"]
+    assert (
+        client.post(
+            "/predict", json={"customers": [CUSTOMER], "alpha": 1.5}
+        ).status_code
+        == 422
+    )
+
+
+def test_batch_limit(tmp_path_factory, client, monkeypatch):
+    from loyalty_spend.models.persistence import save_bundle
+
+    path = save_bundle(
+        client.app.state.bundle, tmp_path_factory.mktemp("lim") / "m.joblib"
+    )
+    monkeypatch.setenv("LOYALTY_MAX_BATCH", "2")
+    small = TestClient(create_app(path))
+    customers = [{**CUSTOMER, "customer_id": i} for i in range(3)]
+    assert small.post("/predict", json={"customers": customers}).status_code == 413

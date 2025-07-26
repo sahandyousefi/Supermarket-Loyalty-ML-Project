@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from loyalty_spend import __version__
 from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
@@ -30,6 +30,7 @@ from loyalty_spend.serving.schemas import (
 )
 
 DEFAULT_MODEL = "artifacts/model.joblib"
+MAX_BATCH = 10_000
 
 
 def create_app(
@@ -39,6 +40,7 @@ def create_app(
     bundle: ModelBundle = load_bundle(path)
     app = FastAPI(title="Loyalty spend scoring", version=__version__)
     app.state.bundle = bundle
+    max_batch = int(os.environ.get("LOYALTY_MAX_BATCH", MAX_BATCH))
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -56,6 +58,7 @@ def create_app(
 
     @app.post("/predict", response_model=PredictResponse)
     def predict(request: PredictRequest) -> PredictResponse:
+        check_batch(request.customers, max_batch)
         frame = customers_frame(request.customers)
         scores = score_batch(bundle, frame, alpha=request.alpha).scores
         return PredictResponse(
@@ -76,6 +79,7 @@ def create_app(
 
     @app.post("/rewards", response_model=RewardResponse)
     def rewards(request: RewardRequest) -> RewardResponse:
+        check_batch(request.customers, max_batch)
         frame = customers_frame(request.customers)
         fc = forecast_liability(
             frame[ID],
@@ -103,6 +107,22 @@ def create_app(
         )
 
     return app
+
+
+def check_batch(customers: list[Customer], max_batch: int) -> None:
+    """Reject oversized batches and duplicated customer ids before scoring."""
+    if len(customers) > max_batch:
+        raise HTTPException(
+            status_code=413,
+            detail=f"batch of {len(customers)} exceeds the limit of {max_batch}",
+        )
+    ids = [c.customer_id for c in customers]
+    duplicated = sorted({i for i in ids if ids.count(i) > 1})
+    if duplicated:
+        raise HTTPException(
+            status_code=422,
+            detail=f"duplicated customer_id values: {duplicated[:10]}",
+        )
 
 
 def customers_frame(customers: list[Customer]) -> pd.DataFrame:
