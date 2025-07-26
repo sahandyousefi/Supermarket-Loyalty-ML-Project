@@ -13,20 +13,28 @@ import pandas as pd
 from fastapi import FastAPI
 
 from loyalty_spend import __version__
+from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
+from loyalty_spend.config import load_config
 from loyalty_spend.data.cleaning import clean_loyalty
+from loyalty_spend.data.schema import ID
 from loyalty_spend.models.persistence import ModelBundle, load_bundle
 from loyalty_spend.ops.batch import score_batch
 from loyalty_spend.serving.schemas import (
     Customer,
+    CustomerReward,
     Prediction,
     PredictRequest,
     PredictResponse,
+    RewardRequest,
+    RewardResponse,
 )
 
 DEFAULT_MODEL = "artifacts/model.joblib"
 
 
-def create_app(model_path: str | Path | None = None) -> FastAPI:
+def create_app(
+    model_path: str | Path | None = None, config_path: str | Path | None = None
+) -> FastAPI:
     path = Path(model_path or os.environ.get("LOYALTY_MODEL", DEFAULT_MODEL))
     bundle: ModelBundle = load_bundle(path)
     app = FastAPI(title="Loyalty spend scoring", version=__version__)
@@ -61,6 +69,36 @@ def create_app(model_path: str | Path | None = None) -> FastAPI:
                     upper=round(float(r.upper), 2),
                 )
                 for r in scores.itertuples()
+            ],
+        )
+
+    schedule = RewardSchedule(load_config(config_path).rewards.tiers)
+
+    @app.post("/rewards", response_model=RewardResponse)
+    def rewards(request: RewardRequest) -> RewardResponse:
+        frame = customers_frame(request.customers)
+        fc = forecast_liability(
+            frame[ID],
+            bundle.predict(frame),
+            bundle.residuals,
+            schedule,
+            request.n_simulations,
+            request.seed,
+        )
+        summary = fc.summary()
+        return RewardResponse(
+            expected_total=round(summary["expected_total"], 2),
+            p05=round(summary["p05"], 2),
+            p95=round(summary["p95"], 2),
+            expected_shortfall_95=round(fc.tail_risk(0.95)["expected_shortfall"], 2),
+            customers=[
+                CustomerReward(
+                    customer_id=int(r.customer_id),
+                    predicted_spend=round(float(r.predicted_spend), 2),
+                    expected_reward=round(float(r.expected_reward), 4),
+                    tier_change_probability=round(float(r.tier_change_probability), 4),
+                )
+                for r in fc.per_customer.itertuples()
             ],
         )
 

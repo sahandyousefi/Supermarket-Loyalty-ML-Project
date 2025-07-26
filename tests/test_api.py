@@ -67,3 +67,23 @@ def test_predict_matches_the_bundle(client, train_df):
         feature_frame(row.astype({c: train_df[c].dtype for c in row.columns}))
     )[0]
     assert first["spend"] == pytest.approx(expected, abs=0.01)
+
+
+def test_reward_endpoint(client):
+    customers = [
+        {**CUSTOMER, "customer_id": i, "loyalty_years": y}
+        for i, y in enumerate(["0-1", "5-10", "10+"])
+    ]
+    out = client.post(
+        "/rewards", json={"customers": customers, "n_simulations": 500}
+    ).json()
+    assert (
+        out["p05"]
+        <= out["expected_total"]
+        <= out["p95"]
+        <= out["expected_shortfall_95"] + 1e-9
+    )
+    assert len(out["customers"]) == 3
+    assert sum(c["expected_reward"] for c in out["customers"]) == pytest.approx(
+        out["expected_total"], abs=0.05
+    )

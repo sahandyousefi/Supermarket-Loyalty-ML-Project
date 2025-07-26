@@ -40,3 +40,24 @@ class PredictResponse(BaseModel):
     model: str
     coverage: float
     predictions: list[Prediction]
+
+
+class RewardRequest(BaseModel):
+    customers: list[Customer] = Field(min_length=1)
+    n_simulations: int = Field(default=2000, ge=100, le=20000)
+    seed: int = 0
+
+
+class CustomerReward(BaseModel):
+    customer_id: int
+    predicted_spend: float
+    expected_reward: float
+    tier_change_probability: float
+
+
+class RewardResponse(BaseModel):
+    expected_total: float
+    p05: float
+    p95: float
+    expected_shortfall_95: float
+    customers: list[CustomerReward]
