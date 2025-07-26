@@ -136,3 +136,25 @@ def test_predict_with_intervals_and_validation(cfg, raw_dir, tmp_path):
     scores = pd.read_csv(out)
     assert list(scores.columns) == ["customer_id", "spend", "lower", "upper"]
     assert (scores["lower"] <= scores["upper"]).all()
+
+
+def test_monitor_command(cfg, raw_dir, tmp_path, capsys):
+    import json
+
+    model = tmp_path / "m.joblib"
+    assert (
+        main(["train", "--config", str(cfg), "--model", "ols", "--output", str(model)])
+        == 0
+    )
+    out = tmp_path / "monitor.json"
+    args = [
+        "monitor",
+        "--config",
+        str(cfg),
+        str(raw_dir / "test.csv"),
+        "--model",
+        str(model),
+    ]
+    assert main([*args, "--output", str(out)]) == 0
+    assert json.loads(out.read_text())["status"] in {"ok", "warn"}
+    assert "status:" in capsys.readouterr().out

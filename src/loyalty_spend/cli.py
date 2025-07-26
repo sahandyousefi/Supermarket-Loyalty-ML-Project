@@ -387,6 +387,41 @@ def _design(args: argparse.Namespace) -> int:
     return 0
 
 
+def _monitor_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("batch", help="CSV of customers to be scored")
+    p.add_argument("--model", default="artifacts/model.joblib")
+    p.add_argument("--output", default=None, help="write the result as JSON")
+
+
+@command("monitor", "check a scoring batch before it is scored", _monitor_args)
+def _monitor(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.contracts import load_contracts
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.models.persistence import load_bundle
+    from loyalty_spend.ops.monitor import monitor_batch
+
+    cfg = load_config(args.config)
+    reference, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    batch, _ = load_clean(args.batch, impute=False, require_target=False)
+    result = monitor_batch(
+        reference,
+        batch,
+        load_bundle(args.model),
+        cfg.monitoring,
+        load_contracts()["scoring"],
+        seed=cfg.cv.seed,
+    )
+    print(f"status: {result.status}")
+    for reason in result.reasons:
+        print(f"- {reason}")
+    if args.output:
+        Path(args.output).write_text(
+            json.dumps(result.to_dict(), indent=2, default=str)
+        )
+    return {"ok": 0, "warn": 0, "alert": 2}[result.status]
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
