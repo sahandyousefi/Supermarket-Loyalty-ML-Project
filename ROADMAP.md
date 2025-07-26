@@ -27,7 +27,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 8: Model operations
 
-- [ ] 8.11 Request metrics endpoint
 - [ ] 8.12 Monitoring job for a new scoring batch
 - [ ] 8.13 Model card generated from bundle metadata
 - [ ] 8.14 `loyalty-spend serve` command, Docker target and deployment notes
@@ -181,3 +180,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-26: 8.8 Prediction endpoint with intervals
 - [x] 2025-07-26: 8.9 Reward cost endpoint
 - [x] 2025-07-26: 8.10 Request limits and error handling
+- [x] 2025-07-26: 8.11 Request metrics endpoint

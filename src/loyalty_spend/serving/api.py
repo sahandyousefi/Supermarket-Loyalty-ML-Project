@@ -7,10 +7,13 @@ their own model path; ``LOYALTY_MODEL`` names the bundle otherwise.
 from __future__ import annotations
 
 import os
+import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import PlainTextResponse, Response
 
 from loyalty_spend import __version__
 from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
@@ -19,6 +22,7 @@ from loyalty_spend.data.cleaning import clean_loyalty
 from loyalty_spend.data.schema import ID
 from loyalty_spend.models.persistence import ModelBundle, load_bundle
 from loyalty_spend.ops.batch import score_batch
+from loyalty_spend.serving.metrics import RequestMetrics
 from loyalty_spend.serving.schemas import (
     Customer,
     CustomerReward,
@@ -41,6 +45,23 @@ def create_app(
     app = FastAPI(title="Loyalty spend scoring", version=__version__)
     app.state.bundle = bundle
     max_batch = int(os.environ.get("LOYALTY_MAX_BATCH", MAX_BATCH))
+    metrics = RequestMetrics()
+    app.state.metrics = metrics
+
+    @app.middleware("http")
+    async def count_requests(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        start = time.perf_counter()
+        response = await call_next(request)
+        metrics.record(
+            request.url.path, response.status_code, time.perf_counter() - start
+        )
+        return response
+
+    @app.get("/metrics", response_class=PlainTextResponse)
+    def metrics_text() -> str:
+        return metrics.render()
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -60,6 +81,7 @@ def create_app(
     def predict(request: PredictRequest) -> PredictResponse:
         check_batch(request.customers, max_batch)
         frame = customers_frame(request.customers)
+        metrics.add_customers("/predict", len(frame))
         scores = score_batch(bundle, frame, alpha=request.alpha).scores
         return PredictResponse(
             model=bundle.name,
@@ -81,6 +103,7 @@ def create_app(
     def rewards(request: RewardRequest) -> RewardResponse:
         check_batch(request.customers, max_batch)
         frame = customers_frame(request.customers)
+        metrics.add_customers("/rewards", len(frame))
         fc = forecast_liability(
             frame[ID],
             bundle.predict(frame),

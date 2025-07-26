@@ -116,3 +116,19 @@ def test_batch_limit(tmp_path_factory, client, monkeypatch):
     small = TestClient(create_app(path))
     customers = [{**CUSTOMER, "customer_id": i} for i in range(3)]
     assert small.post("/predict", json={"customers": customers}).status_code == 413
+
+
+def test_metrics_count_requests_and_customers(client):
+    client.post(
+        "/predict", json={"customers": [CUSTOMER, {**CUSTOMER, "customer_id": 9}]}
+    )
+    client.post("/predict", json={"customers": [{**CUSTOMER, "region": "Mars"}]})
+    text = client.get("/metrics").text
+    assert 'loyalty_requests_total{path="/predict",status="200"}' in text
+    assert 'loyalty_requests_total{path="/predict",status="422"}' in text
+    scored = [
+        ln
+        for ln in text.splitlines()
+        if ln.startswith('loyalty_customers_scored_total{path="/predict"}')
+    ]
+    assert scored and int(scored[0].split()[-1]) >= 2
