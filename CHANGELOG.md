@@ -6,6 +6,19 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2025-07-31
+
+### Added
+
+- Customer segments: Gower distance, k-medoids with restarts, silhouette selection, bootstrap Jaccard stability, segment profiles and cost by segment; `loyalty-spend segments`.
+- Reward programme design: marginal schedules, cost-to-spend ratio and tier shares, common random numbers for schedule comparisons, cost sensitivities, threshold search under a budget, a bunching stress scenario, Monte Carlo standard errors, quasi-Monte Carlo draws, value at risk and expected shortfall, cost by region; `loyalty-spend design` and a report section.
+- Model operations: a file-based registry with stages and rollback, a paired champion-challenger test, batch scoring with intervals and contract checks, a batch monitoring check, reproducibility manifests, optional MLflow tracking and generated model cards; `loyalty-spend monitor`, `model-card` and `predict --alpha --validate`.
+- A FastAPI scoring service with prediction, reward cost and metrics endpoints, request validation and batch limits; `loyalty-spend serve`, a Docker serve target and deployment notes.
+
+### Fixed
+
+- Type errors reported by mypy with the NumPy stubs used on Python 3.10.
+
 ## [1.2.0] - 2025-06-28
 
 ### Added
@@ -55,7 +68,8 @@ First complete release.
 - `loyalty-spend` command line interface, results report, model card and Dockerfile.
 - CI with ruff and pytest on Python 3.10 and 3.12.
 
-[Unreleased]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/releases/tag/v1.0.0
