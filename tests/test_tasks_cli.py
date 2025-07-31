@@ -158,3 +158,28 @@ def test_monitor_command(cfg, raw_dir, tmp_path, capsys):
     assert main([*args, "--output", str(out)]) == 0
     assert json.loads(out.read_text())["status"] in {"ok", "warn"}
     assert "status:" in capsys.readouterr().out
+
+
+def test_model_card_and_serve_commands(cfg, tmp_path, monkeypatch):
+    import sys
+    import types
+
+    model = tmp_path / "m.joblib"
+    assert (
+        main(["train", "--config", str(cfg), "--model", "ols", "--output", str(model)])
+        == 0
+    )
+    card = tmp_path / "card.md"
+    assert main(["model-card", "--model", str(model), "--output", str(card)]) == 0
+    assert card.read_text().startswith("# Model card: ols")
+
+    calls = {}
+    fake = types.SimpleNamespace(
+        run=lambda app, host, port: calls.update(host=host, port=port)
+    )
+    monkeypatch.setitem(sys.modules, "uvicorn", fake)
+    assert (
+        main(["serve", "--config", str(cfg), "--model", str(model), "--port", "9001"])
+        == 0
+    )
+    assert calls == {"host": "127.0.0.1", "port": 9001}

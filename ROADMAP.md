@@ -27,7 +27,8 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 8: Model operations
 
-- [ ] 8.14 `loyalty-spend serve` command, Docker target and deployment notes
+- [ ] 8.14b Docker target for the scoring service
+- [ ] 8.14c Deployment notes
 
 ## Phase 9: Grounded summaries with language models
 
@@ -182,3 +183,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-26: 8.12a Monitoring check of a new scoring batch
 - [x] 2025-07-26: 8.12b `loyalty-spend monitor` command
 - [x] 2025-07-31: 8.13 Model card generated from bundle metadata
+- [x] 2025-07-31: 8.14a `loyalty-spend serve` and `loyalty-spend model-card` commands

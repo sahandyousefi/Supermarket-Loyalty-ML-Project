@@ -422,6 +422,40 @@ def _monitor(args: argparse.Namespace) -> int:
     return {"ok": 0, "warn": 0, "alert": 2}[result.status]
 
 
+def _serve_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--model", default="artifacts/model.joblib")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8000)
+
+
+@command("serve", "run the HTTP scoring service", _serve_args)
+def _serve(args: argparse.Namespace) -> int:
+    try:
+        import uvicorn
+    except ImportError as exc:
+        raise SystemExit("install the serve extra: pip install '.[serve]'") from exc
+    from loyalty_spend.serving.api import create_app
+
+    uvicorn.run(create_app(args.model, args.config), host=args.host, port=args.port)
+    return 0
+
+
+def _card_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--model", default="artifacts/model.joblib")
+    p.add_argument("--output", default="artifacts/MODEL_CARD.md")
+
+
+@command("model-card", "write a model card for a saved model", _card_args)
+def _card(args: argparse.Namespace) -> int:
+    from loyalty_spend.models.persistence import load_bundle
+    from loyalty_spend.ops.model_card import write_model_card
+
+    path = write_model_card(load_bundle(args.model), args.output)
+    print(f"wrote {path}")
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
