@@ -203,7 +203,7 @@ The best partition (8 segments) is essentially the grid of region by promotion u
 
 ## Approach
 
-Full notation, derivations and references are in [docs/methodology.md](docs/methodology.md); the model card is in [docs/model_card.md](docs/model_card.md).
+Full notation, derivations and references are in [docs/methodology.md](docs/methodology.md); the model card is in [docs/model_card.md](docs/model_card.md), and [docs/deployment.md](docs/deployment.md) covers the registry, batch monitoring and the scoring service.
 
 **Data quality.** The raw extract is read as text so that placeholders survive parsing. In `loyalty.csv`, 125 values of `first_month` are the placeholder `.`, 125 joining months are empty and 125 promotion flags are upper case. The cleaning step applies the replacement rules of the data dictionary for Task 1 and logs every change. The models instead keep missing values missing and use median imputation with a missing-value indicator, because a recorded spend of zero and an unrecorded spend are different statements.
 
@@ -249,7 +249,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 .
 ├── configs/default.yaml        paths, CV, network, reward and interval settings
 ├── data/raw/                   loyalty.csv, train.csv, test.csv (see data/README.md)
-├── docs/                       methodology, model card
+├── docs/                       methodology, model card, deployment
 ├── notebooks/                  original exam notebook
 ├── reports/                    results.md, summary.json and figures from a full run
 ├── src/loyalty_spend/
@@ -268,6 +268,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── causal/                 propensity, balance, IPW, AIPW, DML, sensitivity, meta-learners, targeting
 │   ├── segments/               Gower distance, k-medoids, silhouette, stability, profiles
 │   ├── business/               reward schedule and Monte Carlo cost forecast
+│   ├── ops/                    registry, champion-challenger, batch scoring, monitoring, manifest
+│   ├── serving/                FastAPI scoring service
 │   └── reporting/              figures and the results report
 └── tests/                      unit and integration tests
 ```
