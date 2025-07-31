@@ -303,7 +303,7 @@ loyalty-spend design --output-dir artifacts/design     # schedule comparison, ri
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
 ```
 
-`docker build -t loyalty-spend .` builds an image that runs the same commands.
+`docker build -t loyalty-spend .` builds an image that runs the same commands; `make docker-serve` builds and starts the scoring service with the model in `artifacts/`.
 
 ## Testing and CI
 

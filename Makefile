@@ -1,4 +1,4 @@
-.PHONY: install install-all lint typecheck format test test-all tasks report clean docker-build
+.PHONY: install install-all lint typecheck format test test-all tasks report clean docker-build docker-serve
 
 CONFIG ?= configs/default.yaml
 
@@ -33,7 +33,11 @@ report:
 	loyalty-spend report --config $(CONFIG)
 
 docker-build:
-	docker build -t loyalty-spend:latest .
+	docker build --target cli -t loyalty-spend:latest .
+
+docker-serve:
+	docker build --target serve -t loyalty-spend-api:latest .
+	docker run --rm -p 8000:8000 -v $(PWD)/artifacts:/app/artifacts loyalty-spend-api:latest
 
 clean:
 	rm -rf artifacts .pytest_cache .ruff_cache build dist *.egg-info
