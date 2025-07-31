@@ -79,7 +79,10 @@ class ModelRegistry:
             version=version,
             name=bundle.name,
             metrics={k: float(v) for k, v in (metrics or {}).items()},
-            data_fingerprint=str(bundle.metadata.get("data_fingerprint", "")),
+            data_fingerprint=str(
+                bundle.metadata.get("data_fingerprint")
+                or bundle.metadata.get("data", "")
+            ),
             registered_at=datetime.now(timezone.utc).isoformat(),
             notes=notes,
         )
