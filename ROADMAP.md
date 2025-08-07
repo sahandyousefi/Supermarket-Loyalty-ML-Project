@@ -30,7 +30,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 9: Grounded summaries with language models
 
-- [ ] 9.5 Narrative summary generated only from the fact sheet
 - [ ] 9.6 Numeric grounding check against the fact sheet
 - [ ] 9.7 Structured output validation with a bounded retry
 - [ ] 9.8 Chunking of the project documentation
@@ -184,3 +183,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-08-07: 9.2 OpenAI-compatible HTTP client without extra dependencies
 - [x] 2025-08-07: 9.3 Versioned prompt templates
 - [x] 2025-08-07: 9.4 Fact sheet built from the report summary
+- [x] 2025-08-07: 9.5 Narrative summary generated only from the fact sheet
