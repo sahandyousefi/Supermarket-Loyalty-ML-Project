@@ -30,7 +30,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 9: Grounded summaries with language models
 
-- [ ] 9.2 OpenAI-compatible HTTP client as an optional extra
 - [ ] 9.3 Versioned prompt templates
 - [ ] 9.4 Fact sheet built from the report summary
 - [ ] 9.5 Narrative summary generated only from the fact sheet
@@ -184,3 +183,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-07-31: 8.14b Docker target for the scoring service
 - [x] 2025-07-31: 8.14c Deployment notes
 - [x] 2025-07-31: 9.1 Language model client interface with an offline mock
+- [x] 2025-08-07: 9.2 OpenAI-compatible HTTP client without extra dependencies
