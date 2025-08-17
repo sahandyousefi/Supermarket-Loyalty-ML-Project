@@ -7,11 +7,13 @@ from dataclasses import dataclass, field
 from loyalty_spend.llm.citations import SentenceCheck, verify_citations
 from loyalty_spend.llm.client import LLMClient
 from loyalty_spend.llm.corpus import Chunk
+from loyalty_spend.llm.guardrails import check_question
 from loyalty_spend.llm.prompts import load_prompt
 from loyalty_spend.llm.retrieval import TfidfRetriever
 from loyalty_spend.llm.structured import complete_json
 
 REFUSAL = "The documentation does not answer this question."
+BLOCKED = "This question cannot be answered."
 
 
 @dataclass
@@ -23,7 +25,7 @@ class Answer:
 
     @property
     def refused(self) -> bool:
-        return self.answer.strip() == REFUSAL
+        return self.answer.strip() in (REFUSAL, BLOCKED)
 
     def verification(self) -> list[SentenceCheck]:
         """Sentence-level check of the answer against the passages it cites."""
@@ -43,6 +45,10 @@ def render_passages(chunks: list[Chunk]) -> str:
 def answer_question(
     client: LLMClient, retriever: TfidfRetriever, question: str, k: int = 4
 ) -> Answer:
+    guard = check_question(question)
+    if not guard.allowed:
+        return Answer(question, BLOCKED, [], [])
+    question = guard.text
     passages = [h.chunk for h in retriever.search(question, k)]
     if not passages:
         return Answer(question, REFUSAL, [], [])
