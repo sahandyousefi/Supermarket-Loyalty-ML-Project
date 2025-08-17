@@ -30,7 +30,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 9: Grounded summaries with language models
 
-- [ ] 9.8 Chunking of the project documentation
 - [ ] 9.9 TF-IDF retrieval with recall at k and mean reciprocal rank
 - [ ] 9.10 Questions answered with citations to retrieved chunks
 - [ ] 9.11 Citation verification
@@ -184,3 +183,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-08-07: 9.5 Narrative summary generated only from the fact sheet
 - [x] 2025-08-07: 9.6 Numeric grounding check against the fact sheet
 - [x] 2025-08-07: 9.7 Structured output validation with a bounded retry
+- [x] 2025-08-17: 9.8 Chunking of the project documentation
