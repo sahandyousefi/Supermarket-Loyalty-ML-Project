@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from loyalty_spend.llm.citations import SentenceCheck, verify_citations
 from loyalty_spend.llm.client import LLMClient
 from loyalty_spend.llm.corpus import Chunk
 from loyalty_spend.llm.prompts import load_prompt
@@ -23,6 +24,14 @@ class Answer:
     @property
     def refused(self) -> bool:
         return self.answer.strip() == REFUSAL
+
+    def verification(self) -> list[SentenceCheck]:
+        """Sentence-level check of the answer against the passages it cites."""
+        return [] if self.refused else verify_citations(self.answer, self.passages)
+
+    @property
+    def verified(self) -> bool:
+        return all(c.supported for c in self.verification())
 
 
 def render_passages(chunks: list[Chunk]) -> str:

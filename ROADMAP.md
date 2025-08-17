@@ -30,7 +30,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 9: Grounded summaries with language models
 
-- [ ] 9.11 Citation verification
 - [ ] 9.12 Input guardrails against prompt injection
 - [ ] 9.13 Plain-language reason statements for single forecasts
 - [ ] 9.14 Evaluation harness for faithfulness, format and refusals
@@ -184,3 +183,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-08-17: 9.8 Chunking of the project documentation
 - [x] 2025-08-17: 9.9 TF-IDF retrieval with recall at k and mean reciprocal rank
 - [x] 2025-08-17: 9.10 Questions answered with citations to retrieved chunks
+- [x] 2025-08-17: 9.11 Citation verification

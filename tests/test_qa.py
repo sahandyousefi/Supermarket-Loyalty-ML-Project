@@ -51,3 +51,16 @@ def test_no_matching_passage_refuses_without_a_call(retriever):
     llm = MockLLM()
     assert answer_question(llm, retriever, "zebra migration").refused
     assert llm.calls == []
+
+
+def test_answer_verification(retriever):
+    llm = MockLLM(
+        lambda s, u: json.dumps(
+            {
+                "answer": "Split conformal intervals cover 90% of new outcomes [1].",
+                "citations": [1],
+            }
+        )
+    )
+    out = answer_question(llm, retriever, "conformal coverage", k=2)
+    assert out.verified
