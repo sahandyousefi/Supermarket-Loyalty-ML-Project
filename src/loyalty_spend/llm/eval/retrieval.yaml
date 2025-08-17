@@ -1,0 +1,25 @@
+# Questions with the documentation section that answers them.
+- question: How are prediction intervals guaranteed to cover the outcome?
+  relevant: {source: docs/methodology.md, heading: Prediction intervals}
+- question: Which test compares models across cross-validation folds?
+  relevant: {source: docs/methodology.md, heading: Model comparison}
+- question: How is the population stability index computed for drift?
+  relevant: {source: docs/methodology.md, heading: drift monitoring}
+- question: What is the effect of the sign-up promotion on spend?
+  relevant: {source: README.md, heading: Effect of the sign-up promotion}
+- question: Which estimators are used for the promotion effect and what assumptions do they need?
+  relevant: {source: docs/methodology.md, heading: Effect of the sign-up promotion}
+- question: How do I run the scoring service and which endpoints does it have?
+  relevant: {source: docs/deployment.md, heading: Serve}
+- question: How does the registry decide whether a challenger replaces the champion?
+  relevant: {source: docs/deployment.md, heading: Train and register}
+- question: What is the continuous ranked probability score?
+  relevant: {source: docs/methodology.md, heading: Probabilistic forecasts}
+- question: Are there natural customer segments in the data?
+  relevant: {source: README.md, heading: Customer segments}
+- question: How much does the reward programme cost and what is the value at risk?
+  relevant: {source: README.md, heading: Reward programme design}
+- question: What does Gower distance do with missing values?
+  relevant: {source: docs/methodology.md, heading: Customer segments}
+- question: Why is a marginal reward schedule protected against bunching?
+  relevant: {source: docs/methodology.md, heading: Designing the schedule}
