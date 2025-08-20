@@ -456,6 +456,40 @@ def _card(args: argparse.Namespace) -> int:
     return 0
 
 
+def _narrate_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--summary", default="reports/summary.json")
+    p.add_argument(
+        "--offline",
+        action="store_true",
+        help="use the fact template even if a language model is configured",
+    )
+
+
+@command("narrate", "summarise the report in plain language", _narrate_args)
+def _narrate(args: argparse.Namespace) -> int:
+    from loyalty_spend.llm.client import client_from_env
+    from loyalty_spend.llm.facts import build_fact_sheet
+    from loyalty_spend.llm.narrative import generate_narrative, template_narrative
+    from loyalty_spend.llm.usage import TrackedClient
+
+    facts = build_fact_sheet(json.loads(Path(args.summary).read_text()))
+    client = None if args.offline else client_from_env()
+    if client is None:
+        narrative = template_narrative(facts)
+    else:
+        tracked = TrackedClient(client)
+        narrative = generate_narrative(tracked, facts)
+    print(narrative.text)
+    if client is not None:
+        usage = tracked.summary()
+        print(
+            f"\n{narrative.model}, prompt v{narrative.prompt_version}: "
+            f"{usage['calls']:.0f} calls, {usage['prompt_tokens']:.0f} prompt and "
+            f"{usage['completion_tokens']:.0f} completion tokens"
+        )
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")

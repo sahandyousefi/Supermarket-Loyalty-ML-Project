@@ -60,3 +60,11 @@ def generate_narrative(
         prompt_version=prompt.version,
         raw=reply.response.text,
     )
+
+
+def template_narrative(facts: list[Fact]) -> Narrative:
+    """Summary without a language model: the facts themselves, in order."""
+    if not facts:
+        raise ValueError("cannot summarise an empty fact sheet")
+    statements = [f.statement for f in facts]
+    return Narrative(statements[0], statements[1:6], "template", 0)

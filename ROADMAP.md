@@ -30,7 +30,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 9: Grounded summaries with language models
 
-- [ ] 9.16a `loyalty-spend narrate` command
 - [ ] 9.16b `loyalty-spend ask` command
 - [ ] 9.17 Design notes for the language model components
 
@@ -186,3 +185,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-08-20: 9.14a Evaluation harness for faithfulness, format and refusals
 - [x] 2025-08-20: 9.14b Question set with answerable and unanswerable questions
 - [x] 2025-08-20: 9.15 Token and cost accounting
+- [x] 2025-08-20: 9.16a `loyalty-spend narrate` command

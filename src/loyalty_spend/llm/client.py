@@ -25,7 +25,8 @@ class LLMResponse:
 
 
 class LLMClient(Protocol):
-    model: str
+    @property
+    def model(self) -> str: ...
 
     def complete(
         self,
@@ -170,3 +171,12 @@ class HTTPChatClient:
             completion_tokens=int(usage.get("completion_tokens", approx_tokens(text))),
             latency_s=time.perf_counter() - start,
         )
+
+
+def client_from_env() -> HTTPChatClient | None:
+    """A configured HTTP client, or ``None`` when ``LLM_BASE_URL`` is not set."""
+    import os
+
+    if not os.environ.get("LLM_BASE_URL") or not os.environ.get("LLM_MODEL"):
+        return None
+    return HTTPChatClient()
