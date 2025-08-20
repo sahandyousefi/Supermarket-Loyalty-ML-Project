@@ -90,3 +90,17 @@ def summarise(results: dict[str, EvaluationResult]) -> pd.DataFrame:
     return pd.DataFrame(
         [{"client": name, **res.metrics()} for name, res in results.items()]
     ).replace({np.nan: None})
+
+
+def load_qa_cases() -> list[dict[str, Any]]:
+    """The question set in ``llm/eval/qa.yaml`` as evaluation cases."""
+    from loyalty_spend.llm.retrieval import load_eval_set
+
+    raw = load_eval_set("qa")
+    cases = [
+        {"question": c["question"], "relevant": c["relevant"]}
+        for c in raw["answerable"]
+    ]
+    for group in ("unanswerable", "hostile"):
+        cases += [{"question": q, "relevant": None, "group": group} for q in raw[group]]
+    return cases

@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import yaml
@@ -75,5 +76,6 @@ def retrieval_metrics(
     }
 
 
-def load_eval_set(name: str = "retrieval") -> list[dict]:
+def load_eval_set(name: str = "retrieval") -> Any:
+    """Parsed YAML of an evaluation file in ``llm/eval``."""
     return yaml.safe_load((EVAL_DIR / f"{name}.yaml").read_text())

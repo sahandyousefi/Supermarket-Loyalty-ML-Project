@@ -61,3 +61,19 @@ def test_harness_penalises_broken_and_unfaithful_clients():
     )
     m = evaluate_qa(liar, TfidfRetriever(CHUNKS), CASES[:2], k=1).metrics()
     assert m["faithfulness"] == 0.0 and m["answer_rate"] == 1.0
+
+
+def test_question_set_on_the_project_documentation():
+    from loyalty_spend.llm.corpus import load_corpus
+    from loyalty_spend.llm.evaluation import load_qa_cases
+
+    cases = load_qa_cases()
+    assert sum(c["relevant"] is not None for c in cases) >= 10
+    assert sum(c.get("group") == "hostile" for c in cases) >= 3
+    result = evaluate_qa(MockLLM(_first_passage), TfidfRetriever(load_corpus()), cases)
+    rows = result.rows
+    hostile = rows["question"].isin(
+        [c["question"] for c in cases if c.get("group") == "hostile"]
+    )
+    assert not rows.loc[hostile, "answered"].any()
+    assert result.metrics()["retrieval_hit_rate"] >= 0.75
