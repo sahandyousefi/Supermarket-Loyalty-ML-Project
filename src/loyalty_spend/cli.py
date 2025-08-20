@@ -490,6 +490,40 @@ def _narrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ask_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("question")
+    p.add_argument("-k", type=int, default=4, help="passages shown to the model")
+    p.add_argument("--offline", action="store_true", help="show passages only")
+
+
+@command("ask", "answer a question from the project documentation", _ask_args)
+def _ask(args: argparse.Namespace) -> int:
+    from loyalty_spend.llm.client import client_from_env
+    from loyalty_spend.llm.corpus import load_corpus
+    from loyalty_spend.llm.guardrails import check_question
+    from loyalty_spend.llm.qa import BLOCKED, answer_question
+    from loyalty_spend.llm.retrieval import TfidfRetriever
+
+    retriever = TfidfRetriever(load_corpus())
+    client = None if args.offline else client_from_env()
+    if client is None:
+        guard = check_question(args.question)
+        if not guard.allowed:
+            print(BLOCKED)
+            return 1
+        for i, hit in enumerate(retriever.search(guard.text, args.k), start=1):
+            print(f"[{i}] {hit.chunk.citation} (score {hit.score:.3f})")
+            print(hit.chunk.text[:400].strip() + "\n")
+        return 0
+    answer = answer_question(client, retriever, args.question, args.k)
+    print(answer.answer)
+    for i, chunk in enumerate(answer.sources, start=1):
+        print(f"  [{i}] {chunk.citation}")
+    if not answer.refused and not answer.verified:
+        print("note: some sentences are not fully supported by their citations")
+    return 1 if answer.answer == BLOCKED else 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
