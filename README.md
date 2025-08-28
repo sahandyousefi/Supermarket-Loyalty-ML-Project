@@ -235,6 +235,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 
 **Programme design.** Whole-spend and marginal schedules are compared on common random numbers; cost sensitivities to every threshold and rate, value at risk and expected shortfall, a bunching stress scenario and a threshold search under a budget on the 95th percentile of cost turn the cost forecast into a design tool.
 
+**Plain-language summaries.** `loyalty-spend narrate` and `loyalty-spend ask` use a language model only to write sentences: numbers come from a fact sheet built in code and every number in the output is checked against it, answers cite numbered passages of the documentation and each sentence is checked against what it cites, and questions that try to override the instructions are blocked before any call. Both commands work offline. Design and evaluation are in [docs/llm_design.md](docs/llm_design.md).
+
 **Segments.** Gower distance for mixed attributes, k-medoids with restarts, the number of segments by average silhouette width, and bootstrap Jaccard stability (Hennig, 2007) to tell real segments from artefacts of one sample.
 
 **Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
@@ -249,7 +251,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 .
 ├── configs/default.yaml        paths, CV, network, reward and interval settings
 ├── data/raw/                   loyalty.csv, train.csv, test.csv (see data/README.md)
-├── docs/                       methodology, model card, deployment
+├── docs/                       methodology, model card, deployment, language model design
 ├── notebooks/                  original exam notebook
 ├── reports/                    results.md, summary.json and figures from a full run
 ├── src/loyalty_spend/
@@ -270,6 +272,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── business/               reward schedule and Monte Carlo cost forecast
 │   ├── ops/                    registry, champion-challenger, batch scoring, monitoring, manifest
 │   ├── serving/                FastAPI scoring service
+│   ├── llm/                    fact sheets, grounding checks, retrieval, cited answers, guardrails
 │   └── reporting/              figures and the results report
 └── tests/                      unit and integration tests
 ```
@@ -302,6 +305,8 @@ loyalty-spend effect --output-dir artifacts/effect     # promotion effect with d
 loyalty-spend uplift --learner dr --cost 0.5          # heterogeneity tests and targeting
 loyalty-spend segments --output-dir artifacts/segments
 loyalty-spend design --output-dir artifacts/design     # schedule comparison, risk, threshold search
+loyalty-spend narrate                                 # summary from the report facts
+loyalty-spend ask "How are prediction intervals built?"
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
 ```
 
