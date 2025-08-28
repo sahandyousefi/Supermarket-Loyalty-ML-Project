@@ -31,14 +31,70 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 ## Phase 9: Grounded summaries with language models
 
 
-## Phase 10: Documentation and release
+## Phase 10: Hierarchical Bayesian model of spend
 
-- [ ] 10.1 Walkthrough notebook for the promotion analysis
-- [ ] 10.2 Walkthrough notebook for reward programme design
-- [ ] 10.3 Runtime benchmarks of the main commands
-- [ ] 10.4 Methodology and model card updates
-- [ ] 10.5 README rewrite
-- [ ] 10.6 Release 2.0.0
+The point models treat region and tenure as fixed effects. A hierarchical model shares strength between groups, gives full posterior uncertainty for every quantity, and adds parameter uncertainty to the reward cost forecast.
+
+- [ ] 10.1 Empirical Bayes shrinkage of group means
+- [ ] 10.2 Gibbs sampler for a hierarchical normal model with group effects
+- [ ] 10.3 Split R-hat and effective sample size diagnostics
+- [ ] 10.4 Posterior predictive draws for new members
+- [ ] 10.5 Posterior predictive checks
+- [ ] 10.6 Student-t errors as a scale mixture of normals
+- [ ] 10.7 Group-specific residual variances
+- [ ] 10.8 WAIC and cross-validated log score against OLS
+- [ ] 10.9 Prior sensitivity analysis
+- [ ] 10.10 Reward cost from the posterior predictive distribution
+- [ ] 10.11 `loyalty-spend bayes` command
+- [ ] 10.12 Report, methodology and README sections
+
+## Phase 11: Explanations and counterfactuals
+
+- [ ] 11.1 Accumulated local effects for numeric features
+- [ ] 11.2 Partial dependence with centred ICE curves
+- [ ] 11.3 Figures for ALE and ICE
+- [ ] 11.4 Counterfactual spend needed to reach the next tier
+- [ ] 11.5 Counterfactual search with immutable attributes and plausibility bounds
+- [ ] 11.6 Tier counterfactuals in the CLI and the service
+- [ ] 11.7 Global surrogate tree with fidelity
+- [ ] 11.8 Stability of attributions across folds
+- [ ] 11.9 Documentation of the explanation methods
+
+## Phase 12: Robustness and error analysis
+
+- [ ] 12.1 Subgroup errors with bootstrap intervals
+- [ ] 12.2 Slice finding over pairs of attributes
+- [ ] 12.3 Stress tests with perturbed and missing inputs
+- [ ] 12.4 Multiple imputation with chained equations and Rubin's rules
+- [ ] 12.5 Missing-not-at-random scenarios
+- [ ] 12.6 Influence diagnostics: hat values, Cook's distance, DFBETAS
+- [ ] 12.7 Learning curves with intervals
+- [ ] 12.8 `loyalty-spend robustness` command and documentation
+
+## Phase 13: Synthetic data with privacy checks
+
+- [ ] 13.1 Gaussian copula synthesiser for mixed data
+- [ ] 13.2 Fidelity: marginal and pairwise dependence comparisons
+- [ ] 13.3 Utility: train on synthetic, test on real
+- [ ] 13.4 Privacy: distance to closest record and nearest-neighbour distance ratio
+- [ ] 13.5 Membership inference test
+- [ ] 13.6 `loyalty-spend synthesize --copula` and documentation
+
+## Phase 14: Performance
+
+- [ ] 14.1 Profile and vectorise the reward simulation
+- [ ] 14.2 Parallel cross-validation
+- [ ] 14.3 Cached preprocessing in repeated cross-validation
+- [ ] 14.4 Memory-bounded simulation for large customer files
+
+## Phase 15: Documentation and release
+
+- [ ] 15.1 Walkthrough notebook for the promotion analysis
+- [ ] 15.2 Walkthrough notebook for reward programme design
+- [ ] 15.3 Runtime benchmarks of the main commands
+- [ ] 15.4 Methodology and model card updates
+- [ ] 15.5 README rewrite
+- [ ] 15.6 Release 2.0.0
 
 ## Completed
 - [x] 2025-05-05: 1.1 Add a changelog that records the 1.0.0 release
