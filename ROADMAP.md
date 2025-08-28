@@ -30,7 +30,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 ## Phase 9: Grounded summaries with language models
 
-- [ ] 9.17 Design notes for the language model components
 
 ## Phase 10: Documentation and release
 
@@ -186,3 +185,4 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 - [x] 2025-08-20: 9.15 Token and cost accounting
 - [x] 2025-08-20: 9.16a `loyalty-spend narrate` command
 - [x] 2025-08-20: 9.16b `loyalty-spend ask` command
+- [x] 2025-08-28: 9.17 Design notes for the language model components
