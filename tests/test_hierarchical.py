@@ -29,3 +29,19 @@ def test_gibbs_recovers_the_parameters(synthetic):
     effects = post.flat("u").mean(axis=0) + beta[:, 0].mean() - 5.0
     assert np.corrcoef(effects, u)[0, 1] > 0.98
     assert post.u.shape == (2, 500, 8)
+
+
+def test_posterior_predictive_covers_new_members(train_df):
+    from loyalty_spend.features.preprocess import split_xy
+
+    X, y = split_xy(train_df)
+    post = fit_hierarchical(
+        X.iloc[:700], y.iloc[:700], n_chains=2, n_iter=600, n_warmup=200
+    )
+    draws = post.predictive(X.iloc[700:], n_draws=800)
+    lo, hi = np.quantile(draws, [0.05, 0.95], axis=1)
+    covered = (y.iloc[700:].to_numpy() >= lo) & (y.iloc[700:].to_numpy() <= hi)
+    assert covered.mean() == pytest.approx(0.9, abs=0.06)
+    assert np.corrcoef(post.predict(X.iloc[700:]), y.iloc[700:])[0, 1] > 0.99
+    new_group = X.iloc[700:710].assign(region="Antarctica")
+    assert np.isfinite(post.predictive(new_group, 50)).all()

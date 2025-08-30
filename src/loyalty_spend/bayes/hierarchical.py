@@ -58,6 +58,7 @@ class Posterior:
     feature_names: list[str]
     design: ColumnTransformer = field(repr=False)
     group_column: str = "region"
+    fill: dict[str, float] = field(default_factory=dict)
 
     @property
     def n_chains(self) -> int:
@@ -71,6 +72,45 @@ class Posterior:
         draws |= {f"u[{g}]": self.u[:, :, k] for k, g in enumerate(self.groups)}
         draws |= {"sigma": np.sqrt(self.sigma2), "tau": np.sqrt(self.tau2)}
         return summarise_draws(draws)
+
+    def _design_matrix(self, X: pd.DataFrame) -> np.ndarray:
+        data = X.copy().fillna(self.fill)
+        return np.column_stack([np.ones(len(data)), self.design.transform(data)])
+
+    def predictive(
+        self, X: pd.DataFrame, n_draws: int = 1000, seed: int = 0
+    ) -> np.ndarray:
+        """Posterior predictive draws of spend, shape ``(len(X), n_draws)``.
+
+        Each draw uses one posterior sample of every parameter, so the
+        spread includes parameter uncertainty as well as noise. Members of a
+        group not seen in training get a fresh effect from N(0, tau^2).
+        """
+        rng = np.random.default_rng(seed)
+        Z = self._design_matrix(X)
+        beta, u = self.flat("beta"), self.flat("u")
+        sigma, tau = np.sqrt(self.flat("sigma2")), np.sqrt(self.flat("tau2"))
+        pick = rng.integers(0, len(sigma), size=n_draws)
+        labels = X[self.group_column].astype(str).to_numpy()
+        known = np.isin(labels, self.groups)
+        gi = np.searchsorted(self.groups, labels).clip(max=len(self.groups) - 1)
+        mean = Z @ beta[pick].T
+        effect = np.where(
+            known[:, None],
+            u[pick][:, gi].T,
+            rng.normal(size=(len(X), n_draws)) * tau[pick][None, :],
+        )
+        noise = rng.normal(size=(len(X), n_draws)) * sigma[pick][None, :]
+        return mean + effect + noise
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Posterior mean of expected spend for known groups."""
+        Z = self._design_matrix(X)
+        labels = X[self.group_column].astype(str).to_numpy()
+        gi = np.searchsorted(self.groups, labels).clip(max=len(self.groups) - 1)
+        u_mean = self.flat("u").mean(axis=0)
+        effect = np.where(np.isin(labels, self.groups), u_mean[gi], 0.0)
+        return Z @ self.flat("beta").mean(axis=0) + effect
 
     def flat(self, name: str) -> np.ndarray:
         x = getattr(self, name)
@@ -109,7 +149,8 @@ def fit_hierarchical(
     fixed = list(DEFAULT_FIXED if fixed is None else fixed)
     data = X.copy()
     numeric = [c for c in fixed if pd.api.types.is_numeric_dtype(data[c])]
-    data[numeric] = data[numeric].fillna(data[numeric].median())
+    fill = {c: float(data[c].median()) for c in numeric}
+    data[numeric] = data[numeric].fillna(fill)
     design = _design(data, fixed).fit(data)
     Z = np.column_stack([np.ones(len(data)), design.transform(data)])
     names = ["intercept", *design.get_feature_names_out()]
