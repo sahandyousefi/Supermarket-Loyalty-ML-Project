@@ -35,7 +35,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 The point models treat region and tenure as fixed effects. A hierarchical model shares strength between groups, gives full posterior uncertainty for every quantity, and adds parameter uncertainty to the reward cost forecast.
 
-- [ ] 10.6 Student-t errors as a scale mixture of normals
 - [ ] 10.7 Group-specific residual variances
 - [ ] 10.8 WAIC and cross-validated log score against OLS
 - [ ] 10.9 Prior sensitivity analysis
@@ -242,3 +241,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-08-30: 10.3 Split R-hat and effective sample size diagnostics
 - [x] 2025-08-30: 10.4 Posterior predictive draws for new members
 - [x] 2025-08-30: 10.5 Posterior predictive checks
+- [x] 2025-08-30: 10.6 Student-t errors as a scale mixture of normals

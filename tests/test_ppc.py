@@ -38,3 +38,17 @@ def test_missing_numeric_inputs_use_training_medians():
     )
     X_new = X.head(5).assign(x=np.nan)
     assert np.isfinite(post.predictive(X_new, 20)).all()
+
+
+def test_student_t_errors_fix_the_tail_check_and_resist_outliers():
+    rng = np.random.default_rng(2)
+    X, y = _data(rng, True)
+    post = fit_hierarchical(
+        X, y, group="grp", fixed=["x"], nu=2.0, n_chains=2, n_iter=500, n_warmup=200
+    )
+    table = posterior_predictive_check(post, X.head(1500), y, n_rep=200).set_index(
+        "statistic"
+    )
+    assert table.loc["kurtosis", "p_value"] > 0.01
+    slope = post.flat("beta")[:, post.feature_names.index("num__x")] / np.std(X["x"])
+    assert abs(slope.mean() - 1.0) < 0.05

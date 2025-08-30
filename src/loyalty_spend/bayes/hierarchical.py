@@ -14,6 +14,12 @@ are conjugate (Gelman et al., 2013, ch. 15), so each sweep draws
   slow mixing between the intercept and the group effects,
 * :math:`\sigma^2` and :math:`\tau^2` from inverse-gamma distributions.
 
+With ``nu`` set, the errors are Student-t with ``nu`` degrees of freedom,
+written as :math:`\varepsilon_i \mid \lambda_i \sim \mathcal N(0,
+\sigma^2/\lambda_i)` with :math:`\lambda_i \sim \mathrm{Gamma}(\nu/2,
+\nu/2)`; the weights :math:`\lambda_i` are drawn in each sweep and
+down-weight outlying members (Geweke, 1993).
+
 Fixed effects enter through the usual design (standardized numerics, one-hot
 categories); the grouping factor (region by default) gets partially pooled
 effects. Several chains from dispersed starting points allow convergence
@@ -59,6 +65,7 @@ class Posterior:
     design: ColumnTransformer = field(repr=False)
     group_column: str = "region"
     fill: dict[str, float] = field(default_factory=dict)
+    nu: float | None = None
 
     @property
     def n_chains(self) -> int:
@@ -100,7 +107,12 @@ class Posterior:
             u[pick][:, gi].T,
             rng.normal(size=(len(X), n_draws)) * tau[pick][None, :],
         )
-        noise = rng.normal(size=(len(X), n_draws)) * sigma[pick][None, :]
+        shocks = (
+            rng.normal(size=(len(X), n_draws))
+            if self.nu is None
+            else rng.standard_t(self.nu, size=(len(X), n_draws))
+        )
+        noise = shocks * sigma[pick][None, :]
         return mean + effect + noise
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -140,6 +152,7 @@ def fit_hierarchical(
     group: str = "region",
     fixed: list[str] | None = None,
     priors: Priors | None = None,
+    nu: float | None = None,
     n_chains: int = 4,
     n_iter: int = 1500,
     n_warmup: int = 500,
@@ -162,8 +175,7 @@ def fit_hierarchical(
     D = np.zeros((n, G))
     D[np.arange(n), gi] = 1.0
     W = np.column_stack([Z, D])
-    WtW = W.T @ W
-    Wty = W.T @ y
+    lam = np.ones(n)
     prior_prec = np.eye(p) / priors.beta_variance
     prior_prec[0, 0] = 1e-8
 
@@ -185,15 +197,19 @@ def fit_hierarchical(
             # the other mixes badly because the intercept and the mean of the
             # group effects are almost unidentified separately.
             prior_block = np.diag(np.r_[np.diag(prior_prec), np.full(G, 1 / tau2)])
-            prec = WtW / sigma2 + prior_block
+            Wl = W * lam[:, None]
+            prec = W.T @ Wl / sigma2 + prior_block
             chol = np.linalg.cholesky(prec)
-            mean = np.linalg.solve(prec, Wty / sigma2)
+            mean = np.linalg.solve(prec, Wl.T @ y / sigma2)
             theta = mean + np.linalg.solve(chol.T, rng.standard_normal(p + G))
             beta, u = theta[:p], theta[p:]
             resid = y - Z @ beta
             e = resid - u[gi]
+            if nu is not None:
+                # Student-t errors as a scale mixture: precision weights per member.
+                lam = rng.gamma((nu + 1) / 2, 2 / (nu + e**2 / sigma2))
             sigma2 = 1 / float(
-                rng.gamma(priors.a0 + n / 2, 1 / (priors.b0 + e @ e / 2))
+                rng.gamma(priors.a0 + n / 2, 1 / (priors.b0 + (lam * e) @ e / 2))
             )
             tau2 = 1 / float(rng.gamma(priors.a0 + G / 2, 1 / (priors.b0 + u @ u / 2)))
             if it >= n_warmup:
@@ -212,4 +228,5 @@ def fit_hierarchical(
         design,
         group,
         fill,
+        nu,
     )
