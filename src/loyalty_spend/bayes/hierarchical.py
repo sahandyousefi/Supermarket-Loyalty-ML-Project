@@ -10,8 +10,8 @@ with :math:`\beta \sim \mathcal N(0, v_0 I)`, and inverse-gamma priors
 :math:`\sigma^2, \tau^2 \sim \mathrm{IG}(a_0, b_0)`. All full conditionals
 are conjugate (Gelman et al., 2013, ch. 15), so each sweep draws
 
-* :math:`\beta` from a multivariate normal given the partial residuals,
-* every :math:`u_g` from a normal with precision :math:`n_g/\sigma^2 + 1/\tau^2`,
+* :math:`(\beta, u)` jointly from a multivariate normal, which avoids the
+  slow mixing between the intercept and the group effects,
 * :math:`\sigma^2` and :math:`\tau^2` from inverse-gamma distributions.
 
 Fixed effects enter through the usual design (standardized numerics, one-hot
@@ -63,6 +63,15 @@ class Posterior:
     def n_chains(self) -> int:
         return self.beta.shape[0]
 
+    def summary(self) -> pd.DataFrame:
+        """Posterior summary with convergence diagnostics for every scalar."""
+        from loyalty_spend.bayes.diagnostics import summarise_draws
+
+        draws = {name: self.beta[:, :, j] for j, name in enumerate(self.feature_names)}
+        draws |= {f"u[{g}]": self.u[:, :, k] for k, g in enumerate(self.groups)}
+        draws |= {"sigma": np.sqrt(self.sigma2), "tau": np.sqrt(self.tau2)}
+        return summarise_draws(draws)
+
     def flat(self, name: str) -> np.ndarray:
         x = getattr(self, name)
         return x.reshape(-1, *x.shape[2:])
@@ -109,8 +118,11 @@ def fit_hierarchical(
     groups = sorted(set(labels))
     gi = np.searchsorted(groups, labels)
     n, p, G = len(y), Z.shape[1], len(groups)
-    n_g = np.bincount(gi, minlength=G)
-    ZtZ = Z.T @ Z
+    D = np.zeros((n, G))
+    D[np.arange(n), gi] = 1.0
+    W = np.column_stack([Z, D])
+    WtW = W.T @ W
+    Wty = W.T @ y
     prior_prec = np.eye(p) / priors.beta_variance
     prior_prec[0, 0] = 1e-8
 
@@ -128,14 +140,16 @@ def fit_hierarchical(
         tau2 = float(np.var(y)) * rng.uniform(0.01, 1.0)
         u = rng.normal(scale=np.sqrt(tau2), size=G)
         for it in range(n_iter):
-            prec = ZtZ / sigma2 + prior_prec
-            cov = np.linalg.inv(prec)
-            mean = cov @ (Z.T @ (y - u[gi])) / sigma2
-            beta = rng.multivariate_normal(mean, (cov + cov.T) / 2)
+            # Joint draw of fixed and group effects: drawing them one after
+            # the other mixes badly because the intercept and the mean of the
+            # group effects are almost unidentified separately.
+            prior_block = np.diag(np.r_[np.diag(prior_prec), np.full(G, 1 / tau2)])
+            prec = WtW / sigma2 + prior_block
+            chol = np.linalg.cholesky(prec)
+            mean = np.linalg.solve(prec, Wty / sigma2)
+            theta = mean + np.linalg.solve(chol.T, rng.standard_normal(p + G))
+            beta, u = theta[:p], theta[p:]
             resid = y - Z @ beta
-            sums = np.bincount(gi, weights=resid, minlength=G)
-            u_prec = n_g / sigma2 + 1 / tau2
-            u = rng.normal(sums / sigma2 / u_prec, 1 / np.sqrt(u_prec))
             e = resid - u[gi]
             sigma2 = 1 / float(
                 rng.gamma(priors.a0 + n / 2, 1 / (priors.b0 + e @ e / 2))

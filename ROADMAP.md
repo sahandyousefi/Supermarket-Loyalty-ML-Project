@@ -35,7 +35,6 @@ Items are numbered `<phase>.<item>`. Finished items move to the Completed sectio
 
 The point models treat region and tenure as fixed effects. A hierarchical model shares strength between groups, gives full posterior uncertainty for every quantity, and adds parameter uncertainty to the reward cost forecast.
 
-- [ ] 10.3 Split R-hat and effective sample size diagnostics
 - [ ] 10.4 Posterior predictive draws for new members
 - [ ] 10.5 Posterior predictive checks
 - [ ] 10.6 Student-t errors as a scale mixture of normals
@@ -242,3 +241,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-08-28: 9.17 Design notes for the language model components
 - [x] 2025-08-28: 10.1 Empirical Bayes shrinkage of group means
 - [x] 2025-08-28: 10.2 Gibbs sampler for a hierarchical normal model with group effects
+- [x] 2025-08-30: 10.3 Split R-hat and effective sample size diagnostics
