@@ -203,5 +203,13 @@ def fit_hierarchical(
                 out["sigma2"][c, k] = sigma2
                 out["tau2"][c, k] = tau2
     return Posterior(
-        out["beta"], out["u"], out["sigma2"], out["tau2"], groups, names, design, group
+        out["beta"],
+        out["u"],
+        out["sigma2"],
+        out["tau2"],
+        groups,
+        names,
+        design,
+        group,
+        fill,
     )
