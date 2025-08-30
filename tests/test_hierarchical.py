@@ -45,3 +45,38 @@ def test_posterior_predictive_covers_new_members(train_df):
     assert np.corrcoef(post.predict(X.iloc[700:]), y.iloc[700:])[0, 1] > 0.99
     new_group = X.iloc[700:710].assign(region="Antarctica")
     assert np.isfinite(post.predictive(new_group, 50)).all()
+
+
+def test_group_specific_variances():
+    rng = np.random.default_rng(5)
+    n = 1500
+    band = rng.integers(0, 3, size=n)
+    x = rng.normal(size=n)
+    sd = np.array([0.5, 1.0, 3.0])[band]
+    y = 1 + x + rng.normal(size=n) * sd
+    X = pd.DataFrame(
+        {
+            "x": x,
+            "grp": rng.integers(0, 4, size=n).astype(str),
+            "band": band.astype(str),
+        }
+    )
+    post = fit_hierarchical(
+        X,
+        y,
+        group="grp",
+        fixed=["x"],
+        variance_by="band",
+        n_chains=2,
+        n_iter=500,
+        n_warmup=200,
+    )
+    table = post.summary().set_index("parameter")
+    for level, true in zip("012", [0.5, 1.0, 3.0]):
+        assert table.loc[f"sigma[{level}]", "mean"] == pytest.approx(true, rel=0.1)
+    draws = post.predictive(X.head(300), 400)
+    spread = draws.std(axis=1)
+    assert (
+        spread[X.head(300)["band"].to_numpy() == "2"].mean()
+        > 2 * spread[X.head(300)["band"].to_numpy() == "0"].mean()
+    )

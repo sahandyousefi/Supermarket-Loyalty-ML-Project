@@ -20,6 +20,10 @@ written as :math:`\varepsilon_i \mid \lambda_i \sim \mathcal N(0,
 \nu/2)`; the weights :math:`\lambda_i` are drawn in each sweep and
 down-weight outlying members (Geweke, 1993).
 
+With ``variance_by`` set, each level of that column has its own residual
+variance with an inverse-gamma prior, so tenure bands with more erratic
+spend get wider predictive distributions.
+
 Fixed effects enter through the usual design (standardized numerics, one-hot
 categories); the grouping factor (region by default) gets partially pooled
 effects. Several chains from dispersed starting points allow convergence
@@ -66,6 +70,8 @@ class Posterior:
     group_column: str = "region"
     fill: dict[str, float] = field(default_factory=dict)
     nu: float | None = None
+    variance_column: str | None = None
+    variance_levels: list[str] = field(default_factory=lambda: ["all"])
 
     @property
     def n_chains(self) -> int:
@@ -77,7 +83,12 @@ class Posterior:
 
         draws = {name: self.beta[:, :, j] for j, name in enumerate(self.feature_names)}
         draws |= {f"u[{g}]": self.u[:, :, k] for k, g in enumerate(self.groups)}
-        draws |= {"sigma": np.sqrt(self.sigma2), "tau": np.sqrt(self.tau2)}
+        if self.sigma2.ndim == 2:
+            draws["sigma"] = np.sqrt(self.sigma2)
+        else:
+            for k, level in enumerate(self.variance_levels):
+                draws[f"sigma[{level}]"] = np.sqrt(self.sigma2[:, :, k])
+        draws["tau"] = np.sqrt(self.tau2)
         return summarise_draws(draws)
 
     def _design_matrix(self, X: pd.DataFrame) -> np.ndarray:
@@ -97,7 +108,15 @@ class Posterior:
         Z = self._design_matrix(X)
         beta, u = self.flat("beta"), self.flat("u")
         sigma, tau = np.sqrt(self.flat("sigma2")), np.sqrt(self.flat("tau2"))
-        pick = rng.integers(0, len(sigma), size=n_draws)
+        pick = rng.integers(0, len(tau), size=n_draws)
+        if sigma.ndim == 1:
+            member_sigma = np.broadcast_to(sigma[pick][None, :], (len(X), n_draws))
+        else:
+            levels = X[self.variance_column].astype(str).to_numpy()
+            vi = np.searchsorted(self.variance_levels, levels).clip(
+                max=len(self.variance_levels) - 1
+            )
+            member_sigma = sigma[pick][:, vi].T
         labels = X[self.group_column].astype(str).to_numpy()
         known = np.isin(labels, self.groups)
         gi = np.searchsorted(self.groups, labels).clip(max=len(self.groups) - 1)
@@ -112,7 +131,7 @@ class Posterior:
             if self.nu is None
             else rng.standard_t(self.nu, size=(len(X), n_draws))
         )
-        noise = shocks * sigma[pick][None, :]
+        noise = shocks * member_sigma
         return mean + effect + noise
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -153,6 +172,7 @@ def fit_hierarchical(
     fixed: list[str] | None = None,
     priors: Priors | None = None,
     nu: float | None = None,
+    variance_by: str | None = None,
     n_chains: int = 4,
     n_iter: int = 1500,
     n_warmup: int = 500,
@@ -176,6 +196,14 @@ def fit_hierarchical(
     D[np.arange(n), gi] = 1.0
     W = np.column_stack([Z, D])
     lam = np.ones(n)
+    if variance_by is None:
+        levels, vi = ["all"], np.zeros(n, dtype=int)
+    else:
+        v_labels = data[variance_by].astype(str).to_numpy()
+        levels = sorted(set(v_labels))
+        vi = np.searchsorted(levels, v_labels)
+    K = len(levels)
+    n_v = np.bincount(vi, minlength=K)
     prior_prec = np.eye(p) / priors.beta_variance
     prior_prec[0, 0] = 1e-8
 
@@ -183,13 +211,13 @@ def fit_hierarchical(
     out = {
         "beta": np.empty((n_chains, keep, p)),
         "u": np.empty((n_chains, keep, G)),
-        "sigma2": np.empty((n_chains, keep)),
+        "sigma2": np.empty((n_chains, keep, K)),
         "tau2": np.empty((n_chains, keep)),
     }
     root = np.random.default_rng(seed)
     for c in range(n_chains):
         rng = np.random.default_rng(root.integers(2**32))
-        sigma2 = float(np.var(y)) * rng.uniform(0.1, 2.0)
+        sigma2: np.ndarray = np.full(K, float(np.var(y)) * rng.uniform(0.1, 2.0))
         tau2 = float(np.var(y)) * rng.uniform(0.01, 1.0)
         u = rng.normal(scale=np.sqrt(tau2), size=G)
         for it in range(n_iter):
@@ -197,20 +225,20 @@ def fit_hierarchical(
             # the other mixes badly because the intercept and the mean of the
             # group effects are almost unidentified separately.
             prior_block = np.diag(np.r_[np.diag(prior_prec), np.full(G, 1 / tau2)])
-            Wl = W * lam[:, None]
-            prec = W.T @ Wl / sigma2 + prior_block
+            # Per-member precision: Student-t weight over the member's variance.
+            Wl = W * (lam / sigma2[vi])[:, None]
+            prec = W.T @ Wl + prior_block
             chol = np.linalg.cholesky(prec)
-            mean = np.linalg.solve(prec, Wl.T @ y / sigma2)
+            mean = np.linalg.solve(prec, Wl.T @ y)
             theta = mean + np.linalg.solve(chol.T, rng.standard_normal(p + G))
             beta, u = theta[:p], theta[p:]
             resid = y - Z @ beta
             e = resid - u[gi]
             if nu is not None:
                 # Student-t errors as a scale mixture: precision weights per member.
-                lam = rng.gamma((nu + 1) / 2, 2 / (nu + e**2 / sigma2))
-            sigma2 = 1 / float(
-                rng.gamma(priors.a0 + n / 2, 1 / (priors.b0 + (lam * e) @ e / 2))
-            )
+                lam = rng.gamma((nu + 1) / 2, 2 / (nu + e**2 / sigma2[vi]))
+            ssr = np.bincount(vi, weights=lam * e**2, minlength=K)
+            sigma2 = 1 / rng.gamma(priors.a0 + n_v / 2, 1 / (priors.b0 + ssr / 2))
             tau2 = 1 / float(rng.gamma(priors.a0 + G / 2, 1 / (priors.b0 + u @ u / 2)))
             if it >= n_warmup:
                 k = it - n_warmup
@@ -218,6 +246,8 @@ def fit_hierarchical(
                 out["u"][c, k] = u
                 out["sigma2"][c, k] = sigma2
                 out["tau2"][c, k] = tau2
+    if variance_by is None:
+        out["sigma2"] = out["sigma2"][:, :, 0]
     return Posterior(
         out["beta"],
         out["u"],
@@ -229,4 +259,6 @@ def fit_hierarchical(
         group,
         fill,
         nu,
+        variance_by,
+        levels,
     )
