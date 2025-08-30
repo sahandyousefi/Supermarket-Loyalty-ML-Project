@@ -134,6 +134,37 @@ class Posterior:
         noise = shocks * member_sigma
         return mean + effect + noise
 
+    def log_likelihood(
+        self, X: pd.DataFrame, y: ArrayLike, max_draws: int = 1000, seed: int = 0
+    ) -> np.ndarray:
+        """Pointwise log density of ``y`` under each posterior draw, ``(S, n)``."""
+        from scipy import stats
+
+        rng = np.random.default_rng(seed)
+        y = np.asarray(y, float)
+        beta, u = self.flat("beta"), self.flat("u")
+        sigma2, tau2 = self.flat("sigma2"), self.flat("tau2")
+        pick = rng.choice(len(tau2), size=min(max_draws, len(tau2)), replace=False)
+        Z = self._design_matrix(X)
+        labels = X[self.group_column].astype(str).to_numpy()
+        known = np.isin(labels, self.groups)
+        gi = np.searchsorted(self.groups, labels).clip(max=len(self.groups) - 1)
+        mean = (Z @ beta[pick].T).T + np.where(known, u[pick][:, gi], 0.0)
+        if sigma2.ndim == 1:
+            var = np.broadcast_to(sigma2[pick][:, None], mean.shape)
+        else:
+            levels = X[self.variance_column].astype(str).to_numpy()
+            vi = np.searchsorted(self.variance_levels, levels).clip(
+                max=len(self.variance_levels) - 1
+            )
+            var = sigma2[pick][:, vi]
+        # A group never seen in training adds its effect variance.
+        var = var + np.where(known, 0.0, tau2[pick][:, None])
+        scale = np.sqrt(var)
+        if self.nu is None:
+            return stats.norm.logpdf(y[None, :], mean, scale)
+        return stats.t.logpdf(y[None, :], self.nu, mean, scale)
+
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Posterior mean of expected spend for known groups."""
         Z = self._design_matrix(X)
