@@ -198,7 +198,7 @@ Almost all of the cost sensitivity sits at the top threshold, where many custome
 | Student-t errors, nu = 4 | 263.4 | 22.9 | 0.01 to 0.85 |
 | Normal errors, variance by tenure band | 470.5 | 34.9 | 0.12 to 0.88 |
 
-Lower WAIC is better: heavy-tailed errors fit the residuals far better than normal ones, and the residual scale differs by tenure band (0.27 for 10+ years, 0.40 for 1-3 years). Regions differ by less than 0.06 from their average, with 90% intervals that include zero for three of the four. Because only four regions inform the between-region scale, its posterior is set by the prior, which the prior sensitivity analysis makes explicit. With parameter uncertainty included, the reward cost of `test.csv` has a mean of 1,219.32 and a 90% interval of 1,215.03 to 1,223.91.
+Lower WAIC is better: heavy-tailed errors fit the residuals far better than normal ones, and the residual scale differs by tenure band (0.27 for 10+ years, 0.40 for 1-3 years). Every region effect lies within 0.06 of the average of the four, and all four 90% intervals include zero. Because only four regions inform the between-region scale, its posterior is set by the prior, which the prior sensitivity analysis makes explicit. With parameter uncertainty included, the reward cost of `test.csv` has a mean of 1,219.32 and a 90% interval of 1,215.03 to 1,223.91.
 
 ### Customer segments
 
