@@ -17,6 +17,9 @@ from loyalty_spend.analysis.drivers import (
     tukey_table,
     welch_anova,
 )
+from loyalty_spend.bayes.checks import posterior_predictive_check
+from loyalty_spend.bayes.compare import waic
+from loyalty_spend.bayes.hierarchical import fit_hierarchical
 from loyalty_spend.business.programme import design_programme
 from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
 from loyalty_spend.causal.analysis import analyse_promotion
@@ -366,6 +369,44 @@ def design_section(cfg: Config) -> tuple[str, dict]:
     return text, summary
 
 
+def bayes_section(cfg: Config) -> tuple[str, dict]:
+    """Hierarchical model with normal and Student-t errors on train.csv."""
+    train, _ = load_modeling_data(
+        cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
+    )
+    X, y = split_xy(train)
+    rows, contrasts = [], None
+    for label, nu in (("normal errors", None), ("Student-t errors, nu = 4", 4.0)):
+        post = fit_hierarchical(X, y, nu=nu, seed=cfg.cv.seed)
+        diag = post.summary()
+        fit = waic(post.log_likelihood(X, y, seed=cfg.cv.seed))
+        checks = posterior_predictive_check(post, X, y, seed=cfg.cv.seed)
+        rows.append(
+            {
+                "model": label,
+                "waic": fit["waic"],
+                "p_waic": fit["p_waic"],
+                "max_rhat": float(diag["rhat"].max()),
+                "min_ess": float(diag["ess"].min()),
+                "min_ppc_p": float(checks["p_value"].min()),
+                "max_ppc_p": float(checks["p_value"].max()),
+            }
+        )
+        if contrasts is None:
+            contrasts = post.group_contrasts()
+    table = pd.DataFrame(rows)
+    assert contrasts is not None
+    text = "\n\n".join(
+        [
+            "## Hierarchical Bayesian model (train.csv)",
+            markdown_table(table, 3),
+            "Region effects relative to their mean (normal errors):",
+            markdown_table(contrasts, 4),
+        ]
+    )
+    return text, {"models": rows, "region_contrasts": contrasts.to_dict("records")}
+
+
 def liability_section(cfg: Config, residuals: np.ndarray, fig_dir: Path) -> str:
     train, test = load_modeling_data(
         cfg.paths.raw(cfg.paths.train_file), cfg.paths.raw(cfg.paths.test_file)
@@ -407,6 +448,7 @@ def build_report(
         "promotion",
         "targeting",
         "design",
+        "bayes",
     ),
 ) -> Path:
     """Run the analysis and write ``reports/results.md`` with figures."""
@@ -439,6 +481,9 @@ def build_report(
         parts.append(text)
     if "design" in sections:
         text, summary["design"] = design_section(cfg)
+        parts.append(text)
+    if "bayes" in sections:
+        text, summary["bayes"] = bayes_section(cfg)
         parts.append(text)
     if "probabilistic" in sections:
         text, summary["probabilistic"] = probabilistic_section(cfg, settings, fig_dir)

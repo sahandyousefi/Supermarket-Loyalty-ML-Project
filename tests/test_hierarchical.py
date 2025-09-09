@@ -106,3 +106,13 @@ def test_posterior_sampler_widens_the_cost_distribution(train_df):
     )
     assert full.total_draws.std() > plug.total_draws.std()
     assert full.total_draws.mean() == pytest.approx(plug.total_draws.mean(), rel=0.02)
+
+
+def test_group_contrasts_sum_to_zero(synthetic):
+    X, y, u = synthetic
+    post = fit_hierarchical(
+        X, y, group="grp", fixed=["x"], n_chains=1, n_iter=400, n_warmup=100
+    )
+    table = post.group_contrasts()
+    assert table["mean"].sum() == pytest.approx(0.0, abs=1e-9)
+    assert np.corrcoef(table["mean"], u - u.mean())[0, 1] > 0.98

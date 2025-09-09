@@ -837,6 +837,7 @@ REPORT_SECTIONS = (
     "promotion",
     "targeting",
     "design",
+    "bayes",
 )
 
 

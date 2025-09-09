@@ -175,6 +175,24 @@ class Posterior:
         effect = np.where(np.isin(labels, self.groups), u_mean[gi], 0.0)
         return Z @ self.flat("beta").mean(axis=0) + effect
 
+    def group_contrasts(self) -> pd.DataFrame:
+        """Each group effect minus the mean of all group effects.
+
+        The level of the group effects trades off against the intercept, so
+        single effects have wide posteriors; their differences are what the
+        data identify.
+        """
+        u = self.flat("u")
+        c = u - u.mean(axis=1, keepdims=True)
+        return pd.DataFrame(
+            {
+                "group": self.groups,
+                "mean": c.mean(axis=0),
+                "q05": np.quantile(c, 0.05, axis=0),
+                "q95": np.quantile(c, 0.95, axis=0),
+            }
+        )
+
     def flat(self, name: str) -> np.ndarray:
         x = getattr(self, name)
         return x.reshape(-1, *x.shape[2:])
