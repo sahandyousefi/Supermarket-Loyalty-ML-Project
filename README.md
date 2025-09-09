@@ -188,6 +188,18 @@ The heterogeneity loading is -0.058 (se 0.164, p = 1.0): the predicted differenc
 
 Almost all of the cost sensitivity sits at the top threshold, where many customers are predicted to land. Moving it from 140 to 150 leaves the share of members who earn a reward unchanged (80.8%), because no customer is predicted between 94 and 110, and cuts the expected cost by a quarter. The behavioural scenario is a stress test, not an estimate: the data cannot tell how members respond to a threshold, but it bounds what a whole-spend schedule could cost if they do, and a marginal schedule has no such exposure.
 
+### Hierarchical Bayesian model
+
+`loyalty-spend bayes` fits spend with partially pooled region effects by Gibbs sampling (four chains, 1,000 kept draws each). Every parameter has split R-hat at most 1.002 and an effective sample size above 1,600.
+
+| Variant | WAIC | Effective parameters | Posterior predictive p-values |
+| --- | --- | --- | --- |
+| Normal errors | 497.2 | 27.5 | 0.37 to 0.91 |
+| Student-t errors, nu = 4 | 263.4 | 22.9 | 0.01 to 0.85 |
+| Normal errors, variance by tenure band | 470.5 | 34.9 | 0.12 to 0.88 |
+
+Lower WAIC is better: heavy-tailed errors fit the residuals far better than normal ones, and the residual scale differs by tenure band (0.27 for 10+ years, 0.40 for 1-3 years). Regions differ by less than 0.06 from their average, with 90% intervals that include zero for three of the four. Because only four regions inform the between-region scale, its posterior is set by the prior, which the prior sensitivity analysis makes explicit. With parameter uncertainty included, the reward cost of `test.csv` has a mean of 1,219.32 and a 90% interval of 1,215.03 to 1,223.91.
+
 ### Customer segments
 
 Members of `loyalty.csv` are clustered with k-medoids on Gower distances over all recorded attributes, and every segment is checked by bootstrap.
@@ -237,6 +249,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 
 **Plain-language summaries.** `loyalty-spend narrate` and `loyalty-spend ask` use a language model only to write sentences: numbers come from a fact sheet built in code and every number in the output is checked against it, answers cite numbered passages of the documentation and each sentence is checked against what it cites, and questions that try to override the instructions are blocked before any call. Both commands work offline. Design and evaluation are in [docs/llm_design.md](docs/llm_design.md).
 
+**Bayesian model.** A hierarchical model with partially pooled region effects, optional Student-t errors and tenure-specific variances is fitted by a blocked Gibbs sampler and checked with split R-hat, effective sample sizes, posterior predictive checks, WAIC and a prior sensitivity analysis; its posterior predictive draws carry parameter uncertainty into the reward cost forecast.
+
 **Segments.** Gower distance for mixed attributes, k-medoids with restarts, the number of segments by average silhouette width, and bootstrap Jaccard stability (Hennig, 2007) to tell real segments from artefacts of one sample.
 
 **Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
@@ -268,6 +282,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── monitoring/             PSI, drift tests, domain classifier
 │   ├── explain/                additive contributions, TreeSHAP, permutation importance
 │   ├── causal/                 propensity, balance, IPW, AIPW, DML, sensitivity, meta-learners, targeting
+│   ├── bayes/                  Gibbs sampler, diagnostics, posterior checks, WAIC
 │   ├── segments/               Gower distance, k-medoids, silhouette, stability, profiles
 │   ├── business/               reward schedule and Monte Carlo cost forecast
 │   ├── ops/                    registry, champion-challenger, batch scoring, monitoring, manifest
@@ -305,6 +320,7 @@ loyalty-spend effect --output-dir artifacts/effect     # promotion effect with d
 loyalty-spend uplift --learner dr --cost 0.5          # heterogeneity tests and targeting
 loyalty-spend segments --output-dir artifacts/segments
 loyalty-spend design --output-dir artifacts/design     # schedule comparison, risk, threshold search
+loyalty-spend bayes --nu 4                            # hierarchical model, diagnostics, WAIC
 loyalty-spend narrate                                 # summary from the report facts
 loyalty-spend ask "How are prediction intervals built?"
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
