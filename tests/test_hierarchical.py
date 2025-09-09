@@ -80,3 +80,29 @@ def test_group_specific_variances():
         spread[X.head(300)["band"].to_numpy() == "2"].mean()
         > 2 * spread[X.head(300)["band"].to_numpy() == "0"].mean()
     )
+
+
+def test_posterior_sampler_widens_the_cost_distribution(train_df):
+    from loyalty_spend.bayes.hierarchical import posterior_sampler
+    from loyalty_spend.business.rewards import (
+        RewardSchedule,
+        gaussian_sampler,
+        simulate_liability,
+    )
+    from loyalty_spend.config import RewardConfig
+    from loyalty_spend.features.preprocess import split_xy
+
+    X, y = split_xy(train_df)
+    post = fit_hierarchical(X, y, n_chains=2, n_iter=500, n_warmup=200)
+    schedule = RewardSchedule(RewardConfig().tiers)
+    customers = X.iloc[:200]
+    mean = post.predict(customers)
+    sigma = float(np.sqrt(post.flat("sigma2")).mean())
+    full = simulate_liability(
+        range(200), mean, posterior_sampler(post, customers), schedule, 2000, 0
+    )
+    plug = simulate_liability(
+        range(200), mean, gaussian_sampler(mean, sigma), schedule, 2000, 0
+    )
+    assert full.total_draws.std() > plug.total_draws.std()
+    assert full.total_draws.mean() == pytest.approx(plug.total_draws.mean(), rel=0.02)

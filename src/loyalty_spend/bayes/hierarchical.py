@@ -32,6 +32,7 @@ checks.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -293,3 +294,49 @@ def fit_hierarchical(
         variance_by,
         levels,
     )
+
+
+def posterior_sampler(
+    posterior: Posterior, X: pd.DataFrame
+) -> Callable[[np.random.Generator, int], np.ndarray]:
+    """Sampler of joint spend draws for the reward simulation.
+
+    Every row of a batch uses one posterior draw of the parameters for all
+    customers at once, so uncertainty about the parameters moves everyone
+    together, as it would in reality; noise is drawn independently per
+    customer. This makes the spread of total cost wider than a plug-in
+    forecast that fixes the parameters.
+    """
+    Z = posterior._design_matrix(X)
+    labels = X[posterior.group_column].astype(str).to_numpy()
+    known = np.isin(labels, posterior.groups)
+    gi = np.searchsorted(posterior.groups, labels).clip(max=len(posterior.groups) - 1)
+    beta, u = posterior.flat("beta"), posterior.flat("u")
+    sigma2, tau2 = posterior.flat("sigma2"), posterior.flat("tau2")
+    if sigma2.ndim > 1:
+        levels = X[posterior.variance_column].astype(str).to_numpy()
+        vi = np.searchsorted(posterior.variance_levels, levels).clip(
+            max=len(posterior.variance_levels) - 1
+        )
+
+    def draw(rng: np.random.Generator, m: int) -> np.ndarray:
+        pick = rng.integers(0, len(tau2), size=m)
+        mean = beta[pick] @ Z.T
+        effect = np.where(
+            known[None, :],
+            u[pick][:, gi],
+            rng.normal(size=(m, len(X))) * np.sqrt(tau2[pick])[:, None],
+        )
+        sd = (
+            np.sqrt(sigma2[pick])[:, None]
+            if sigma2.ndim == 1
+            else np.sqrt(sigma2[pick][:, vi])
+        )
+        shocks = (
+            rng.normal(size=(m, len(X)))
+            if posterior.nu is None
+            else rng.standard_t(posterior.nu, size=(m, len(X)))
+        )
+        return mean + effect + shocks * sd
+
+    return draw
