@@ -183,3 +183,23 @@ def test_model_card_and_serve_commands(cfg, tmp_path, monkeypatch):
         == 0
     )
     assert calls == {"host": "127.0.0.1", "port": 9001}
+
+
+def test_bayes_command(cfg, tmp_path, capsys):
+    import json
+
+    out = tmp_path / "bayes"
+    args = [
+        "bayes",
+        "--config",
+        str(cfg),
+        "--chains",
+        "2",
+        "--iter",
+        "300",
+        "--warmup",
+        "100",
+    ]
+    assert main([*args, "--output-dir", str(out)]) == 0
+    assert "WAIC" in capsys.readouterr().out
+    assert json.loads((out / "bayes.json").read_text())["cost"]["expected_total"] > 0

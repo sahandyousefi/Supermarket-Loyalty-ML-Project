@@ -524,6 +524,77 @@ def _ask(args: argparse.Namespace) -> int:
     return 1 if answer.answer == BLOCKED else 0
 
 
+def _bayes_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--group", default="region", help="partially pooled factor")
+    p.add_argument(
+        "--nu", type=float, default=None, help="Student-t degrees of freedom"
+    )
+    p.add_argument("--variance-by", default=None, help="column with its own variance")
+    p.add_argument("--chains", type=int, default=4)
+    p.add_argument("--iter", type=int, default=1500)
+    p.add_argument("--warmup", type=int, default=500)
+    p.add_argument("--output-dir", default=None, help="write tables to this folder")
+
+
+@command("bayes", "fit the hierarchical Bayesian model of spend", _bayes_args)
+def _bayes(args: argparse.Namespace) -> int:
+    from loyalty_spend.bayes.checks import posterior_predictive_check
+    from loyalty_spend.bayes.compare import waic
+    from loyalty_spend.bayes.hierarchical import fit_hierarchical, posterior_sampler
+    from loyalty_spend.business.rewards import RewardSchedule, simulate_liability
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.data.schema import ID
+    from loyalty_spend.features.preprocess import split_xy
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    test, _ = load_clean(
+        cfg.paths.raw(cfg.paths.test_file), impute=False, require_target=False
+    )
+    X, y = split_xy(train)
+    post = fit_hierarchical(
+        X,
+        y,
+        group=args.group,
+        nu=args.nu,
+        variance_by=args.variance_by,
+        n_chains=args.chains,
+        n_iter=args.iter,
+        n_warmup=args.warmup,
+        seed=cfg.cv.seed,
+    )
+    summary = post.summary()
+    checks = posterior_predictive_check(post, X, y, seed=cfg.cv.seed)
+    fit = waic(post.log_likelihood(X, y, seed=cfg.cv.seed))
+    cost = simulate_liability(
+        test[ID],
+        post.predict(test),
+        posterior_sampler(post, test),
+        RewardSchedule(cfg.rewards.tiers),
+        cfg.rewards.n_simulations,
+        cfg.rewards.seed,
+    )
+    fmt = lambda v: f"{v:.4f}"  # noqa: E731
+    keep = summary["parameter"].str.match(r"^(u\[|sigma|tau)")
+    print(summary[keep].to_string(index=False, float_format=fmt))
+    print(f"max R-hat {summary['rhat'].max():.3f}, min ESS {summary['ess'].min():.0f}")
+    print(checks.to_string(index=False, float_format=fmt))
+    print(f"WAIC {fit['waic']:.1f} (p_waic {fit['p_waic']:.1f})")
+    s = cost.summary()
+    print(
+        f"reward cost for test.csv: mean {s['expected_total']:.2f}, "
+        f"90% interval {s['p05']:.2f} to {s['p95']:.2f}"
+    )
+    if args.output_dir:
+        out = Path(args.output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        summary.to_csv(out / "posterior_summary.csv", index=False)
+        checks.to_csv(out / "posterior_checks.csv", index=False)
+        (out / "bayes.json").write_text(json.dumps({"waic": fit, "cost": s}, indent=2))
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
