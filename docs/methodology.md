@@ -182,6 +182,16 @@ The robustness value $\mathrm{RV}_q$ is the common value of the two partial $R^2
 
 **Targeting.** With margin $m$ and cost $c$ per promotion, the rule $\pi(x) = \mathbb 1\{m\hat\tau(x) > c\}$ is worth $V(\pi) = n^{-1}\sum_i \pi(x_i)(m\psi_i - c)$ per member relative to offering it to nobody, which is unbiased for a rule learned on other data (Athey and Wager, 2021). Under a budget, members are ranked by predicted effect and the top share with a positive predicted net gain is chosen; the value-budget curve shows where extra budget stops paying.
 
+## 10a. Hierarchical Bayesian model
+
+**Model.** $y_i = x_i^\top\beta + u_{g(i)} + \varepsilon_i$ with region effects $u_g \sim \mathcal N(0,\tau^2)$, fixed effects for the amounts, tenure band, joining month and promotion, and inverse-gamma priors $\mathrm{IG}(1,1)$ on $\sigma^2$ and $\tau^2$. Two extensions are available: Student-t errors with $\nu$ degrees of freedom, written as a normal scale mixture $\varepsilon_i \mid \lambda_i \sim \mathcal N(0, \sigma^2/\lambda_i)$, $\lambda_i \sim \mathrm{Gamma}(\nu/2,\nu/2)$ (Geweke, 1993), and a separate residual variance for each tenure band.
+
+**Sampling.** All full conditionals are conjugate. $(\beta, u)$ are drawn jointly from one multivariate normal per sweep: drawing them separately mixes badly, because the intercept and the mean of the region effects are almost unidentified apart. Four chains of 1,500 iterations with 500 discarded are run from dispersed starting values; convergence is checked with split $\hat R$ and the effective sample size of Vehtari et al. (2021).
+
+**Checks and comparison.** Posterior predictive checks compare the mean, standard deviation, extremes, skewness and kurtosis of the observed spend with their distribution over replicated data sets. WAIC (Watanabe, 2010) and the cross-validated log predictive density compare the variants with each other and with OLS. Because there are only four regions, the posterior of $\tau$ is driven by its prior; `prior_sensitivity` refits under vague and informative priors to show which conclusions move.
+
+**Reward cost.** The posterior predictive sampler draws one set of parameters per simulated year for all customers jointly, so parameter uncertainty moves every forecast together, as a wrong model would in practice, and noise is drawn per customer.
+
 ## 11. Customer segments
 
 **Distance.** Member attributes are mixed: two amounts, an ordinal tenure band and three nominal attributes. The Gower (1971) distance averages per-attribute dissimilarities in $[0,1]$: the absolute difference divided by the range for amounts, the rank difference divided by the number of levels minus one for tenure (Podani, 1999), and a mismatch indicator for nominal attributes. A missing value removes that attribute from the average for the pairs it is part of.
@@ -230,10 +240,12 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
 - Crump, R. K., Hotz, V. J., Imbens, G. W., and Mitnik, O. A. (2009). Dealing with limited overlap in estimation of average treatment effects. *Biometrika*, 96(1), 187-199.
 - Dawid, A. P. (1984). Statistical theory: The prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2), 278-292.
-- Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
+- Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., and Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). CRC Press.
+- Geweke, J. (1993). Bayesian treatment of the independent Student-t linear model. *Journal of Applied Econometrics*, 8(S1), S19-S40.
 - Gneiting, T., Raftery, A. E., Westveld, A. H., and Goldman, T. (2005). Calibrated probabilistic forecasting using ensemble model output statistics and minimum CRPS estimation. *Monthly Weather Review*, 133(5), 1098-1118.
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *Advances in Neural Information Processing Systems*, 34.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *Advances in Neural Information Processing Systems*, 35.
+- Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
 - Gower, J. C. (1971). A general coefficient of similarity and some of its properties. *Biometrics*, 27(4), 857-871.
 - Grinsztajn, L., Oyallon, E., and Varoquaux, G. (2022). Why do tree-based models still outperform deep learning on typical tabular data? *Advances in Neural Information Processing Systems*, 35, Datasets and Benchmarks Track.
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1), 1-27.
@@ -259,4 +271,6 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *Advances in Neural Information Processing Systems*, 32.
 - Vovk, V., Gammerman, A., and Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer.
 - Vovk, V., Shen, J., Manokhin, V., and Xie, M. (2019). Nonparametric predictive distributions based on conformal prediction. *Machine Learning*, 108(3), 445-474.
+- Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., and Burkner, P.-C. (2021). Rank-normalization, folding, and localization: An improved R-hat for assessing convergence of MCMC. *Bayesian Analysis*, 16(2), 667-718.
+- Watanabe, S. (2010). Asymptotic equivalence of Bayes cross validation and widely applicable information criterion in singular learning theory. *Journal of Machine Learning Research*, 11, 3571-3594.
 - Welch, B. L. (1951). On the comparison of several mean values: An alternative approach. *Biometrika*, 38(3/4), 330-336.
