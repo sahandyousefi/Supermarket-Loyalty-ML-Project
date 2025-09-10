@@ -22,21 +22,16 @@ def test_ale_of_a_known_function_with_correlated_features():
     np.testing.assert_allclose(curve["effect"], expected, atol=0.02)
 
 
-def test_ale_slope_matches_the_linear_coefficient(train_df):
+def test_ale_slope_matches_the_linear_effect(train_df):
     X, y = split_xy(train_df)
     model = build_model("ols").fit(X, y)
     curve = ale_1d(model.predict, X, "first_month", n_bins=10)
     slope = np.polyfit(curve["value"], curve["effect"], 1)[0]
-    pipeline_coef = np.polyfit(
-        X["first_month"],
-        model.predict(
-            X.assign(items_in_first_month=X["items_in_first_month"].median())
-        ),
-        1,
-    )[0]
-    assert slope == pytest.approx(slope, rel=1e-9)
-    assert np.all(np.diff(curve["effect"]) * np.sign(slope) >= -1e-9)
+    # For a linear model the effect of one more unit is the same everywhere.
+    unit = np.mean(
+        model.predict(X.assign(first_month=X["first_month"] + 1)) - model.predict(X)
+    )
+    assert slope == pytest.approx(unit, rel=1e-6)
     assert curve["n_in_bin"].sum() == X["first_month"].notna().sum()
-    assert np.isfinite(pipeline_coef)
     with pytest.raises(ValueError):
         ale_1d(model.predict, X.assign(first_month=1.0), "first_month")
