@@ -48,3 +48,37 @@ def test_counterfactual_with_the_fitted_model(train_df):
     if cf.feasible:
         moved = model.predict(X.iloc[[i]].assign(first_month=cf.required_value))[0]
         assert moved == pytest.approx(cf.next_threshold, abs=0.01)
+
+
+def test_minimal_change_stays_plausible_and_keeps_immutables():
+    from loyalty_spend.explain.counterfactual import minimal_change_counterfactual
+
+    rng = np.random.default_rng(0)
+    ref = pd.DataFrame(
+        {
+            "first_month": rng.uniform(5, 30, 500),
+            "items_in_first_month": rng.integers(1, 15, 500).astype(float),
+            "region": "Europe",
+        }
+    )
+
+    def f(Z):
+        return (
+            50
+            + 3 * Z["first_month"].to_numpy()
+            + 2 * Z["items_in_first_month"].to_numpy()
+        )
+
+    row = ref.iloc[[0]].assign(first_month=10.0, items_in_first_month=5.0)
+    table = minimal_change_counterfactual(f, row, 120.0, ref)
+    best = table.iloc[0]
+    assert best["forecast"] >= 120.0
+    assert (
+        ref["first_month"].quantile(0.01)
+        <= best["first_month"]
+        <= ref["first_month"].quantile(0.99)
+    )
+    assert (table["cost"].diff().dropna() >= 0).all()
+    with pytest.raises(ValueError):
+        minimal_change_counterfactual(f, row, 120.0, ref, actionable=("region",))
+    assert minimal_change_counterfactual(f, row, 1e6, ref).empty

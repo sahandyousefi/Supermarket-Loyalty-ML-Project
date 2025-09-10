@@ -80,3 +80,49 @@ def next_tier_counterfactual(
         else:
             lo = mid
     return TierCounterfactual(pred, target, target - pred, feature, current, hi)
+
+
+IMMUTABLE = ("region", "loyalty_years", "joining_month", "promotion")
+
+
+def minimal_change_counterfactual(
+    predict: Predict,
+    row: pd.DataFrame,
+    target: float,
+    reference: pd.DataFrame,
+    actionable: tuple[str, ...] = ("first_month", "items_in_first_month"),
+    n_grid: int = 41,
+    quantiles: tuple[float, float] = (0.01, 0.99),
+) -> pd.DataFrame:
+    """Plausible changes of the actionable attributes that reach ``target``.
+
+    Attributes outside ``actionable`` (region, tenure, joining month and
+    promotion) never change. Each actionable attribute moves on a grid
+    inside its 1st to 99th percentile in ``reference``, so the answer never
+    asks for a basket nobody has. Changes are measured in units of each
+    attribute's median absolute deviation, so a change of one item and of a
+    few currency units are comparable (Wachter et al., 2018). Returns the
+    feasible combinations, cheapest first.
+    """
+    import itertools
+
+    if any(a in IMMUTABLE for a in actionable):
+        raise ValueError("immutable attributes cannot be changed")
+    grids, scales = [], []
+    for a in actionable:
+        values = reference[a].dropna().astype(float)
+        lo, hi = values.quantile(list(quantiles))
+        grids.append(np.linspace(lo, hi, n_grid))
+        mad = float(np.median(np.abs(values - values.median())))
+        scales.append(mad if mad > 0 else float(values.std()) or 1.0)
+    combos = np.array(list(itertools.product(*grids)))
+    candidates = pd.concat([row] * len(combos), ignore_index=True)
+    for j, a in enumerate(actionable):
+        candidates[a] = combos[:, j]
+    scores = predict(candidates)
+    current = np.array([float(row[a].iloc[0]) for a in actionable])
+    cost = (np.abs(combos - current) / np.array(scales)).sum(axis=1)
+    out = pd.DataFrame(combos, columns=list(actionable))
+    out["forecast"] = scores
+    out["cost"] = cost
+    return out[out["forecast"] >= target].sort_values("cost").reset_index(drop=True)
