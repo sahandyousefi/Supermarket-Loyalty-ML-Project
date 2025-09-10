@@ -218,3 +218,31 @@ def plot_effect_estimates(table: pd.DataFrame, path: str | Path) -> Path:
     ax.set_yticks(y, labels)
     _style(ax, "Effect of the promotion on annual spend", "Effect (95% interval)")
     return _save(fig, path)
+
+
+def plot_ale(curves: list[pd.DataFrame], path: str | Path) -> Path:
+    """One ALE panel per feature, with a rug of the bin edges."""
+    fig, axes = plt.subplots(
+        1, len(curves), figsize=(4.2 * len(curves), 3.6), squeeze=False
+    )
+    for ax, curve in zip(axes[0], curves):
+        ax.plot(curve["value"], curve["effect"], color=SINGLE, linewidth=1.6)
+        ax.plot(
+            curve["value"], np.full(len(curve), curve["effect"].min()), "|", color=MUTED
+        )
+        name = str(curve["feature"].iloc[0])
+        _style(ax, name, name, "Accumulated local effect")
+    return _save(fig, path)
+
+
+def plot_ice(
+    grid: np.ndarray, curves: np.ndarray, feature: str, path: str | Path
+) -> Path:
+    """Centred ICE curves in grey with the centred partial dependence on top."""
+    centred = curves - curves[:, [0]]
+    fig, ax = plt.subplots(figsize=(5.2, 3.8))
+    for row in centred:
+        ax.plot(grid, row, color=MUTED, linewidth=0.5, alpha=0.35)
+    ax.plot(grid, centred.mean(axis=0), color=SINGLE, linewidth=2.0)
+    _style(ax, f"Centred ICE: {feature}", feature, "Change in forecast")
+    return _save(fig, path)

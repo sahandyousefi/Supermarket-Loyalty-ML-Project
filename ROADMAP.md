@@ -38,7 +38,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 11: Explanations and counterfactuals
 
-- [ ] 11.3 Figures for ALE and ICE
 - [ ] 11.4 Counterfactual spend needed to reach the next tier
 - [ ] 11.5 Counterfactual search with immutable attributes and plausibility bounds
 - [ ] 11.6 Tier counterfactuals in the CLI and the service
@@ -244,3 +243,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-09: 10.12c README section on the hierarchical model
 - [x] 2025-09-09: 11.1 Accumulated local effects for numeric features
 - [x] 2025-09-10: 11.2 Partial dependence with centred ICE curves
+- [x] 2025-09-10: 11.3 Figures for ALE and ICE
