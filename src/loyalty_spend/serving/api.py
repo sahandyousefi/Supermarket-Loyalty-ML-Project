@@ -134,9 +134,9 @@ def create_app(
             ],
         )
 
-    reference_upper = float(
-        np.nanquantile(bundle.metadata.get("first_month_values", [np.nan]), 0.99)
-    )
+    # Counterfactuals stay inside the range of first-month spend seen in
+    # training; bundles saved before this was recorded search without a cap.
+    reference_upper = float(bundle.metadata.get("first_month_q99", np.nan))
 
     @app.post("/next-tier", response_model=NextTierResponse)
     def next_tier(request: NextTierRequest) -> NextTierResponse:

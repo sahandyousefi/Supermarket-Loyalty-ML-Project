@@ -225,3 +225,14 @@ def test_next_tier_command(cfg, raw_dir, tmp_path, capsys):
     assert {"gap", "first_month_needed", "feasible"} <= set(table.columns)
     assert (table["gap"] >= 0).all()
     assert "below the top tier" in capsys.readouterr().out
+
+
+def test_training_records_the_first_month_range(cfg, tmp_path):
+    from loyalty_spend.models.persistence import load_bundle
+
+    model = tmp_path / "m.joblib"
+    assert (
+        main(["train", "--config", str(cfg), "--model", "ols", "--output", str(model)])
+        == 0
+    )
+    assert load_bundle(model).metadata["first_month_q99"] > 0

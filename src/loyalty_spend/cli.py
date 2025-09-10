@@ -709,7 +709,11 @@ def _train(args: argparse.Namespace) -> int:
         args.model,
         model,
         residuals=y.to_numpy() - cv.oof,
-        metadata={"cv": cv.summary(), "data": data_fingerprint(train)},
+        metadata={
+            "cv": cv.summary(),
+            "data": data_fingerprint(train),
+            "first_month_q99": float(X["first_month"].quantile(0.99)),
+        },
     )
     path = save_bundle(
         bundle, args.output or Path(cfg.paths.output_dir) / "model.joblib"
