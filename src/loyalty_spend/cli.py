@@ -595,6 +595,43 @@ def _bayes(args: argparse.Namespace) -> int:
     return 0
 
 
+def _next_tier_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("input", help="CSV of customers")
+    p.add_argument("--model", default="artifacts/model.joblib")
+    p.add_argument("--output", default=None)
+
+
+@command(
+    "next-tier",
+    "first-month spend each customer needs for the next tier",
+    _next_tier_args,
+)
+def _next_tier(args: argparse.Namespace) -> int:
+    from loyalty_spend.business.rewards import RewardSchedule
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.explain.counterfactual import next_tier_table
+    from loyalty_spend.models.persistence import load_bundle
+
+    cfg = load_config(args.config)
+    bundle = load_bundle(args.model)
+    reference, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    customers, _ = load_clean(args.input, impute=False, require_target=False)
+    customers = customers.dropna(subset=["first_month"]).reset_index(drop=True)
+    table = next_tier_table(
+        bundle.predict, customers, RewardSchedule(cfg.rewards.tiers), reference
+    )
+    if args.output:
+        table.to_csv(args.output, index=False)
+    below_top = table["next_threshold"].notna()
+    print(
+        f"{int(below_top.sum())} of {len(table)} customers are below the top tier; "
+        f"{int(table.loc[below_top, 'feasible'].sum())} could reach the next tier "
+        "with a plausible first-month spend"
+    )
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")

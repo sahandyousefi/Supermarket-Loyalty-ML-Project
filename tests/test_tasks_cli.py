@@ -203,3 +203,25 @@ def test_bayes_command(cfg, tmp_path, capsys):
     assert main([*args, "--output-dir", str(out)]) == 0
     assert "WAIC" in capsys.readouterr().out
     assert json.loads((out / "bayes.json").read_text())["cost"]["expected_total"] > 0
+
+
+def test_next_tier_command(cfg, raw_dir, tmp_path, capsys):
+    model = tmp_path / "m.joblib"
+    assert (
+        main(["train", "--config", str(cfg), "--model", "ols", "--output", str(model)])
+        == 0
+    )
+    out = tmp_path / "next.csv"
+    args = [
+        "next-tier",
+        "--config",
+        str(cfg),
+        str(raw_dir / "test.csv"),
+        "--model",
+        str(model),
+    ]
+    assert main([*args, "--output", str(out)]) == 0
+    table = pd.read_csv(out)
+    assert {"gap", "first_month_needed", "feasible"} <= set(table.columns)
+    assert (table["gap"] >= 0).all()
+    assert "below the top tier" in capsys.readouterr().out

@@ -38,7 +38,7 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 11: Explanations and counterfactuals
 
-- [ ] 11.6 Tier counterfactuals in the CLI and the service
+- [ ] 11.6b Next-tier endpoint in the service
 - [ ] 11.7 Global surrogate tree with fidelity
 - [ ] 11.8 Stability of attributions across folds
 - [ ] 11.9 Documentation of the explanation methods
@@ -244,3 +244,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-10: 11.3 Figures for ALE and ICE
 - [x] 2025-09-10: 11.4 Counterfactual spend needed to reach the next tier
 - [x] 2025-09-10: 11.5 Counterfactual search with immutable attributes and plausibility bounds
+- [x] 2025-09-10: 11.6a `loyalty-spend next-tier` command

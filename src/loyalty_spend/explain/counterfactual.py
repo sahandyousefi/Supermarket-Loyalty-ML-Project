@@ -126,3 +126,31 @@ def minimal_change_counterfactual(
     out["forecast"] = scores
     out["cost"] = cost
     return out[out["forecast"] >= target].sort_values("cost").reset_index(drop=True)
+
+
+def next_tier_table(
+    predict: Predict,
+    customers: pd.DataFrame,
+    schedule: RewardSchedule,
+    reference: pd.DataFrame,
+    id_column: str = "customer_id",
+    feature: str = "first_month",
+) -> pd.DataFrame:
+    """Next-tier counterfactual for every customer, bounded by the reference range."""
+    upper = float(reference[feature].quantile(0.99))
+    rows = []
+    for i in range(len(customers)):
+        row = customers.iloc[[i]]
+        cf = next_tier_counterfactual(predict, row, schedule, feature, upper=upper)
+        rows.append(
+            {
+                id_column: row[id_column].iloc[0],
+                "forecast": cf.prediction,
+                "next_threshold": cf.next_threshold,
+                "gap": cf.gap,
+                f"{feature}_now": cf.current_value,
+                f"{feature}_needed": cf.required_value,
+                "feasible": cf.feasible,
+            }
+        )
+    return pd.DataFrame(rows)
