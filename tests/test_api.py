@@ -132,3 +132,17 @@ def test_metrics_count_requests_and_customers(client):
         if ln.startswith('loyalty_customers_scored_total{path="/predict"}')
     ]
     assert scored and int(scored[0].split()[-1]) >= 2
+
+
+def test_next_tier_endpoint(client):
+    body = {
+        "customers": [CUSTOMER, {**CUSTOMER, "customer_id": 5, "loyalty_years": "0-1"}]
+    }
+    out = client.post("/next-tier", json=body).json()["customers"]
+    assert len(out) == 2
+    for row in out:
+        if row["next_threshold"] is not None:
+            assert row["gap"] > 0
+            assert row["feasible"] == (row["first_month_needed"] is not None)
+    missing = {"customers": [{**CUSTOMER, "first_month": None}]}
+    assert client.post("/next-tier", json=missing).status_code == 422

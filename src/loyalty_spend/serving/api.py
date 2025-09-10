@@ -11,6 +11,7 @@ import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse, Response
@@ -20,12 +21,16 @@ from loyalty_spend.business.rewards import RewardSchedule, forecast_liability
 from loyalty_spend.config import load_config
 from loyalty_spend.data.cleaning import clean_loyalty
 from loyalty_spend.data.schema import ID
+from loyalty_spend.explain.counterfactual import next_tier_counterfactual
 from loyalty_spend.models.persistence import ModelBundle, load_bundle
 from loyalty_spend.ops.batch import score_batch
 from loyalty_spend.serving.metrics import RequestMetrics
 from loyalty_spend.serving.schemas import (
     Customer,
     CustomerReward,
+    NextTier,
+    NextTierRequest,
+    NextTierResponse,
     Prediction,
     PredictRequest,
     PredictResponse,
@@ -128,6 +133,37 @@ def create_app(
                 for r in fc.per_customer.itertuples()
             ],
         )
+
+    reference_upper = float(
+        np.nanquantile(bundle.metadata.get("first_month_values", [np.nan]), 0.99)
+    )
+
+    @app.post("/next-tier", response_model=NextTierResponse)
+    def next_tier(request: NextTierRequest) -> NextTierResponse:
+        check_batch(request.customers, max_batch)
+        frame = customers_frame(request.customers)
+        out = []
+        for i in range(len(frame)):
+            row = frame.iloc[[i]]
+            if pd.isna(row["first_month"].iloc[0]):
+                raise HTTPException(422, "first_month is required for a counterfactual")
+            upper = reference_upper if np.isfinite(reference_upper) else None
+            cf = next_tier_counterfactual(bundle.predict, row, schedule, upper=upper)
+            out.append(
+                NextTier(
+                    customer_id=int(row[ID].iloc[0]),
+                    forecast=round(cf.prediction, 2),
+                    next_threshold=cf.next_threshold,
+                    gap=round(cf.gap, 2),
+                    first_month_needed=(
+                        None
+                        if cf.required_value is None
+                        else round(cf.required_value, 2)
+                    ),
+                    feasible=cf.feasible,
+                )
+            )
+        return NextTierResponse(customers=out)
 
     return app
 

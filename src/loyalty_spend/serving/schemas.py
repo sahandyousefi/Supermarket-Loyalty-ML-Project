@@ -61,3 +61,20 @@ class RewardResponse(BaseModel):
     p95: float
     expected_shortfall_95: float
     customers: list[CustomerReward]
+
+
+class NextTierRequest(BaseModel):
+    customers: list[Customer] = Field(min_length=1)
+
+
+class NextTier(BaseModel):
+    customer_id: int
+    forecast: float
+    next_threshold: float | None
+    gap: float
+    first_month_needed: float | None
+    feasible: bool
+
+
+class NextTierResponse(BaseModel):
+    customers: list[NextTier]
