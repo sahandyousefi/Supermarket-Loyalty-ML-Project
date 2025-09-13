@@ -38,7 +38,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 11: Explanations and counterfactuals
 
-- [ ] 11.9 Documentation of the explanation methods
 
 ## Phase 12: Robustness and error analysis
 
@@ -245,3 +244,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-10: 11.6b Next-tier endpoint in the service
 - [x] 2025-09-13: 11.7 Global surrogate tree with fidelity
 - [x] 2025-09-13: 11.8 Stability of attributions across folds
+- [x] 2025-09-13: 11.9 Documentation of the explanation methods

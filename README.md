@@ -200,6 +200,18 @@ Almost all of the cost sensitivity sits at the top threshold, where many custome
 
 Lower WAIC is better: heavy-tailed errors fit the residuals far better than normal ones, and the residual scale differs by tenure band (0.27 for 10+ years, 0.40 for 1-3 years). Every region effect lies within 0.06 of the average of the four, and all four 90% intervals include zero. Because only four regions inform the between-region scale, its posterior is set by the prior, which the prior sensitivity analysis makes explicit. With parameter uncertainty included, the reward cost of `test.csv` has a mean of 1,219.32 and a 90% interval of 1,215.03 to 1,223.91.
 
+### Explanations and what would change a tier
+
+| Check | Result |
+| --- | --- |
+| Permutation importance, mean over 5 folds (RMSE increase) | tenure band 37.55, joining month 5.94, first-month spend 0.19, basket size 0.02, region and promotion 0.00 |
+| Agreement of the importance ranking across folds (Kendall's W) | 0.973 |
+| Fidelity of a surrogate tree to the champion, depth 2 / 3 / 4 | 0.964 / 0.991 / 0.998 |
+| Customers in `test.csv` below the top tier | 122 of 250 |
+| ... who could reach the next tier with a first-month spend inside the observed range | 0 |
+
+A depth-3 tree reproduces 99.1% of the variance of the champion's forecasts using only tenure band and first-month spend, so the forecast is close to a lookup by tenure with a small adjustment for early spend. The counterfactual result follows from the same structure: first-month spend moves the forecast too little to cross a threshold, so for these customers the reward tier is effectively fixed at sign-up by tenure. The ALE and centred ICE curves of the gradient-boosting challenger (`reports/figures/ale_numeric.png`, `ice_first_month.png`) agree: first-month spend has a smooth effect with a range of about 6.5, and the centred curves are nearly parallel (interaction strength 0.09).
+
 ### Customer segments
 
 Members of `loyalty.csv` are clustered with k-medoids on Gower distances over all recorded attributes, and every segment is checked by bootstrap.
@@ -250,6 +262,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 **Plain-language summaries.** `loyalty-spend narrate` and `loyalty-spend ask` use a language model only to write sentences: numbers come from a fact sheet built in code and every number in the output is checked against it, answers cite numbered passages of the documentation and each sentence is checked against what it cites, and questions that try to override the instructions are blocked before any call. Both commands work offline. Design and evaluation are in [docs/llm_design.md](docs/llm_design.md).
 
 **Bayesian model.** A hierarchical model with partially pooled region effects, optional Student-t errors and tenure-specific variances is fitted by a blocked Gibbs sampler and checked with split R-hat, effective sample sizes, posterior predictive checks, WAIC and a prior sensitivity analysis; its posterior predictive draws carry parameter uncertainty into the reward cost forecast.
+
+**Explanations.** Accumulated local effects, centred ICE curves, a fidelity-checked surrogate tree, fold-to-fold stability of permutation importance, and counterfactuals that respect immutable attributes and the observed range of first-month spend; `loyalty-spend next-tier` and the `/next-tier` endpoint report what each customer would need for the next tier.
 
 **Segments.** Gower distance for mixed attributes, k-medoids with restarts, the number of segments by average silhouette width, and bootstrap Jaccard stability (Hennig, 2007) to tell real segments from artefacts of one sample.
 

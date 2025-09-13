@@ -192,6 +192,16 @@ The robustness value $\mathrm{RV}_q$ is the common value of the two partial $R^2
 
 **Reward cost.** The posterior predictive sampler draws one set of parameters per simulated year for all customers jointly, so parameter uncertainty moves every forecast together, as a wrong model would in practice, and noise is drawn per customer.
 
+## 10b. Explanations and counterfactuals
+
+**Global effects.** Accumulated local effects (Apley and Zhu, 2020) average the change of the forecast across each quantile bin of a numeric attribute over the members actually in that bin, so correlated attributes are never set to combinations that do not occur, as partial dependence does. Centred ICE curves (Goldstein et al., 2015) show each member's forecast as one attribute moves; their spread around the centred partial dependence, relative to its range, measures interaction.
+
+**Stability.** Grouped permutation importance is recomputed on the held-out part of every fold; Kendall's W across folds summarises whether the ranking is a property of the data or of one split.
+
+**Surrogate.** A regression tree of depth 2 to 4 is fitted to the champion's forecasts (not to spend). Its fidelity, the R-squared between tree and champion on held-out members, says how far its printed rules can be trusted as a summary.
+
+**Counterfactuals.** For a member below a reward threshold, bisection finds the smallest first-month spend that lifts the forecast to the next threshold. Region, tenure, joining month and promotion never change, and the search stays below the 99th percentile of first-month spend in the training data. With two actionable attributes, a grid inside their 1st to 99th percentiles is searched for the change with the smallest total distance in units of each attribute's median absolute deviation (Wachter et al., 2018).
+
 ## 11. Customer segments
 
 **Distance.** Member attributes are mixed: two amounts, an ordinal tenure band and three nominal attributes. The Gower (1971) distance averages per-attribute dissimilarities in $[0,1]$: the absolute difference divided by the range for amounts, the rank difference divided by the number of levels minus one for tenure (Podani, 1999), and a mismatch indicator for nominal attributes. A missing value removes that attribute from the average for the pairs it is part of.
@@ -228,6 +238,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 
 - Acerbi, C., and Tasche, D. (2002). On the coherence of expected shortfall. *Journal of Banking and Finance*, 26(7), 1487-1503.
 - Akiba, T., Sano, S., Yanase, T., Ohta, T., and Koyama, M. (2019). Optuna: A next-generation hyperparameter optimization framework. *Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 2623-2631.
+- Apley, D. W., and Zhu, J. (2020). Visualizing the effects of predictor variables in black box supervised learning models. *Journal of the Royal Statistical Society, Series B*, 82(4), 1059-1086.
 - Athey, S., and Wager, S. (2021). Policy learning with observational data. *Econometrica*, 89(1), 133-161.
 - Austin, P. C. (2009). Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. *Statistics in Medicine*, 28(25), 3083-3107.
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
@@ -244,6 +255,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Geweke, J. (1993). Bayesian treatment of the independent Student-t linear model. *Journal of Applied Econometrics*, 8(S1), S19-S40.
 - Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
 - Gneiting, T., Raftery, A. E., Westveld, A. H., and Goldman, T. (2005). Calibrated probabilistic forecasting using ensemble model output statistics and minimum CRPS estimation. *Monthly Weather Review*, 133(5), 1098-1118.
+- Goldstein, A., Kapelner, A., Bleich, J., and Pitkin, E. (2015). Peeking inside the black box: Visualizing statistical learning with plots of individual conditional expectation. *Journal of Computational and Graphical Statistics*, 24(1), 44-65.
 - Gorishniy, Y., Rubachev, I., and Babenko, A. (2022). On embeddings for numerical features in tabular deep learning. *Advances in Neural Information Processing Systems*, 35.
 - Gorishniy, Y., Rubachev, I., Khrulkov, V., and Babenko, A. (2021). Revisiting deep learning models for tabular data. *Advances in Neural Information Processing Systems*, 34.
 - Gower, J. C. (1971). A general coefficient of similarity and some of its properties. *Biometrics*, 27(4), 857-871.
@@ -252,6 +264,7 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
 - Hennig, C. (2007). Cluster-wise assessment of cluster stability. *Computational Statistics and Data Analysis*, 52(1), 258-271.
 - Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., and Liu, T.-Y. (2017). LightGBM: A highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30.
+- Kendall, M. G., and Babington Smith, B. (1939). The problem of m rankings. *Annals of Mathematical Statistics*, 10(3), 275-287.
 - Kennedy, E. H. (2023). Towards optimal doubly robust estimation of heterogeneous causal effects. *Electronic Journal of Statistics*, 17(2), 3008-3049.
 - Kleven, H. J. (2016). Bunching. *Annual Review of Economics*, 8, 435-464.
 - Koenker, R., and Bassett, G. (1978). Regression quantiles. *Econometrica*, 46(1), 33-50.
@@ -272,5 +285,6 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., and Burkner, P.-C. (2021). Rank-normalization, folding, and localization: An improved R-hat for assessing convergence of MCMC. *Bayesian Analysis*, 16(2), 667-718.
 - Vovk, V., Gammerman, A., and Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer.
 - Vovk, V., Shen, J., Manokhin, V., and Xie, M. (2019). Nonparametric predictive distributions based on conformal prediction. *Machine Learning*, 108(3), 445-474.
+- Wachter, S., Mittelstadt, B., and Russell, C. (2018). Counterfactual explanations without opening the black box: Automated decisions and the GDPR. *Harvard Journal of Law and Technology*, 31(2), 841-887.
 - Watanabe, S. (2010). Asymptotic equivalence of Bayes cross validation and widely applicable information criterion in singular learning theory. *Journal of Machine Learning Research*, 11, 3571-3594.
 - Welch, B. L. (1951). On the comparison of several mean values: An alternative approach. *Biometrika*, 38(3/4), 330-336.
