@@ -41,7 +41,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 12: Robustness and error analysis
 
-- [ ] 12.3 Stress tests with perturbed and missing inputs
 - [ ] 12.4 Multiple imputation with chained equations and Rubin's rules
 - [ ] 12.5 Missing-not-at-random scenarios
 - [ ] 12.6 Influence diagnostics: hat values, Cook's distance, DFBETAS
@@ -245,3 +244,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-13: 11.9 Documentation of the explanation methods
 - [x] 2025-09-13: 12.1 Subgroup errors with bootstrap intervals
 - [x] 2025-09-13: 12.2 Slice finding over pairs of attributes
+- [x] 2025-09-13: 12.3 Stress tests with perturbed and missing inputs
