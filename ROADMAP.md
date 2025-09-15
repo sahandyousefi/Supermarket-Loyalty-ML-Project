@@ -41,7 +41,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 12: Robustness and error analysis
 
-- [ ] 12.4b Rubin's rules for pooled regression estimates
 - [ ] 12.5 Missing-not-at-random scenarios
 - [ ] 12.6 Influence diagnostics: hat values, Cook's distance, DFBETAS
 - [ ] 12.7 Learning curves with intervals
@@ -247,3 +246,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-13: 12.2 Slice finding over pairs of attributes
 - [x] 2025-09-13: 12.3 Stress tests with perturbed and missing inputs
 - [x] 2025-09-15: 12.4a Multiple imputation with chained equations
+- [x] 2025-09-15: 12.4b Rubin's rules for pooled regression estimates
