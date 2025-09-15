@@ -18,3 +18,12 @@ def test_error_falls_with_more_data_and_flattens(train_df):
         curve["rmse"] <= curve["upper"]
     ).all()
     assert has_plateaued(curve, tolerance=0.1)
+
+
+def test_one_row_per_share_even_with_unequal_folds(train_df):
+    X, y = split_xy(train_df)
+    splits = make_splits(len(y) - 1, 3, 1, 0)
+    curve = learning_curve(
+        build_model("ols"), X.iloc[:-1], y.iloc[:-1], splits, sizes=(0.5, 1.0)
+    )
+    assert len(curve) == 2 and curve["std"].notna().all()

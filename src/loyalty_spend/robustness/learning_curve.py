@@ -33,11 +33,20 @@ def learning_curve(
             idx = order[:n]
             est = clone(model).fit(X.iloc[idx], y[idx])
             rmse = float(np.sqrt(np.mean((est.predict(X.iloc[te]) - y[te]) ** 2)))
-            rows.append({"fold": k, "n_train": n, "rmse": rmse})
+            rows.append({"fold": k, "share": share, "n_train": n, "rmse": rmse})
     table = pd.DataFrame(rows)
+    # Folds differ in size by a member or two, so points are grouped by share.
     summary = (
-        table.groupby("n_train")["rmse"].agg(["mean", "std", "count"]).reset_index()
+        table.groupby("share")
+        .agg(
+            n_train=("n_train", "mean"),
+            mean=("rmse", "mean"),
+            std=("rmse", "std"),
+            count=("rmse", "size"),
+        )
+        .reset_index()
     )
+    summary["n_train"] = summary["n_train"].round().astype(int)
     summary["lower"] = summary["mean"] - 1.96 * summary["std"] / np.sqrt(
         summary["count"]
     )
