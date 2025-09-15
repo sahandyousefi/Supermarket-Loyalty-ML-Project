@@ -632,6 +632,97 @@ def _next_tier(args: argparse.Namespace) -> int:
     return 0
 
 
+def _robustness_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--model", default="ols", help="registry model to examine")
+    p.add_argument("--output-dir", default=None, help="write tables to this folder")
+
+
+@command(
+    "robustness",
+    "subgroup errors, slices, stress tests and influence",
+    _robustness_args,
+)
+def _robustness(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.data.schema import CATEGORICAL
+    from loyalty_spend.evaluation.cv import cross_validate, make_splits
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.registry import build_model
+    from loyalty_spend.robustness.influence import influence_table
+    from loyalty_spend.robustness.learning_curve import learning_curve
+    from loyalty_spend.robustness.mnar import delta_sensitivity
+    from loyalty_spend.robustness.slices import find_slices
+    from loyalty_spend.robustness.stress import stress_test
+    from loyalty_spend.robustness.subgroups import subgroup_errors
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    X, y = split_xy(train)
+    splits = make_splits(len(y), cfg.cv.n_splits, 1, cfg.cv.seed)
+    cv = cross_validate(args.model, build_model(args.model), X, y, splits)
+    groups = subgroup_errors(y, cv.oof, X, list(CATEGORICAL), seed=cfg.cv.seed)
+    slices = find_slices(y, cv.oof, X, list(X.columns))
+    cut = int(0.7 * len(y))
+    fitted = build_model(args.model).fit(X.iloc[:cut], y.iloc[:cut])
+    stress = stress_test(
+        fitted.predict, X.iloc[cut:].reset_index(drop=True), y.iloc[cut:]
+    )
+    curve = learning_curve(build_model(args.model), X, y, splits, seed=cfg.cv.seed)
+    full = build_model(args.model).fit(X, y)
+    tables = {
+        "subgroups": groups,
+        "slices": slices,
+        "stress": stress,
+        "learning_curve": curve,
+    }
+    fmt = lambda v: f"{v:.3f}"  # noqa: E731
+    worst = groups.sort_values("rmse_ratio").tail(3)
+    print("largest subgroup errors:")
+    print(
+        worst[["attribute", "level", "n", "rmse", "rmse_ratio"]].to_string(
+            index=False, float_format=fmt
+        )
+    )
+    print(
+        f"slices flagged after FDR control: {int(slices['flagged'].sum())} "
+        f"of {len(slices)}"
+    )
+    print(
+        stress.pivot(
+            index="scenario", columns="severity", values="rmse_ratio"
+        ).to_string(float_format=fmt)
+    )
+    print(
+        curve[["n_train", "rmse", "lower", "upper"]].to_string(
+            index=False, float_format=fmt
+        )
+    )
+    if hasattr(full, "steps"):
+        infl = influence_table(full, X, y)
+        tables["influence"] = infl
+        print(
+            f"influential members: {int(infl['flag_cooks'].sum())} by Cook's distance, "
+            f"largest D = {infl['cooks_distance'].max():.3f}"
+        )
+    loyalty, _ = load_clean(
+        cfg.paths.raw(cfg.paths.loyalty_file), impute=False, require_target=False
+    )
+    mnar = delta_sensitivity(
+        loyalty.drop(columns=["customer_id"]),
+        lambda d: float(full.predict(d).mean()),
+        seed=cfg.cv.seed,
+    )
+    tables["mnar"] = mnar
+    print(mnar.to_string(index=False, float_format=fmt))
+    if args.output_dir:
+        out = Path(args.output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        for name, table in tables.items():
+            table.to_csv(out / f"{name}.csv", index=name == "influence")
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")

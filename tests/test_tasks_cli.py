@@ -236,3 +236,18 @@ def test_training_records_the_first_month_range(cfg, tmp_path):
         == 0
     )
     assert load_bundle(model).metadata["first_month_q99"] > 0
+
+
+def test_robustness_command(cfg, tmp_path, capsys):
+    out = tmp_path / "rob"
+    assert main(["robustness", "--config", str(cfg), "--output-dir", str(out)]) == 0
+    for name in (
+        "subgroups",
+        "slices",
+        "stress",
+        "learning_curve",
+        "influence",
+        "mnar",
+    ):
+        assert (out / f"{name}.csv").exists()
+    assert "largest subgroup errors" in capsys.readouterr().out
