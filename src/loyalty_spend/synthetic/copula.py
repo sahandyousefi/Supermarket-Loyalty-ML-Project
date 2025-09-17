@@ -52,10 +52,12 @@ class GaussianCopulaSynthesizer:
     categorical_: dict[str, _Categorical] = field(default_factory=dict)
     latent_: list[str] = field(default_factory=list)
     corr_: np.ndarray | None = None
+    dtypes_: dict[str, object] = field(default_factory=dict)
 
     def fit(self, frame: pd.DataFrame) -> GaussianCopulaSynthesizer:
         rng = np.random.default_rng(self.seed)
         self.columns_ = list(frame.columns)
+        self.dtypes_ = dict(frame.dtypes)
         scores: dict[str, np.ndarray] = {}
         for col in self.columns_:
             s = frame[col]
@@ -140,7 +142,11 @@ class GaussianCopulaSynthesizer:
                 spec_levels = [
                     lv for lv in self.categorical_[col].levels if lv != "__nan__"
                 ]
-                out[col] = pd.Categorical(values, categories=spec_levels)
+                dtype = self.dtypes_.get(col)
+                if isinstance(dtype, pd.CategoricalDtype):
+                    out[col] = values.astype(object).astype(dtype)
+                else:
+                    out[col] = pd.Categorical(values, categories=spec_levels)
         return pd.DataFrame(out, columns=self.columns_)
 
     def _decode(self, col: str, u: np.ndarray) -> np.ndarray:
@@ -148,3 +154,71 @@ class GaussianCopulaSynthesizer:
         idx = np.searchsorted(spec.edges, u, side="right") - 1
         idx = np.clip(idx, 0, len(spec.levels) - 1)
         return np.asarray(spec.levels, dtype=object)[idx]
+
+
+@dataclass
+class StratifiedCopulaSynthesizer:
+    """One copula per level of a categorical attribute.
+
+    A single Gaussian copula captures monotone dependence only. Spend is not
+    monotone in the tenure band (members of one to three years spend least),
+    so a copula over all members keeps the marginals but loses most of the
+    relation. Fitting a copula within each level restores it; levels with
+    fewer than ``min_size`` members share one copula that keeps the level as
+    a column.
+    """
+
+    by: str
+    min_size: int = 30
+    shrinkage: float = 0.0
+    seed: int = 0
+    shares_: pd.Series | None = None
+    models_: dict[str, GaussianCopulaSynthesizer] = field(default_factory=dict)
+    pooled_: GaussianCopulaSynthesizer | None = None
+    small_: list[str] = field(default_factory=list)
+    dtypes_: pd.Series | None = None
+
+    def fit(self, frame: pd.DataFrame) -> StratifiedCopulaSynthesizer:
+        self.dtypes_ = frame.dtypes
+        labels = frame[self.by].astype(str)
+        counts = labels.value_counts()
+        self.shares_ = counts / counts.sum()
+        self.small_ = [lv for lv, n in counts.items() if n < self.min_size]
+        for i, (level, n) in enumerate(counts.items()):
+            if n >= self.min_size:
+                part = frame.loc[labels == level].drop(columns=self.by)
+                self.models_[str(level)] = GaussianCopulaSynthesizer(
+                    self.shrinkage, self.seed + i
+                ).fit(part)
+        if self.small_:
+            rest = frame.loc[labels.isin(self.small_)]
+            self.pooled_ = GaussianCopulaSynthesizer(self.shrinkage, self.seed).fit(
+                rest
+            )
+        return self
+
+    def sample(self, n: int, seed: int | None = None) -> pd.DataFrame:
+        if self.shares_ is None or self.dtypes_ is None:
+            raise RuntimeError("call fit first")
+        rng = np.random.default_rng(self.seed + 1 if seed is None else seed)
+        counts = rng.multinomial(n, self.shares_.to_numpy())
+        parts = []
+        pooled_n = 0
+        for level, k in zip(self.shares_.index, counts, strict=True):
+            if k == 0:
+                continue
+            if level in self.models_:
+                part = self.models_[level].sample(k, int(rng.integers(2**31)))
+                part[self.by] = level
+                parts.append(part)
+            else:
+                pooled_n += k
+        if pooled_n and self.pooled_ is not None:
+            parts.append(self.pooled_.sample(pooled_n, int(rng.integers(2**31))))
+        out = pd.concat(parts, ignore_index=True)
+        out = out.sample(frac=1.0, random_state=int(rng.integers(2**31)))
+        out = out.reset_index(drop=True)[list(self.dtypes_.index)]
+        for col, dtype in self.dtypes_.items():
+            if isinstance(dtype, pd.CategoricalDtype):
+                out[col] = out[col].astype(object).astype(dtype)
+        return out

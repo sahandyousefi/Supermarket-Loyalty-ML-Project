@@ -4,6 +4,7 @@ import pytest
 
 from loyalty_spend.synthetic.copula import (
     GaussianCopulaSynthesizer,
+    StratifiedCopulaSynthesizer,
     nearest_correlation,
 )
 
@@ -58,3 +59,29 @@ def test_missingness_is_reproduced():
 def test_sample_before_fit_raises():
     with pytest.raises(RuntimeError):
         GaussianCopulaSynthesizer().sample(5)
+
+
+def test_stratified_copula_keeps_non_monotone_tenure_effect(train_df):
+    data = train_df.drop(columns="customer_id")
+    plain = GaussianCopulaSynthesizer(seed=1).fit(data).sample(4000)
+    strat = StratifiedCopulaSynthesizer("loyalty_years", seed=1).fit(data)
+    synth = strat.sample(4000)
+    real = data.groupby("loyalty_years", observed=True)["spend"].mean()
+
+    def gap(frame):
+        means = frame.groupby("loyalty_years", observed=True)["spend"].mean()
+        return float((means - real).abs().max())
+
+    assert gap(synth) < 2.0 < gap(plain)
+    assert list(synth.columns) == list(data.columns)
+    assert synth["loyalty_years"].dtype == data["loyalty_years"].dtype
+
+
+def test_small_levels_share_a_pooled_copula(train_df):
+    data = train_df.drop(columns="customer_id")
+    strat = StratifiedCopulaSynthesizer("joining_month", min_size=85, seed=0)
+    synth = strat.fit(data).sample(3000)
+    assert strat.pooled_ is not None and strat.small_
+    assert set(synth["joining_month"].dropna().astype(str)) <= set(
+        data["joining_month"].astype(str)
+    )
