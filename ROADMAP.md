@@ -41,7 +41,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 12: Robustness and error analysis
 
-- [ ] 12.8b Robustness results in the methodology and README
 
 ## Phase 13: Synthetic data with privacy checks
 
@@ -247,3 +246,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-15: 12.6 Influence diagnostics: hat values, Cook's distance, DFBETAS
 - [x] 2025-09-15: 12.7 Learning curves with intervals
 - [x] 2025-09-15: 12.8a `loyalty-spend robustness` command
+- [x] 2025-09-17: 12.8b Robustness results in the methodology and README

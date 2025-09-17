@@ -225,6 +225,23 @@ Members of `loyalty.csv` are clustered with k-medoids on Gower distances over al
 
 The best partition (8 segments) is essentially the grid of region by promotion uptake, every segment has a mean bootstrap Jaccard similarity between 0.47 and 0.72, below the 0.75 that marks a stable cluster, and mean spend differs by at most 6 between segments. The recorded attributes do not contain natural customer groups, so the segment tables in `loyalty-spend segments` are descriptive only; useful marketing segments would need behavioural data.
 
+### Robustness
+
+`loyalty-spend robustness` examines the OLS champion on `train.csv` with out-of-fold predictions, synthetic damage to the inputs, influence diagnostics and a learning curve.
+
+| Check | Result |
+| --- | --- |
+| Slices of one or two attributes flagged after FDR control at 5% | 0 of 263 |
+| Worst subgroup: joined in August (75 members) | RMSE 0.547 [0.416, 0.708], 1.77 times overall |
+| Best subgroups: joined in June / April | 0.33 / 0.38 times overall |
+| 20% relative noise on amounts / 20% amounts missing | RMSE 1.66 / 1.20 times clean |
+| 5% of categories missing / replaced by an unseen level | RMSE 21 / 27 times clean |
+| Largest Cook's distance | 0.066 (53 members above 4/n) |
+| Learning curve, 80 / 319 / 797 training members | RMSE 0.370 / 0.318 / 0.308 |
+| Change in mean forecast spend on `loyalty.csv` when imputed first-month amounts shift by 6 | 0.04 on 127.8 |
+
+Accuracy differs by joining month and by little else, and no combination of attributes is forecast worse than chance alone would explain. The model degrades gracefully when amounts are noisy or missing, but a missing or unrecognised tenure band removes almost all of the signal for that member, so the contract check on that column matters more than any modelling choice. No single member drives the fit, the learning curve is flat beyond about 300 members, and the imputation of missing first-month spend does not affect conclusions even if the gaps are not random.
+
 ## Approach
 
 Full notation, derivations and references are in [docs/methodology.md](docs/methodology.md); the model card is in [docs/model_card.md](docs/model_card.md), and [docs/deployment.md](docs/deployment.md) covers the registry, batch monitoring and the scoring service.
@@ -266,6 +283,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 **Explanations.** Accumulated local effects, centred ICE curves, a fidelity-checked surrogate tree, fold-to-fold stability of permutation importance, and counterfactuals that respect immutable attributes and the observed range of first-month spend; `loyalty-spend next-tier` and the `/next-tier` endpoint report what each customer would need for the next tier.
 
 **Segments.** Gower distance for mixed attributes, k-medoids with restarts, the number of segments by average silhouette width, and bootstrap Jaccard stability (Hennig, 2007) to tell real segments from artefacts of one sample.
+
+**Robustness.** Subgroup errors with bootstrap intervals, slice search with Benjamini-Hochberg control, stress tests on damaged inputs, closed-form Cook's distance and DFBETAS, learning curves with fold intervals, multiple imputation pooled by Rubin's rules, and a delta adjustment for values missing not at random.
 
 **Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
 
@@ -335,6 +354,7 @@ loyalty-spend uplift --learner dr --cost 0.5          # heterogeneity tests and 
 loyalty-spend segments --output-dir artifacts/segments
 loyalty-spend design --output-dir artifacts/design     # schedule comparison, risk, threshold search
 loyalty-spend bayes --nu 4                            # hierarchical model, diagnostics, WAIC
+loyalty-spend robustness --output-dir artifacts/robustness
 loyalty-spend narrate                                 # summary from the report facts
 loyalty-spend ask "How are prediction intervals built?"
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
