@@ -44,7 +44,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 13: Synthetic data with privacy checks
 
-- [ ] 13.2 Fidelity: marginal and pairwise dependence comparisons
 - [ ] 13.3 Utility: train on synthetic, test on real
 - [ ] 13.4 Privacy: distance to closest record and nearest-neighbour distance ratio
 - [ ] 13.5 Membership inference test
@@ -247,3 +246,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-15: 12.8a `loyalty-spend robustness` command
 - [x] 2025-09-17: 12.8b Robustness results in the methodology and README
 - [x] 2025-09-17: 13.1 Gaussian copula synthesiser for mixed data
+- [x] 2025-09-17: 13.2 Fidelity: marginal and pairwise dependence comparisons
