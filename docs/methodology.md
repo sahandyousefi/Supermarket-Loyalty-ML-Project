@@ -226,6 +226,26 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 
 **Prediction and performance drift.** The PSI and KS test are applied to model outputs, and, once spend is observed for a new cohort, to the target. The change in RMSE is reported as a ratio with a bootstrap percentile interval.
 
+## 12a. Robustness and sensitivity
+
+**Subgroup errors.** Out-of-fold predictions from one repetition of the five-fold scheme of section 5 score every member with a model that did not see them. For each level of region, tenure band, joining month and promotion, the RMSE and the mean error get percentile intervals from 1,000 bootstrap resamples of the members in that level.
+
+**Slices.** Every level of one attribute and every pair of levels of two attributes, with amounts cut at their quartiles, defines a slice of at least 20 members. The squared errors inside a slice are compared with those outside by Welch's t-test, and slices are flagged after Benjamini-Hochberg adjustment over all slices at a false discovery rate of 5% (in the spirit of Chung et al., 2019). Without the adjustment, a search over several hundred slices would always return some that look bad by chance.
+
+**Stress tests.** A model fitted on 70% of the members is scored on copies of the other 30% with controlled damage at severities of 5%, 10% and 20%: multiplicative noise on the amounts, a share of amounts or of categories deleted at random, or categories replaced by a level never seen in training. Each scenario is repeated and reported as the ratio of RMSE to the RMSE on clean data.
+
+**Influence.** For the linear champion, with design matrix $A$ including the intercept, the hat values are $h_i = a_i^\top (A^\top A)^{-1} a_i$. With internally studentized residuals $r_i = e_i / (s\sqrt{1 - h_i})$, Cook's distance is
+
+$$D_i = \frac{r_i^2}{p}\,\frac{h_i}{1 - h_i},$$
+
+and DFBETAS give the change in each coefficient, in standard errors, when member $i$ is left out; both are computed in closed form and checked against explicit refits in the tests (Belsley, Kuh and Welsch, 1980). Members are flagged when $D_i > 4/n$.
+
+**Learning curves.** On each training fold the model is refitted on random subsets of 10% to 100% of the fold and scored on the held-out fold. The mean RMSE over folds and a normal interval from the spread across folds show whether more members of the same kind would improve the forecast.
+
+**Missing values.** Multiple imputation by chained equations (van Buuren and Groothuis-Oudshoorn, 2011) draws each missing amount from its posterior predictive distribution given the other attributes and creates $m = 5$ completed data sets. Estimates $\hat{Q}_j$ with variances $U_j$ are pooled by Rubin's (1987) rules: $\bar{Q} = m^{-1}\sum_j \hat{Q}_j$, total variance $T = \bar{U} + (1 + m^{-1})B$ with between-imputation variance $B$, and a $t$ reference distribution with Rubin's degrees of freedom $(m-1)(1 + 1/r)^2$, where $r = (1 + m^{-1})B/\bar{U}$. Imputation assumes that values are missing at random. The delta adjustment of the pattern-mixture approach (van Buuren, 2018) shifts every imputed first-month spend by $\delta \in \{-6, -3, 0, 3, 6\}$, about half a standard deviation either way, and reports how the quantity of interest moves.
+
+**Result on the supplied data.** With 996 members in `train.csv`, no slice is flagged after adjustment (0 of 263 tested). The largest subgroup errors belong to members who joined in August (RMSE 0.547, 1.77 times the overall value, 75 members) and September (1.27 times), and both intervals lie above the overall RMSE of 0.308. Joining month is the attribute along which accuracy varies: April, June and October members are forecast two to three times better than average. No region, promotion level or tenure band other than 10+ years differs from the overall value. Noise and missing amounts degrade accuracy gradually: 20% relative noise raises RMSE 1.66 times and 20% missing amounts 1.20 times. Missing or unseen categories are a different matter. Deleting 5% of them raises RMSE 21 times, because a member without a tenure band loses the attribute that carries almost all of the signal. Upstream checks on the tenure band (section 12) therefore matter more than any modelling choice. 53 members exceed $D_i > 4/n$, but the largest Cook's distance is 0.066, far from the value of about 1 at which one member would move the fit materially. The learning curve falls from 0.370 at 80 members to 0.308 with the full folds, and the last three points lie within each other's intervals. For the members of `loyalty.csv`, shifting the 125 imputed first-month amounts by $\pm 6$ moves the mean forecast spend by 0.04 on a level of 127.8, so conclusions about spend do not depend on why those amounts are missing.
+
 ## 13. Assumptions and limitations
 
 - The data are a small synthetic sample from a certification exercise. Results on `train.csv` describe that sample; the simulation study exists because those data cannot discriminate between methods.
@@ -242,12 +262,14 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Athey, S., and Wager, S. (2021). Policy learning with observational data. *Econometrica*, 89(1), 133-161.
 - Austin, P. C. (2009). Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. *Statistics in Medicine*, 28(25), 3083-3107.
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
+- Belsley, D. A., Kuh, E., and Welsch, R. E. (1980). *Regression Diagnostics: Identifying Influential Data and Sources of Collinearity*. Wiley.
 - Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
 - Cawley, G. C., and Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
 - Chen, T., and Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785-794.
 - Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., and Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1-C68.
 - Chernozhukov, V., Demirer, M., Duflo, E., and Fernandez-Val, I. (2018b). Generic machine learning inference on heterogeneous treatment effects in randomized experiments. *NBER Working Paper* 24678.
 - Chernozhukov, V., Fernandez-Val, I., and Galichon, A. (2010). Quantile and probability curves without crossing. *Econometrica*, 78(3), 1093-1125.
+- Chung, Y., Kraska, T., Polyzotis, N., Tae, K. H., and Whang, S. E. (2019). Slice finder: Automated data slicing for model validation. *Proceedings of the 35th IEEE International Conference on Data Engineering*, 1550-1553.
 - Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
 - Crump, R. K., Hotz, V. J., Imbens, G. W., and Mitnik, O. A. (2009). Dealing with limited overlap in estimation of average treatment effects. *Biometrika*, 96(1), 187-199.
 - Dawid, A. P. (1984). Statistical theory: The prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2), 278-292.
@@ -281,7 +303,10 @@ the symmetrised Kullback-Leibler divergence of the binned distributions. Numeric
 - Robins, J. M., Rotnitzky, A., and Zhao, L. P. (1994). Estimation of regression coefficients when some regressors are not always observed. *Journal of the American Statistical Association*, 89(427), 846-866.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *Advances in Neural Information Processing Systems*, 32.
 - Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics*, 20, 53-65.
+- Rubin, D. B. (1987). *Multiple Imputation for Nonresponse in Surveys*. Wiley.
 - Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *Advances in Neural Information Processing Systems*, 32.
+- van Buuren, S. (2018). *Flexible Imputation of Missing Data* (2nd ed.). CRC Press.
+- van Buuren, S., and Groothuis-Oudshoorn, K. (2011). mice: Multivariate imputation by chained equations in R. *Journal of Statistical Software*, 45(3), 1-67.
 - Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., and Burkner, P.-C. (2021). Rank-normalization, folding, and localization: An improved R-hat for assessing convergence of MCMC. *Bayesian Analysis*, 16(2), 667-718.
 - Vovk, V., Gammerman, A., and Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer.
 - Vovk, V., Shen, J., Manokhin, V., and Xie, M. (2019). Nonparametric predictive distributions based on conformal prediction. *Machine Learning*, 108(3), 445-474.
