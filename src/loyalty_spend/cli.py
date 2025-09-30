@@ -8,6 +8,7 @@ import logging
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any
 
 from loyalty_spend import __version__
 from loyalty_spend.config import load_config
@@ -720,6 +721,93 @@ def _robustness(args: argparse.Namespace) -> int:
         out.mkdir(parents=True, exist_ok=True)
         for name, table in tables.items():
             table.to_csv(out / f"{name}.csv", index=name == "influence")
+    return 0
+
+
+def _synthesize_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--input", default=None, help="cleaned extract to imitate")
+    p.add_argument("--output", default="synthetic.csv")
+    p.add_argument("--rows", type=int, default=None, help="rows to generate")
+    p.add_argument(
+        "--copula",
+        choices=["plain", "stratified", "conditional"],
+        default="conditional",
+        help="synthesiser to use",
+    )
+    p.add_argument("--by", default="loyalty_years", help="stratifying attribute")
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument(
+        "--evaluate", action="store_true", help="report fidelity, utility, privacy"
+    )
+
+
+def _make_synthesizer(kind: str, by: str, seed: int) -> Any:
+    from loyalty_spend.synthetic.conditional import ConditionalCopulaSynthesizer
+    from loyalty_spend.synthetic.copula import (
+        GaussianCopulaSynthesizer,
+        StratifiedCopulaSynthesizer,
+    )
+
+    if kind == "plain":
+        return GaussianCopulaSynthesizer(seed=seed)
+    if kind == "stratified":
+        return StratifiedCopulaSynthesizer(by, seed=seed)
+    return ConditionalCopulaSynthesizer(by, seed=seed)
+
+
+@command("synthesize", "generate synthetic members with a copula", _synthesize_args)
+def _synthesize(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+
+    cfg = load_config(args.config)
+    path = args.input or cfg.paths.raw(cfg.paths.train_file)
+    real, _ = load_clean(path, impute=False)
+    data = real.drop(columns="customer_id")
+    n = args.rows or len(data)
+    synth = _make_synthesizer(args.copula, args.by, args.seed).fit(data).sample(n)
+    synth.insert(0, "customer_id", [f"S{i:05d}" for i in range(1, n + 1)])
+    synth.to_csv(args.output, index=False)
+    print(f"{n} synthetic members written to {args.output}")
+    if not args.evaluate:
+        return 0
+    from loyalty_spend.evaluation.cv import make_splits
+    from loyalty_spend.synthetic.fidelity import fidelity_summary
+    from loyalty_spend.synthetic.membership import membership_inference
+    from loyalty_spend.synthetic.privacy import privacy_report
+    from loyalty_spend.synthetic.utility import (
+        train_synthetic_test_real,
+        utility_summary,
+    )
+
+    fid = fidelity_summary(data, synth.drop(columns="customer_id"))
+    splits = make_splits(len(data), cfg.cv.n_splits, 1, cfg.cv.seed)
+    util = utility_summary(
+        train_synthetic_test_real(
+            data,
+            {args.copula: lambda k: _make_synthesizer(args.copula, args.by, k)},
+            splits,
+        )
+    )
+    # Privacy is judged on a synthesiser that saw only half of the members.
+    shuffled = data.sample(frac=1.0, random_state=args.seed).reset_index(drop=True)
+    half = len(shuffled) // 2
+    fit_part, held = shuffled.iloc[:half], shuffled.iloc[half:]
+    released = (
+        _make_synthesizer(args.copula, args.by, args.seed)
+        .fit(fit_part)
+        .sample(len(fit_part))
+    )
+    priv = privacy_report(fit_part, held, released)
+    mia = membership_inference(fit_part, held, released, seed=args.seed)
+    print("fidelity:", ", ".join(f"{k} {v:.3f}" for k, v in fid.items()))
+    print(util.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
+    print("privacy:", ", ".join(f"{k} {v:.4f}" for k, v in priv.items()))
+    print(
+        f"membership inference AUC {mia['auc']:.3f} "
+        f"[{mia['auc_lower']:.3f}, {mia['auc_upper']:.3f}], "
+        f"advantage {mia['advantage']:.3f}"
+    )
     return 0
 
 

@@ -251,3 +251,13 @@ def test_robustness_command(cfg, tmp_path, capsys):
     ):
         assert (out / f"{name}.csv").exists()
     assert "largest subgroup errors" in capsys.readouterr().out
+
+
+def test_synthesize_command(cfg, tmp_path, capsys):
+    out = tmp_path / "synthetic.csv"
+    args = ["synthesize", "--config", str(cfg), "--output", str(out), "--rows", "300"]
+    assert main([*args, "--evaluate"]) == 0
+    frame = pd.read_csv(out)
+    assert len(frame) == 300 and frame["customer_id"].str.startswith("S").all()
+    text = capsys.readouterr().out
+    assert "membership inference AUC" in text and "fidelity" in text
