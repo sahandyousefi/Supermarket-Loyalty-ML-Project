@@ -247,3 +247,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-17: 12.8b Robustness results in the methodology and README
 - [x] 2025-09-17: 13.1 Gaussian copula synthesiser for mixed data
 - [x] 2025-09-17: 13.2 Fidelity: marginal and pairwise dependence comparisons
+- [x] 2025-09-30: 13.1b Amounts conditional on the categories, residuals from a copula
