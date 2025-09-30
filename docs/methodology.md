@@ -246,6 +246,30 @@ and DFBETAS give the change in each coefficient, in standard errors, when member
 
 **Result on the supplied data.** With 996 members in `train.csv`, no slice is flagged after adjustment (0 of 263 tested). The largest subgroup errors belong to members who joined in August (RMSE 0.547, 1.77 times the overall value, 75 members) and September (1.27 times), and both intervals lie above the overall RMSE of 0.308. Joining month is the attribute along which accuracy varies: April, June and October members are forecast two to three times better than average. No region, promotion level or tenure band other than 10+ years differs from the overall value. Noise and missing amounts degrade accuracy gradually: 20% relative noise raises RMSE 1.66 times and 20% missing amounts 1.20 times. Missing or unseen categories are a different matter. Deleting 5% of them raises RMSE 21 times, because a member without a tenure band loses the attribute that carries almost all of the signal. Upstream checks on the tenure band (section 12) therefore matter more than any modelling choice. 53 members exceed $D_i > 4/n$, but the largest Cook's distance is 0.066, far from the value of about 1 at which one member would move the fit materially. The learning curve falls from 0.370 at 80 members to 0.308 with the full folds, and the last three points lie within each other's intervals. For the members of `loyalty.csv`, shifting the 125 imputed first-month amounts by $\pm 6$ moves the mean forecast spend by 0.04 on a level of 127.8, so conclusions about spend do not depend on why those amounts are missing.
 
+## 12b. Synthetic data
+
+**Purpose.** A synthetic copy of the member file lets the analysis be shared or used for teaching without releasing member records. It is useful only if it keeps the statistical structure (fidelity), supports the same models (utility) and does not reveal who was in the source data (privacy). All three are measured, because each can be met trivially at the expense of the others: a copy of the data has perfect fidelity and no privacy, independent draws from each marginal have perfect privacy and no utility.
+
+**Gaussian copula.** By Sklar's theorem a joint distribution is its marginals joined by a copula (Nelsen, 2006). Each amount is mapped to a normal score through its empirical distribution function with ranks divided by $n+1$. Each category is given an interval of $(0,1)$ as wide as its frequency, in its declared level order, and a value is drawn uniformly inside its interval before the normal quantile is taken (Patki, Wedge and Veeramachaneni, 2016). Missing amounts get an indicator column, so missingness keeps its relation to the other attributes. The correlation matrix of the scores, projected to the nearest valid correlation matrix by clipping eigenvalues, defines the copula; new rows are drawn from $N(0, R)$ and mapped back through the empirical quantile functions, interpolated linearly, and the level intervals.
+
+**Why one copula is not enough.** A Gaussian copula holds monotone dependence only. Spend is not monotone in tenure, and first-month spend and basket size are almost determined by the nominal joining month (correlation ratio above 0.99). No ordering of twelve months turns that into a monotone relation. Two refinements address this. The stratified version fits one copula per tenure band. The conditional version generates the categories first, with the stratified copula, and then writes every amount as an additive main-effects fit on the categories plus a residual; the residuals of all amounts, with their missingness, come from a second copula.
+
+**Fidelity.** Marginals are compared with the Kolmogorov-Smirnov statistic for amounts and the total variation distance for categories. Pairwise dependence is measured by Spearman's $\rho$ for two amounts, the bias-corrected Cramer's $V$ (Bergsma, 2013) for two categories and the correlation ratio $\eta$ for an amount and a category; the absolute difference between real and synthetic values is reported for all 21 pairs.
+
+**Utility.** Train on synthetic, test on real (Esteban, Hyland and Ratsch, 2017): in every fold of the five-fold scheme of section 5, the synthesiser sees only the training part, a model is fitted on a synthetic sample of the same size and scored on the real held-out part, and its RMSE is divided by that of the same model fitted on the real training part.
+
+**Privacy.** The distance to closest record (DCR) of a synthetic row is its Gower distance to the nearest member the synthesiser was fitted on, with ranges taken from those members. Members of a small file with few attributes are close to each other anyway, so the synthetic DCRs are compared with those of real members held out from fitting. The nearest-neighbour distance ratio is the nearest over the second-nearest distance. In a membership inference test (Yeom et al., 2018) the attacker holds the synthetic rows and candidates of whom half were used for fitting; each candidate is scored by minus its distance to the nearest synthetic row. The ROC AUC of this score, with a bootstrap interval, is 0.5 if membership cannot be inferred, and the membership advantage $\max_t(\mathrm{TPR}_t - \mathrm{FPR}_t)$ is the largest gain of any threshold over guessing. Privacy is evaluated on a synthesiser fitted on half of `train.csv`, the other half serving as non-members.
+
+**Result on `train.csv`.**
+
+| Synthesiser | Largest pairwise difference | TSTR RMSE ratio (OLS) | Membership AUC [95% interval] | Advantage |
+| --- | --- | --- | --- | --- |
+| Gaussian copula | 0.892 | 95.1 | 0.522 [0.482, 0.558] | 0.058 |
+| Copula stratified by tenure | 0.881 | 1.94 | 0.555 [0.518, 0.588] | 0.098 |
+| Conditional amounts | 0.090 | 1.02 | 0.557 [0.521, 0.591] | 0.122 |
+
+All three keep the marginals (Kolmogorov-Smirnov and total variation distance below 0.04) and none produces an exact copy of a member. The plain copula loses the tenure effect and the month effects, so a model trained on its output is almost useless. The conditional synthesiser keeps all pairwise relations within 0.09 and a model trained on its output is only 2% worse than one trained on real data. That utility has a price: the median DCR of its rows (0.0056) is below that of held-out members (0.0078), and the attack has a small but significant edge. With an advantage of 0.12, the file should not be treated as anonymous; it is suitable for sharing within an organisation, not for public release. The same attack run on one amount at a time gives AUCs between 0.497 and 0.506, so the leak lies in the joint pattern of categories and amounts rather than in the reuse of observed values. A formal guarantee would need a differentially private synthesiser.
+
 ## 13. Assumptions and limitations
 
 - The data are a small synthetic sample from a certification exercise. Results on `train.csv` describe that sample; the simulation study exists because those data cannot discriminate between methods.
@@ -264,6 +288,7 @@ and DFBETAS give the change in each coefficient, in standard errors, when member
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
 - Belsley, D. A., Kuh, E., and Welsch, R. E. (1980). *Regression Diagnostics: Identifying Influential Data and Sources of Collinearity*. Wiley.
 - Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
+- Bergsma, W. (2013). A bias-correction for Cramer's V and Tschuprow's T. *Journal of the Korean Statistical Society*, 42(3), 323-328.
 - Cawley, G. C., and Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
 - Chen, T., and Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785-794.
 - Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., and Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1-C68.
@@ -273,6 +298,7 @@ and DFBETAS give the change in each coefficient, in standard errors, when member
 - Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
 - Crump, R. K., Hotz, V. J., Imbens, G. W., and Mitnik, O. A. (2009). Dealing with limited overlap in estimation of average treatment effects. *Biometrika*, 96(1), 187-199.
 - Dawid, A. P. (1984). Statistical theory: The prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2), 278-292.
+- Esteban, C., Hyland, S. L., and Ratsch, G. (2017). Real-valued (medical) time series generation with recurrent conditional GANs. *arXiv preprint arXiv:1706.02633*.
 - Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., and Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). CRC Press.
 - Geweke, J. (1993). Bayesian treatment of the independent Student-t linear model. *Journal of Applied Econometrics*, 8(S1), S19-S40.
 - Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
@@ -295,10 +321,12 @@ and DFBETAS give the change in each coefficient, in standard errors, when member
 - Lei, J., G'Sell, M., Rinaldo, A., Tibshirani, R. J., and Wasserman, L. (2018). Distribution-free predictive inference for regression. *Journal of the American Statistical Association*, 113(523), 1094-1111.
 - Lindeman, R. H., Merenda, P. F., and Gold, R. Z. (1980). *Introduction to Bivariate and Multivariate Analysis*. Scott, Foresman.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
+- Nelsen, R. B. (2006). *An Introduction to Copulas* (2nd ed.). Springer.
 - Nie, X., and Wager, S. (2021). Quasi-oracle estimation of heterogeneous treatment effects. *Biometrika*, 108(2), 299-319.
 - Owen, A. B. (2003). Quasi-Monte Carlo sampling. In *Monte Carlo Ray Tracing: SIGGRAPH 2003 Course 44*, 69-88.
 - Papadopoulos, H., Gammerman, A., and Vovk, V. (2008). Normalized nonconformity measures for regression conformal prediction. *Proceedings of the IASTED International Conference on Artificial Intelligence and Applications*, 64-69.
 - Park, H.-S., and Jun, C.-H. (2009). A simple and fast algorithm for K-medoids clustering. *Expert Systems with Applications*, 36(2), 3336-3341.
+- Patki, N., Wedge, R., and Veeramachaneni, K. (2016). The synthetic data vault. *Proceedings of the IEEE International Conference on Data Science and Advanced Analytics*, 399-410.
 - Podani, J. (1999). Extending Gower's general coefficient of similarity to ordinal characters. *Taxon*, 48(2), 331-340.
 - Robins, J. M., Rotnitzky, A., and Zhao, L. P. (1994). Estimation of regression coefficients when some regressors are not always observed. *Journal of the American Statistical Association*, 89(427), 846-866.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *Advances in Neural Information Processing Systems*, 32.
@@ -313,3 +341,4 @@ and DFBETAS give the change in each coefficient, in standard errors, when member
 - Wachter, S., Mittelstadt, B., and Russell, C. (2018). Counterfactual explanations without opening the black box: Automated decisions and the GDPR. *Harvard Journal of Law and Technology*, 31(2), 841-887.
 - Watanabe, S. (2010). Asymptotic equivalence of Bayes cross validation and widely applicable information criterion in singular learning theory. *Journal of Machine Learning Research*, 11, 3571-3594.
 - Welch, B. L. (1951). On the comparison of several mean values: An alternative approach. *Biometrika*, 38(3/4), 330-336.
+- Yeom, S., Giacomelli, I., Fredrikson, M., and Jha, S. (2018). Privacy risk in machine learning: Analyzing the connection to overfitting. *Proceedings of the 31st IEEE Computer Security Foundations Symposium*, 268-282.
