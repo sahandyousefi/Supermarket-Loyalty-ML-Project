@@ -44,7 +44,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 13: Synthetic data with privacy checks
 
-- [ ] 13.4 Privacy: distance to closest record and nearest-neighbour distance ratio
 - [ ] 13.5 Membership inference test
 - [ ] 13.6 `loyalty-spend synthesize --copula` and documentation
 
@@ -248,3 +247,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-17: 13.2 Fidelity: marginal and pairwise dependence comparisons
 - [x] 2025-09-30: 13.1b Amounts conditional on the categories, residuals from a copula
 - [x] 2025-09-30: 13.3 Utility: train on synthetic, test on real
+- [x] 2025-09-30: 13.4 Privacy: distance to closest record and nearest-neighbour distance ratio
