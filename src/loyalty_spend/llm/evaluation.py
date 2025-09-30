@@ -24,7 +24,7 @@ import pandas as pd
 
 from loyalty_spend.llm.client import LLMClient
 from loyalty_spend.llm.qa import answer_question
-from loyalty_spend.llm.retrieval import TfidfRetriever, is_relevant
+from loyalty_spend.llm.retrieval import Retriever, is_relevant
 from loyalty_spend.llm.structured import StructuredOutputError
 
 
@@ -53,7 +53,7 @@ class EvaluationResult:
 
 def evaluate_qa(
     client: LLMClient,
-    retriever: TfidfRetriever,
+    retriever: Retriever,
     cases: list[dict[str, Any]],
     k: int = 4,
 ) -> EvaluationResult:

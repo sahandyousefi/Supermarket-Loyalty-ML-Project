@@ -9,7 +9,7 @@ from loyalty_spend.llm.client import LLMClient
 from loyalty_spend.llm.corpus import Chunk
 from loyalty_spend.llm.guardrails import check_question
 from loyalty_spend.llm.prompts import load_prompt
-from loyalty_spend.llm.retrieval import TfidfRetriever
+from loyalty_spend.llm.retrieval import Retriever
 from loyalty_spend.llm.structured import complete_json
 
 REFUSAL = "The documentation does not answer this question."
@@ -43,7 +43,7 @@ def render_passages(chunks: list[Chunk]) -> str:
 
 
 def answer_question(
-    client: LLMClient, retriever: TfidfRetriever, question: str, k: int = 4
+    client: LLMClient, retriever: Retriever, question: str, k: int = 4
 ) -> Answer:
     guard = check_question(question)
     if not guard.allowed:

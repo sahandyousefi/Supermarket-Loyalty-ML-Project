@@ -503,9 +503,9 @@ def _ask(args: argparse.Namespace) -> int:
     from loyalty_spend.llm.corpus import load_corpus
     from loyalty_spend.llm.guardrails import check_question
     from loyalty_spend.llm.qa import BLOCKED, answer_question
-    from loyalty_spend.llm.retrieval import TfidfRetriever
+    from loyalty_spend.llm.retrieval import Bm25Retriever
 
-    retriever = TfidfRetriever(load_corpus())
+    retriever = Bm25Retriever(load_corpus())
     client = None if args.offline else client_from_env()
     if client is None:
         guard = check_question(args.question)

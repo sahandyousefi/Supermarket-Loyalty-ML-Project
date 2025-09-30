@@ -4,7 +4,7 @@ from loyalty_spend.llm.client import MockLLM
 from loyalty_spend.llm.corpus import Chunk
 from loyalty_spend.llm.evaluation import evaluate_qa
 from loyalty_spend.llm.qa import REFUSAL
-from loyalty_spend.llm.retrieval import TfidfRetriever
+from loyalty_spend.llm.retrieval import Bm25Retriever, TfidfRetriever
 
 CHUNKS = [
     Chunk(
@@ -70,7 +70,7 @@ def test_question_set_on_the_project_documentation():
     cases = load_qa_cases()
     assert sum(c["relevant"] is not None for c in cases) >= 10
     assert sum(c.get("group") == "hostile" for c in cases) >= 3
-    result = evaluate_qa(MockLLM(_first_passage), TfidfRetriever(load_corpus()), cases)
+    result = evaluate_qa(MockLLM(_first_passage), Bm25Retriever(load_corpus()), cases)
     rows = result.rows
     hostile = rows["question"].isin(
         [c["question"] for c in cases if c.get("group") == "hostile"]
