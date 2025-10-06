@@ -16,6 +16,7 @@ import pandas as pd
 from numpy.typing import ArrayLike
 
 from loyalty_spend.business.rewards import MarginalSchedule, RewardSchedule, Sampler
+from loyalty_spend.business.sorted_cost import SortedDraws
 
 Schedule = RewardSchedule | MarginalSchedule
 
@@ -157,11 +158,12 @@ def search_thresholds(
             tuple(tiers)
         )
     rng = np.random.default_rng(seed)
-    spend = np.clip(sampler(rng, n_simulations), 0.0, None)
+    # Sorting the draws once makes each candidate cheap to cost.
+    draws = SortedDraws(sampler(rng, n_simulations))
     rows = []
     for name, cand in candidates.items():
-        cost = cand.reward(spend).sum(axis=1)
-        reach = (cand.tier(spend) >= paid).mean()
+        cost = draws.totals(cand)
+        reach = draws.reach(cand.tiers[paid][0])
         rows.append(
             {
                 "thresholds": name,
