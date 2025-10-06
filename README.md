@@ -242,6 +242,18 @@ The best partition (8 segments) is essentially the grid of region by promotion u
 
 Accuracy differs by joining month and by little else, and no combination of attributes is forecast worse than chance alone would explain. The model degrades gracefully when amounts are noisy or missing, but a missing or unrecognised tenure band removes almost all of the signal for that member, so the contract check on that column matters more than any modelling choice. No single member drives the fit, the learning curve is flat beyond about 300 members, and the imputation of missing first-month spend does not affect conclusions even if the gaps are not random.
 
+### Synthetic members
+
+`loyalty-spend synthesize --evaluate` writes a synthetic copy of `train.csv` and checks it for fidelity, utility and privacy. Privacy is measured on a synthesiser fitted on half of the members, with the other half as non-members.
+
+| Synthesiser | Largest pairwise difference | TSTR RMSE ratio (OLS) | Membership AUC | Advantage |
+| --- | --- | --- | --- | --- |
+| Gaussian copula | 0.892 | 95.1 | 0.522 [0.482, 0.558] | 0.058 |
+| Copula stratified by tenure | 0.881 | 1.94 | 0.555 [0.518, 0.588] | 0.098 |
+| Conditional amounts (default) | 0.090 | 1.02 | 0.557 [0.521, 0.591] | 0.122 |
+
+A plain Gaussian copula keeps every marginal but cannot represent a non-monotone tenure effect or amounts that depend on a nominal joining month, so a model trained on its output is useless. Generating the categories first and the amounts conditional on them keeps every pairwise relation within 0.09, and OLS trained on the synthetic file is 2% worse than OLS trained on real members. No synthetic row copies a member, but synthetic rows sit closer to the members they were fitted on than new members do, and a distance-based attack identifies members slightly better than chance. The file is fit for internal sharing, not for public release.
+
 ## Approach
 
 Full notation, derivations and references are in [docs/methodology.md](docs/methodology.md); the model card is in [docs/model_card.md](docs/model_card.md), and [docs/deployment.md](docs/deployment.md) covers the registry, batch monitoring and the scoring service.
@@ -285,6 +297,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 **Segments.** Gower distance for mixed attributes, k-medoids with restarts, the number of segments by average silhouette width, and bootstrap Jaccard stability (Hennig, 2007) to tell real segments from artefacts of one sample.
 
 **Robustness.** Subgroup errors with bootstrap intervals, slice search with Benjamini-Hochberg control, stress tests on damaged inputs, closed-form Cook's distance and DFBETAS, learning curves with fold intervals, multiple imputation pooled by Rubin's rules, and a delta adjustment for values missing not at random.
+
+**Synthetic data.** Gaussian copulas over empirical margins and frequency-encoded categories, stratified or with amounts conditional on the categories, evaluated by marginal and pairwise fidelity, train-on-synthetic test-on-real utility, distance to closest record against a held-out baseline, and a membership inference attack.
 
 **Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
 
@@ -355,6 +369,7 @@ loyalty-spend segments --output-dir artifacts/segments
 loyalty-spend design --output-dir artifacts/design     # schedule comparison, risk, threshold search
 loyalty-spend bayes --nu 4                            # hierarchical model, diagnostics, WAIC
 loyalty-spend robustness --output-dir artifacts/robustness
+loyalty-spend synthesize --evaluate --output synthetic.csv
 loyalty-spend narrate                                 # summary from the report facts
 loyalty-spend ask "How are prediction intervals built?"
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
@@ -379,6 +394,7 @@ The tests check the cleaning rules against the data dictionary, Welch's ANOVA ag
 - The reward schedule is an assumption; the brief does not state the real one.
 - Conformal coverage is marginal and assumes exchangeable customers. It does not hold after a change in the membership mix.
 - The driver analysis is associational. It shows how spend differs across tenure bands, not what would happen to a member's spend if their tenure changed.
+- The synthetic member file is not anonymous. A distance-based attack has a membership advantage of 0.12, and no differential privacy guarantee is given.
 
 ## References
 
