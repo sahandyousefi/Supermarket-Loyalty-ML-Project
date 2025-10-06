@@ -837,6 +837,9 @@ def _compare_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--models", nargs="+", default=["ols", "ridge", "hist_gbm"])
     p.add_argument("--reference", default="ols")
     p.add_argument("--output", default=None, help="CSV of the comparison table")
+    p.add_argument(
+        "--jobs", type=int, default=1, help="processes for fold fitting (-1: all)"
+    )
 
 
 @command("compare", "repeated cross-validation of several models", _compare_args)
@@ -850,7 +853,10 @@ def _compare(args: argparse.Namespace) -> int:
     train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
     X, y = split_xy(train)
     splits = make_splits(len(y), cfg.cv.n_splits, cfg.cv.n_repeats, cfg.cv.seed)
-    results = [cross_validate(m, build_model(m), X, y, splits) for m in args.models]
+    results = [
+        cross_validate(m, build_model(m), X, y, splits, n_jobs=args.jobs)
+        for m in args.models
+    ]
     table = compare_results(results, args.reference)
     if args.output:
         table.to_csv(args.output, index=False)

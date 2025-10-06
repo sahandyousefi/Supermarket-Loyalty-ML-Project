@@ -47,7 +47,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 14: Performance
 
-- [ ] 14.2 Parallel cross-validation
 - [ ] 14.3 Cached preprocessing in repeated cross-validation
 - [ ] 14.4 Memory-bounded simulation for large customer files
 
@@ -248,3 +247,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-09-30: 13.5 Membership inference test
 - [x] 2025-10-06: 13.6 `loyalty-spend synthesize --copula` and documentation
 - [x] 2025-10-06: 14.1 Profile and vectorise the reward simulation
+- [x] 2025-10-06: 14.2 Parallel cross-validation

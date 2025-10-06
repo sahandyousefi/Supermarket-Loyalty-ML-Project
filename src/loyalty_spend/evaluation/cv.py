@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 from scipy.stats import t as student_t
 from sklearn.base import BaseEstimator, clone
 from sklearn.model_selection import RepeatedKFold
@@ -40,6 +41,18 @@ def make_splits(
     return list(cv.split(np.zeros(n)))
 
 
+def _fit_predict(
+    estimator: BaseEstimator,
+    X: pd.DataFrame,
+    y: pd.Series,
+    tr: np.ndarray,
+    te: np.ndarray,
+) -> tuple[BaseEstimator, np.ndarray]:
+    model = clone(estimator)
+    model.fit(X.iloc[tr], y.iloc[tr])
+    return model, np.asarray(model.predict(X.iloc[te]), float)
+
+
 def cross_validate(
     name: str,
     estimator: BaseEstimator,
@@ -47,21 +60,28 @@ def cross_validate(
     y: pd.Series,
     splits: list[tuple[np.ndarray, np.ndarray]],
     fit_hook: Callable[[BaseEstimator], None] | None = None,
+    n_jobs: int = 1,
 ) -> CVResult:
     """Fit a fresh clone on each split and score it on the held-out fold.
 
     Out-of-fold predictions are averaged over repeats, so ``oof`` holds one
-    prediction per row.
+    prediction per row. With ``n_jobs`` other than 1 the folds are fitted
+    in separate processes; every estimator carries its own seed, so the
+    results do not depend on the number of jobs. ``fit_hook`` always runs
+    in the calling process.
     """
+    if n_jobs == 1:
+        fitted = [_fit_predict(estimator, X, y, tr, te) for tr, te in splits]
+    else:
+        fitted = Parallel(n_jobs=n_jobs)(
+            delayed(_fit_predict)(estimator, X, y, tr, te) for tr, te in splits
+        )
     rows = []
     oof_sum = np.zeros(len(y))
     oof_n = np.zeros(len(y))
-    for i, (tr, te) in enumerate(splits):
-        model = clone(estimator)
-        model.fit(X.iloc[tr], y.iloc[tr])
+    for i, ((_, te), (model, pred)) in enumerate(zip(splits, fitted, strict=True)):
         if fit_hook is not None:
             fit_hook(model)
-        pred = model.predict(X.iloc[te])
         oof_sum[te] += pred
         oof_n[te] += 1
         rows.append({"fold": i, **regression_report(y.iloc[te], pred)})
