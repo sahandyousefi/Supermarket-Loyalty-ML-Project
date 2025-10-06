@@ -12,6 +12,7 @@ from scipy.stats import t as student_t
 from sklearn.base import BaseEstimator, clone
 from sklearn.model_selection import RepeatedKFold
 
+from loyalty_spend.evaluation.fold_cache import FoldCache
 from loyalty_spend.evaluation.metrics import regression_report
 
 
@@ -61,6 +62,7 @@ def cross_validate(
     splits: list[tuple[np.ndarray, np.ndarray]],
     fit_hook: Callable[[BaseEstimator], None] | None = None,
     n_jobs: int = 1,
+    cache: FoldCache | None = None,
 ) -> CVResult:
     """Fit a fresh clone on each split and score it on the held-out fold.
 
@@ -68,9 +70,14 @@ def cross_validate(
     prediction per row. With ``n_jobs`` other than 1 the folds are fitted
     in separate processes; every estimator carries its own seed, so the
     results do not depend on the number of jobs. ``fit_hook`` always runs
-    in the calling process.
+    in the calling process. A ``cache`` built on the same data and splits
+    reuses fitted preprocessing across models and calls.
     """
-    if n_jobs == 1:
+    if cache is not None:
+        if cache.splits is not splits:
+            raise ValueError("the cache was built for other splits")
+        fitted = [cache.fit_predict(estimator, i) for i in range(len(splits))]
+    elif n_jobs == 1:
         fitted = [_fit_predict(estimator, X, y, tr, te) for tr, te in splits]
     else:
         fitted = Parallel(n_jobs=n_jobs)(

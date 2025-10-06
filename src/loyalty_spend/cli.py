@@ -846,6 +846,7 @@ def _compare_args(p: argparse.ArgumentParser) -> None:
 def _compare(args: argparse.Namespace) -> int:
     from loyalty_spend.data.io import load_clean
     from loyalty_spend.evaluation.cv import compare_results, cross_validate, make_splits
+    from loyalty_spend.evaluation.fold_cache import FoldCache
     from loyalty_spend.features.preprocess import split_xy
     from loyalty_spend.models.registry import build_model
 
@@ -853,8 +854,10 @@ def _compare(args: argparse.Namespace) -> int:
     train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
     X, y = split_xy(train)
     splits = make_splits(len(y), cfg.cv.n_splits, cfg.cv.n_repeats, cfg.cv.seed)
+    # Models with the same encoding share the preprocessing of each fold.
+    cache = FoldCache(X, y, splits) if args.jobs == 1 else None
     results = [
-        cross_validate(m, build_model(m), X, y, splits, n_jobs=args.jobs)
+        cross_validate(m, build_model(m), X, y, splits, n_jobs=args.jobs, cache=cache)
         for m in args.models
     ]
     table = compare_results(results, args.reference)

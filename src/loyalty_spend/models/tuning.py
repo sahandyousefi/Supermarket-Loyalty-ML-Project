@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold, cross_val_score
+from sklearn.model_selection import KFold
 
+from loyalty_spend.evaluation.fold_cache import FoldCache
 from loyalty_spend.evaluation.metrics import rmse
 from loyalty_spend.models.registry import build_model
 
@@ -82,13 +83,16 @@ def tune(
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     cv = KFold(n_splits, shuffle=True, random_state=seed)
+    # Trials change only the model, so each fold is preprocessed once.
+    cache = FoldCache(X, y, list(cv.split(X)))
 
     def objective(trial: optuna.Trial) -> float:
         model = build_model(name, **search_space(trial, name))
-        scores = cross_val_score(
-            model, X, y, cv=cv, scoring="neg_root_mean_squared_error"
-        )
-        return float(-scores.mean())
+        scores = [
+            rmse(y.iloc[te], cache.fit_predict(model, i)[1])
+            for i, (_, te) in enumerate(cache.splits)
+        ]
+        return float(np.mean(scores))
 
     study = optuna.create_study(
         direction="minimize", sampler=optuna.samplers.TPESampler(seed=seed)
