@@ -176,6 +176,17 @@ def gaussian_qmc_sampler(mean: ArrayLike, sigma: ArrayLike, seed: int = 0) -> Sa
     return draw
 
 
+# Arrays of draws alive at once in a batch: spend, rewards, tiers and the
+# temporaries of clipping and rate lookup, eight bytes per entry.
+_ARRAYS_PER_BATCH = 6
+
+
+def batch_size_for(n_customers: int, max_memory_mb: float) -> int:
+    """Largest batch of draws whose working arrays fit in ``max_memory_mb``."""
+    per_draw = max(n_customers, 1) * 8 * _ARRAYS_PER_BATCH
+    return max(1, int(max_memory_mb * 2**20 // per_draw))
+
+
 def simulate_liability(
     customer_ids: ArrayLike,
     predicted_spend: ArrayLike,
@@ -184,16 +195,23 @@ def simulate_liability(
     n_simulations: int = 5000,
     seed: int = 0,
     batch: int = 500,
+    max_memory_mb: float | None = None,
 ) -> LiabilityForecast:
     """Monte Carlo distribution of reward cost for any predictive sampler.
 
     ``sampler(rng, m)`` returns ``m`` joint draws of annual spend, one column
     per customer. Draws are clipped at zero, the schedule is applied to each
-    draw and the rewards are summed over customers.
+    draw and the rewards are summed over customers. Draws are processed in
+    batches; ``max_memory_mb`` caps the size of a batch so that the working
+    arrays stay within that budget for any number of customers. Batching
+    does not change the result, because the draws are taken from the same
+    stream in the same order.
     """
     rng = np.random.default_rng(seed)
     pred = np.asarray(predicted_spend, float)
     n = len(pred)
+    if max_memory_mb is not None:
+        batch = min(batch, batch_size_for(n, max_memory_mb))
     totals = np.empty(n_simulations)
     spend_totals = np.empty(n_simulations)
     reward_sum = np.zeros(n)
@@ -233,6 +251,7 @@ def forecast_liability(
     n_simulations: int = 5000,
     seed: int = 0,
     batch: int = 500,
+    max_memory_mb: float | None = None,
 ) -> LiabilityForecast:
     """Monte Carlo distribution of reward cost with a residual bootstrap.
 
@@ -250,6 +269,7 @@ def forecast_liability(
         n_simulations,
         seed,
         batch,
+        max_memory_mb,
     )
 
 

@@ -967,6 +967,12 @@ def _rewards_args(p: argparse.ArgumentParser) -> None:
         help="residual bootstrap around the saved model, or a heteroscedastic "
         "Gaussian model fitted to train.csv",
     )
+    p.add_argument(
+        "--max-memory-mb",
+        type=float,
+        default=None,
+        help="cap on the memory of one batch of draws, for large files",
+    )
 
 
 @command("rewards", "forecast the reward cost of a customer file", _rewards_args)
@@ -1000,6 +1006,7 @@ def _rewards(args: argparse.Namespace) -> int:
             schedule,
             cfg.rewards.n_simulations,
             cfg.rewards.seed,
+            max_memory_mb=args.max_memory_mb,
         )
     else:
         from loyalty_spend.models.persistence import load_bundle
@@ -1012,6 +1019,7 @@ def _rewards(args: argparse.Namespace) -> int:
             schedule,
             cfg.rewards.n_simulations,
             cfg.rewards.seed,
+            max_memory_mb=args.max_memory_mb,
         )
     if args.output:
         fc.per_customer.to_csv(args.output, index=False)

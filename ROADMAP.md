@@ -47,7 +47,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 14: Performance
 
-- [ ] 14.4 Memory-bounded simulation for large customer files
 
 ## Phase 15: Documentation and release
 
@@ -248,3 +247,4 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 - [x] 2025-10-06: 14.1 Profile and vectorise the reward simulation
 - [x] 2025-10-06: 14.2 Parallel cross-validation
 - [x] 2025-10-06: 14.3 Cached preprocessing in repeated cross-validation
+- [x] 2025-10-06: 14.4 Memory-bounded simulation for large customer files
