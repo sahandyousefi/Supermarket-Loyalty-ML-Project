@@ -6,6 +6,23 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Grounded summaries with language models: an OpenAI-compatible HTTP client without extra dependencies and a mock client for tests, versioned prompt templates, a fact sheet built from the report, narrative summaries checked number by number against it, structured output validation with a bounded retry, documentation chunking and retrieval, answers with verified citations, input guardrails, an evaluation harness for faithfulness, format and refusals, and token accounting; `loyalty-spend narrate` and `ask`.
+- A hierarchical Bayesian model of spend: empirical Bayes shrinkage, a blocked Gibbs sampler with partially pooled region effects, Student-t errors and group variances, split R-hat and effective sample size, posterior predictive checks, WAIC against OLS, prior sensitivity and reward cost from the posterior predictive distribution; `loyalty-spend bayes`.
+- Explanations: accumulated local effects, centred ICE curves, a global surrogate tree with fidelity, stability of importances across folds, and counterfactual first-month spend needed to reach the next tier; `loyalty-spend next-tier` and a service endpoint.
+- Robustness checks: subgroup errors with bootstrap intervals, slice finding with false discovery rate control, stress tests on damaged inputs, multiple imputation with Rubin's rules, a delta adjustment for values missing not at random, closed-form influence diagnostics and learning curves; `loyalty-spend robustness`.
+- Synthetic members: Gaussian copula, stratified and conditional synthesisers, fidelity, train-on-synthetic utility, distance to closest record and a membership inference test; `loyalty-spend synthesize`.
+- Parallel fold fitting (`compare --jobs`), fold preprocessing shared across tuning trials and models, threshold search on sorted draws with prefix sums, and a memory cap for the reward simulation (`rewards --max-memory-mb`).
+
+### Changed
+
+- Documentation retrieval uses BM25 instead of TF-IDF; recall at 5 on the evaluation questions rises from 0.75 to 0.92.
+
+### Fixed
+
+- Learning curve points are grouped by training share, so folds that differ by one member no longer produce separate points.
+
 ## [1.3.0] - 2025-07-31
 
 ### Added
