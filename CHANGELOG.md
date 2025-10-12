@@ -6,6 +6,8 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2025-10-12
+
 ### Added
 
 - Grounded summaries with language models: an OpenAI-compatible HTTP client without extra dependencies and a mock client for tests, versioned prompt templates, a fact sheet built from the report, narrative summaries checked number by number against it, structured output validation with a bounded retry, documentation chunking and retrieval, answers with verified citations, input guardrails, an evaluation harness for faithfulness, format and refusals, and token accounting; `loyalty-spend narrate` and `ask`.
