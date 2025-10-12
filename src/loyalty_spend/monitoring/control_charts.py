@@ -13,6 +13,18 @@ and exact variance
 :math:`\sigma^2 \frac{\lambda}{2 - \lambda}[1 - (1 - \lambda)^{2t}]`, so the
 limits :math:`\mu_0 \pm L \sigma_{z_t}` widen over the first batches
 instead of starting at their asymptotic width (Lucas and Saccucci, 1990).
+
+The tabular CUSUM (Page, 1954) accumulates deviations beyond a reference
+value :math:`k`: :math:`C^+_t = \max(0, x_t - \mu_0 - k\sigma + C^+_{t-1})`
+and :math:`C^-_t = \max(0, \mu_0 - k\sigma - x_t + C^-_{t-1})`, with a
+signal when either exceeds :math:`h\sigma`. With :math:`k` half the shift
+to be detected it is optimal for that shift. The decision interval
+:math:`h` for a target in-control run length follows from Siegmund's (1985)
+approximation of the one-sided run length,
+:math:`(e^{-2\Delta b} + 2\Delta b - 1) / (2\Delta^2)` with
+:math:`b = h + 1.166` and :math:`\Delta` the drift beyond :math:`k`,
+combined over both sides as :math:`1/\mathrm{ARL} = 1/\mathrm{ARL}^+ +
+1/\mathrm{ARL}^-`.
 """
 
 from __future__ import annotations
@@ -21,6 +33,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike
+from scipy.optimize import brentq
 
 
 @dataclass
@@ -61,3 +74,46 @@ def ewma_chart(
     factor = 1 - (1 - lam) ** (2 * steps) if exact else np.ones(len(x))
     half = L * sigma * np.sqrt(lam / (2 - lam) * factor)
     return ChartResult(z, mu - half, mu + half)
+
+
+@dataclass
+class CusumResult(ChartResult):
+    plus: np.ndarray | None = None
+    minus: np.ndarray | None = None
+
+
+def cusum_chart(
+    x: ArrayLike,
+    k: float = 0.5,
+    h: float = 4.77,
+    mu: float = 0.0,
+    sigma: float = 1.0,
+) -> CusumResult:
+    """Two-sided tabular CUSUM; the statistic is the larger side, signed."""
+    x = (np.asarray(x, float) - mu) / sigma
+    plus, minus = np.empty_like(x), np.empty_like(x)
+    cp = cm = 0.0
+    for i, value in enumerate(x):
+        cp = max(0.0, value - k + cp)
+        cm = max(0.0, -k - value + cm)
+        plus[i], minus[i] = cp, cm
+    stat = np.where(plus >= minus, plus, -minus)
+    bound = np.full(len(x), h)
+    return CusumResult(stat, -bound, bound, plus, minus)
+
+
+def siegmund_arl(h: float, k: float, shift: float = 0.0) -> float:
+    """Two-sided CUSUM run length for a mean shift, Siegmund's approximation."""
+    b = h + 1.166
+
+    def one_sided(delta: float) -> float:
+        if abs(delta) < 1e-9:
+            return b**2
+        return (np.exp(-2 * delta * b) + 2 * delta * b - 1) / (2 * delta**2)
+
+    return float(1 / (1 / one_sided(shift - k) + 1 / one_sided(-shift - k)))
+
+
+def cusum_interval(k: float, arl0: float) -> float:
+    """Decision interval ``h`` that gives in-control run length ``arl0``."""
+    return float(brentq(lambda h: siegmund_arl(h, k) - arl0, 0.01, 50.0))

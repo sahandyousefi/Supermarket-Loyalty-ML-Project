@@ -1,7 +1,12 @@
 import numpy as np
 import pytest
 
-from loyalty_spend.monitoring.control_charts import ewma_chart
+from loyalty_spend.monitoring.control_charts import (
+    cusum_chart,
+    cusum_interval,
+    ewma_chart,
+    siegmund_arl,
+)
 
 
 def test_ewma_recursion_and_limits():
@@ -49,3 +54,25 @@ def test_a_sustained_shift_is_detected():
 def test_invalid_lambda():
     with pytest.raises(ValueError):
         ewma_chart([0.0], lam=0.0)
+
+
+def test_cusum_recursion():
+    x = np.array([1.0, 1.0, -2.0, 0.2])
+    res = cusum_chart(x, k=0.5, h=1.2)
+    assert np.allclose(res.plus, [0.5, 1.0, 0.0, 0.0])
+    assert np.allclose(res.minus, [0.0, 0.0, 1.5, 0.8])
+    assert res.first_signal == 3 and res.statistic[2] == -1.5
+
+
+def test_siegmund_matches_published_run_lengths():
+    # Two-sided CUSUM with k = 0.5: h = 4 gives about 168, h = 5 about 465
+    # (Montgomery, Introduction to Statistical Quality Control, table 9.3).
+    assert siegmund_arl(4.0, 0.5) == pytest.approx(168, rel=0.03)
+    assert siegmund_arl(5.0, 0.5) == pytest.approx(465, rel=0.03)
+    assert siegmund_arl(5.0, 0.5, shift=1.0) == pytest.approx(10.4, rel=0.05)
+
+
+def test_interval_for_target_run_length():
+    h = cusum_interval(0.5, 370.0)
+    assert 4.5 < h < 4.9
+    assert siegmund_arl(h, 0.5) == pytest.approx(370.0)
