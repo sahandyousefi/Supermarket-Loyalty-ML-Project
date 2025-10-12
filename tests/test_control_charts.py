@@ -5,6 +5,8 @@ from loyalty_spend.monitoring.control_charts import (
     cusum_chart,
     cusum_interval,
     ewma_chart,
+    hwma_chart,
+    mhwma_chart,
     siegmund_arl,
 )
 
@@ -76,3 +78,39 @@ def test_interval_for_target_run_length():
     h = cusum_interval(0.5, 370.0)
     assert 4.5 < h < 4.9
     assert siegmund_arl(h, 0.5) == pytest.approx(370.0)
+
+
+def test_hwma_weights_and_variance():
+    x = np.array([1.0, 3.0, -1.0, 2.0])
+    res = hwma_chart(x, lam=0.2, L=3.0)
+    expected = [0.2 * 1.0, 0.2 * 3.0 + 0.8 * 1.0, 0.2 * -1.0 + 0.8 * 2.0, 0.4 + 0.8]
+    assert np.allclose(res.statistic, expected)
+    rng = np.random.default_rng(0)
+    sims = np.array(
+        [hwma_chart(rng.standard_normal(6)).statistic for _ in range(20000)]
+    )
+    sd = np.sqrt(0.1**2 + 0.9**2 / np.r_[np.inf, np.arange(1, 6)])
+    assert np.allclose(sims.std(axis=0), sd, rtol=0.03)
+    assert np.allclose(hwma_chart(np.zeros(6), L=2.8).upper, 2.8 * sd)
+
+
+def test_mhwma_reduces_to_squared_hwma_in_one_dimension():
+    rng = np.random.default_rng(1)
+    x = rng.standard_normal(30)
+    uni = hwma_chart(x, lam=0.15)
+    multi = mhwma_chart(x[:, None], lam=0.15)
+    assert np.allclose(multi.statistic, (uni.statistic / (uni.upper / 2.8)) ** 2)
+
+
+def test_mhwma_is_chi_square_in_control():
+    rng = np.random.default_rng(2)
+    cov = np.array([[1.0, 0.4, 0.0], [0.4, 1.0, 0.2], [0.0, 0.2, 1.0]])
+    chol = np.linalg.cholesky(cov)
+    stats = np.array(
+        [
+            mhwma_chart(rng.standard_normal((10, 3)) @ chol.T, cov=cov).statistic
+            for _ in range(5000)
+        ]
+    )
+    # Each statistic is a squared Mahalanobis norm of a normal vector.
+    assert np.allclose(stats.mean(axis=0), 3.0, rtol=0.06)
