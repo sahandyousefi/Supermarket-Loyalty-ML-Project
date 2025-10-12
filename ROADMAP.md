@@ -50,12 +50,83 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 15: Documentation and release
 
+These items close the year and come after phases 16 to 23.
+
 - [ ] 15.1 Walkthrough notebook for the promotion analysis
 - [ ] 15.2 Walkthrough notebook for reward programme design
 - [ ] 15.3 Runtime benchmarks of the main commands
 - [ ] 15.4 Methodology and model card updates
 - [ ] 15.5 README rewrite
 - [ ] 15.6 Release 2.0.0
+
+## Phase 16: Control charts for model monitoring
+
+The batch monitor of phase 8 compares one batch with the training data. Errors that creep up slowly over many batches are better caught by control charts on the standardised residuals of scored members once their spend is known.
+
+- [ ] 16.1 EWMA chart with exact time-varying control limits
+- [ ] 16.2 Tabular CUSUM with the decision interval set by in-control run length
+- [ ] 16.3 HWMA and MHWMA charts
+- [ ] 16.4 Average run length by Monte Carlo with standard errors
+- [ ] 16.5 Out-of-control run lengths under mean and variance shifts
+- [ ] 16.6 Effect of estimated in-control parameters on run length
+- [ ] 16.7 `loyalty-spend control-chart` on a stream of scored batches
+- [ ] 16.8 Documentation
+
+## Phase 17: Design of the next promotion experiment
+
+Phase 4 found no detectable effect of the sign-up promotion in observational data. A randomised test is the way to settle it.
+
+- [ ] 17.1 Sample size and power for a difference in mean spend
+- [ ] 17.2 Variance reduction with first-month spend (CUPED)
+- [ ] 17.3 Stratified randomisation by tenure band and region
+- [ ] 17.4 Group-sequential design with an alpha-spending function
+- [ ] 17.5 Operating characteristics by simulation
+- [ ] 17.6 `loyalty-spend experiment` command
+- [ ] 17.7 Documentation
+
+## Phase 18: Group comparisons in the driver analysis
+
+- [ ] 18.1 Games-Howell pairwise comparisons for unequal variances
+- [ ] 18.2 Permutation test of the tenure effect
+- [ ] 18.3 Confidence intervals for omega squared
+- [ ] 18.4 Report section with the pairwise comparisons
+
+## Phase 19: Conditional coverage of prediction intervals
+
+- [ ] 19.1 Coverage audit by subgroup with exact binomial intervals
+- [ ] 19.2 Localised conformal intervals with kernel weights
+- [ ] 19.3 Conformalised quantile regression
+- [ ] 19.4 Comparison of interval methods by conditional coverage
+- [ ] 19.5 Documentation
+
+## Phase 20: Gaussian process regression
+
+- [ ] 20.1 Kernel for mixed amounts and categories
+- [ ] 20.2 Hyperparameters by marginal likelihood with restarts
+- [ ] 20.3 Predictive intervals and their calibration
+- [ ] 20.4 Registration and comparison with the other models
+
+## Phase 21: Documentation site
+
+- [ ] 21.1 MkDocs configuration with the existing documents
+- [ ] 21.2 API reference from docstrings
+- [ ] 21.3 Strict documentation build in CI
+
+## Phase 22: Code quality
+
+- [ ] 22.1 Strict type checking for `business`
+- [ ] 22.2 Strict type checking for `evaluation`
+- [ ] 22.3 Strict type checking for `synthetic` and `robustness`
+- [ ] 22.4 Strict type checking for `causal`
+- [ ] 22.5 Property-based tests for the sorted-draw costing
+- [ ] 22.6 Mutation testing of the reward module
+
+## Phase 23: Serving
+
+- [ ] 23.1 Batch scoring from Parquet files
+- [ ] 23.2 Request identifiers and structured logs
+- [ ] 23.3 Latency benchmark of the service
+- [ ] 23.4 Snapshot test of the OpenAPI schema
 
 ## Completed
 - [x] 2025-05-05: 1.1 Add a changelog that records the 1.0.0 release
