@@ -270,6 +270,45 @@ and DFBETAS give the change in each coefficient, in standard errors, when member
 
 All three keep the marginals (Kolmogorov-Smirnov and total variation distance below 0.04) and none produces an exact copy of a member. The plain copula loses the tenure effect and the month effects, so a model trained on its output is almost useless. The conditional synthesiser keeps all pairwise relations within 0.09 and a model trained on its output is only 2% worse than one trained on real data. That utility has a price: the median DCR of its rows (0.0056) is below that of held-out members (0.0078), and the attack has a small but significant edge. With an advantage of 0.12, the file should not be treated as anonymous; it is suitable for sharing within an organisation, not for public release. The same attack run on one amount at a time gives AUCs between 0.497 and 0.506, so the leak lies in the joint pattern of categories and amounts rather than in the reuse of observed values. A formal guarantee would need a differentially private synthesiser.
 
+## 12c. Control charts for model monitoring
+
+**Why charts with memory.** The batch monitor of section 12 compares one batch with the training data. A slow change in the relation between features and spend, for example members of one tenure band spending a little less each quarter, leaves every single batch within its limits. Once the spend of scored members is known, the residuals of each batch can be charted over time, and charts that accumulate evidence detect such shifts much sooner.
+
+**Batch statistic.** For batch $t$ and tenure band $j$, $x_{jt} = (\bar e_{jt} - m_j)/(s_j/\sqrt{n_{jt}})$, where $\bar e_{jt}$ is the mean residual of the $n_{jt}$ members of the band in the batch and $m_j$, $s_j$ are the mean and standard deviation of the band's out-of-fold residuals. In control, $x_{jt}$ is close to standard normal. Univariate charts watch $x_t = \sum_j x_{jt}/\sqrt{5}$; a shift $\delta$ confined to one band reaches them as $\delta/\sqrt{5}$.
+
+**Charts.** The EWMA chart (Roberts, 1959) charts $z_t = \lambda x_t + (1-\lambda)z_{t-1}$ against limits $\pm L\sigma_{z_t}$, with the exact variance $\frac{\lambda}{2-\lambda}[1-(1-\lambda)^{2t}]$ (Lucas and Saccucci, 1990). The tabular CUSUM (Page, 1954) accumulates $C^\pm_t = \max(0, \pm x_t - k + C^\pm_{t-1})$ and signals when either exceeds $h$; Siegmund's (1985) approximation $(e^{-2\Delta b} + 2\Delta b - 1)/(2\Delta^2)$, $b = h + 1.166$, gives $h$ for a target run length. The HWMA chart (Abbas, 2018) gives the current batch weight $\lambda$ and the rest equally to all earlier batches, $H_t = \lambda x_t + (1-\lambda)\bar x_{t-1}$, with variance $\lambda^2 + (1-\lambda)^2/(t-1)$. Its multivariate form (Adegoke et al., 2019) applies the same weights to the vector of band statistics and charts $T^2_t = H_t^\top\Sigma_{H_t}^{-1}H_t$ with $\Sigma_{H_t} = [\lambda^2 + (1-\lambda)^2/(t-1)]\,I$.
+
+**Run lengths.** Every chart is calibrated by bisection, with common random numbers, to an in-control average run length (ARL) of 370 batches, the run length of a three-sigma Shewhart chart. Run lengths are then simulated with 2,000 replications for a mean shift in one of the five bands and for a 50% increase in spread. In the zero state the change is present from the first batch; in the steady state it starts after 50 in-control batches, and runs with a false alarm before it are discarded (the conditional expected delay).
+
+| Change | State | Shewhart | EWMA $\lambda$ = 0.1 | CUSUM $k$ = 0.5 | HWMA $\lambda$ = 0.1 | MHWMA $\lambda$ = 0.1 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Shift 0.5 in one band | zero state | 278.6 | 99.8 | 138.4 | 83.3 | 38.7 |
+| Shift 0.5 in one band | steady state | 280.1 | 104.7 | 138.2 | 105.0 | 58.8 |
+| Shift 1 in one band | zero state | 169.7 | 32.6 | 45.0 | 31.5 | 12.6 |
+| Shift 1 in one band | steady state | 172.7 | 33.1 | 42.2 | 48.6 | 26.1 |
+| Shift 2 in one band | zero state | 54.3 | 9.2 | 11.9 | 10.3 | 4.3 |
+| Shift 2 in one band | steady state | 57.0 | 11.5 | 11.1 | 21.4 | 10.9 |
+| Spread 1.5 times | zero state | 21.4 | 39.8 | 32.8 | 59.0 | 19.8 |
+| Spread 1.5 times | steady state | 21.9 | 48.3 | 30.8 | 51.2 | 23.7 |
+
+The calibrated limits are $L$ = 2.990 (Shewhart), 2.713 (EWMA), 2.801 (HWMA), $h$ = 4.786 (CUSUM, against 4.77 from Siegmund's approximation) and 16.948 (MHWMA). Standard errors of the ARLs are below 3% of their values.
+
+Three results matter for a monitoring design. First, watching the band vector instead of the overall mean pays: MHWMA detects a shift in one band two to three times faster than any univariate chart in the zero state. Second, the HWMA-type charts lose much of their advantage in the steady state: their delay for a shift of 1 roughly doubles once the shift starts after 50 batches, while EWMA and CUSUM are unaffected. The weight of every past batch is the same, so a long in-control history dilutes a new shift; the zero-state comparisons usually reported for these charts overstate their benefit in continuous monitoring (Knoth et al., 2021). Third, for an increase in spread the memoryless Shewhart chart is as good as any, because smoothing averages the larger deviations away.
+
+**Estimated parameters.** The limits assume that $m_j$ and $s_j$ are known. When they are estimated from $m$ in-control batches, the in-control run length given the estimates varies between Phase I samples (Jensen et al., 2006). For the EWMA chart with $\lambda = 0.1$ and $L = 2.814$ (nominal ARL 499), the conditional ARL is computed exactly enough with the Markov chain approximation of Brook and Evans (1972) for 2,000 Phase I samples:
+
+| Phase I batches | Mean | 10th percentile | Median | 90th percentile | Share below 80% of nominal |
+| --- | --- | --- | --- | --- | --- |
+| 25 | 470.6 | 49.6 | 182.7 | 1004.0 | 0.74 |
+| 50 | 404.7 | 90.4 | 269.6 | 842.3 | 0.67 |
+| 100 | 420.1 | 156.1 | 343.8 | 767.3 | 0.59 |
+| 250 | 451.4 | 264.6 | 423.6 | 677.5 | 0.44 |
+| 1,000 | 480.8 | 376.1 | 476.6 | 594.4 | 0.17 |
+
+Even with 250 batches, almost half of the charts set up in practice would raise false alarms at least 25% more often than intended (Saleh et al., 2015). Here the in-control values come from about 1,000 out-of-fold residuals, not from batch means, which corresponds to far more information per band than 250 batches; the residual standard deviation of each band is still estimated, and the limits should be revisited once a year of scored batches is available.
+
+**On the supplied data.** `loyalty-spend control-chart` draws batches of 100 members with replacement from the out-of-fold residuals of the OLS champion and lowers the spend of the 1-3 year band from batch 100. Over 200 simulated streams, a drop of 0.1 (about one standard error of that band's batch mean) is detected with a median delay of 25 batches by EWMA and CUSUM, 30 by MHWMA and 40 by HWMA; a drop of 0.2 within 8 to 10 batches by all but HWMA (18). In 20 to 28% of the streams a chart raised a false alarm before the change, close to the $1 - (1 - 1/370)^{100} = 0.24$ implied by the design. EWMA or CUSUM on the overall mean, combined with a Shewhart check of the spread, is the recommended setup.
+
 ## 13. Assumptions and limitations
 
 - The data are a small synthetic sample from a certification exercise. Results on `train.csv` describe that sample; the simulation study exists because those data cannot discriminate between methods.
@@ -280,7 +319,9 @@ All three keep the marginals (Kolmogorov-Smirnov and total variation distance be
 
 ## References
 
+- Abbas, N. (2018). Homogeneously weighted moving average control chart with an application in substrate manufacturing process. *Computers and Industrial Engineering*, 120, 460-470.
 - Acerbi, C., and Tasche, D. (2002). On the coherence of expected shortfall. *Journal of Banking and Finance*, 26(7), 1487-1503.
+- Adegoke, N. A., Abbasi, S. A., Smith, A. N. H., Anderson, M. J., and Pawley, M. D. M. (2019). A multivariate homogeneously weighted moving average control chart. *IEEE Access*, 7, 9586-9597.
 - Akiba, T., Sano, S., Yanase, T., Ohta, T., and Koyama, M. (2019). Optuna: A next-generation hyperparameter optimization framework. *Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 2623-2631.
 - Apley, D. W., and Zhu, J. (2020). Visualizing the effects of predictor variables in black box supervised learning models. *Journal of the Royal Statistical Society, Series B*, 82(4), 1059-1086.
 - Athey, S., and Wager, S. (2021). Policy learning with observational data. *Econometrica*, 89(1), 133-161.
@@ -289,6 +330,7 @@ All three keep the marginals (Kolmogorov-Smirnov and total variation distance be
 - Belsley, D. A., Kuh, E., and Welsch, R. E. (1980). *Regression Diagnostics: Identifying Influential Data and Sources of Collinearity*. Wiley.
 - Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. *Journal of the Royal Statistical Society, Series B*, 57(1), 289-300.
 - Bergsma, W. (2013). A bias-correction for Cramer's V and Tschuprow's T. *Journal of the Korean Statistical Society*, 42(3), 323-328.
+- Brook, D., and Evans, D. A. (1972). An approach to the probability distribution of CUSUM run length. *Biometrika*, 59(3), 539-549.
 - Cawley, G. C., and Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
 - Chen, T., and Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 785-794.
 - Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., and Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1-C68.
@@ -311,27 +353,34 @@ All three keep the marginals (Kolmogorov-Smirnov and total variation distance be
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1), 1-27.
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
 - Hennig, C. (2007). Cluster-wise assessment of cluster stability. *Computational Statistics and Data Analysis*, 52(1), 258-271.
+- Jensen, W. A., Jones-Farmer, L. A., Champ, C. W., and Woodall, W. H. (2006). Effects of parameter estimation on control chart properties: A literature review. *Journal of Quality Technology*, 38(4), 349-364.
 - Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., and Liu, T.-Y. (2017). LightGBM: A highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30.
 - Kendall, M. G., and Babington Smith, B. (1939). The problem of m rankings. *Annals of Mathematical Statistics*, 10(3), 275-287.
 - Kennedy, E. H. (2023). Towards optimal doubly robust estimation of heterogeneous causal effects. *Electronic Journal of Statistics*, 17(2), 3008-3049.
 - Kleven, H. J. (2016). Bunching. *Annual Review of Economics*, 8, 435-464.
+- Knoth, S., Saleh, N. A., Mahmoud, M. A., Woodall, W. H., and Tercero-Gomez, V. G. (2021). A critique of a variety of memory-based process monitoring methods. *arXiv preprint arXiv:2110.10680*.
 - Koenker, R., and Bassett, G. (1978). Regression quantiles. *Econometrica*, 46(1), 33-50.
 - Kunzel, S. R., Sekhon, J. S., Bickel, P. J., and Yu, B. (2019). Metalearners for estimating heterogeneous treatment effects using machine learning. *Proceedings of the National Academy of Sciences*, 116(10), 4156-4165.
 - Lakshminarayanan, B., Pritzel, A., and Blundell, C. (2017). Simple and scalable predictive uncertainty estimation using deep ensembles. *Advances in Neural Information Processing Systems*, 30.
 - Lei, J., G'Sell, M., Rinaldo, A., Tibshirani, R. J., and Wasserman, L. (2018). Distribution-free predictive inference for regression. *Journal of the American Statistical Association*, 113(523), 1094-1111.
 - Lindeman, R. H., Merenda, P. F., and Gold, R. Z. (1980). *Introduction to Bivariate and Multivariate Analysis*. Scott, Foresman.
+- Lucas, J. M., and Saccucci, M. S. (1990). Exponentially weighted moving average control schemes: Properties and enhancements. *Technometrics*, 32(1), 1-12.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
 - Nelsen, R. B. (2006). *An Introduction to Copulas* (2nd ed.). Springer.
 - Nie, X., and Wager, S. (2021). Quasi-oracle estimation of heterogeneous treatment effects. *Biometrika*, 108(2), 299-319.
 - Owen, A. B. (2003). Quasi-Monte Carlo sampling. In *Monte Carlo Ray Tracing: SIGGRAPH 2003 Course 44*, 69-88.
+- Page, E. S. (1954). Continuous inspection schemes. *Biometrika*, 41(1/2), 100-115.
 - Papadopoulos, H., Gammerman, A., and Vovk, V. (2008). Normalized nonconformity measures for regression conformal prediction. *Proceedings of the IASTED International Conference on Artificial Intelligence and Applications*, 64-69.
 - Park, H.-S., and Jun, C.-H. (2009). A simple and fast algorithm for K-medoids clustering. *Expert Systems with Applications*, 36(2), 3336-3341.
 - Patki, N., Wedge, R., and Veeramachaneni, K. (2016). The synthetic data vault. *Proceedings of the IEEE International Conference on Data Science and Advanced Analytics*, 399-410.
 - Podani, J. (1999). Extending Gower's general coefficient of similarity to ordinal characters. *Taxon*, 48(2), 331-340.
+- Roberts, S. W. (1959). Control chart tests based on geometric moving averages. *Technometrics*, 1(3), 239-250.
 - Robins, J. M., Rotnitzky, A., and Zhao, L. P. (1994). Estimation of regression coefficients when some regressors are not always observed. *Journal of the American Statistical Association*, 89(427), 846-866.
 - Romano, Y., Patterson, E., and Candes, E. J. (2019). Conformalized quantile regression. *Advances in Neural Information Processing Systems*, 32.
 - Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics*, 20, 53-65.
 - Rubin, D. B. (1987). *Multiple Imputation for Nonresponse in Surveys*. Wiley.
+- Saleh, N. A., Mahmoud, M. A., Keefe, M. J., and Woodall, W. H. (2015). The difficulty in designing Shewhart X-bar and X control charts with estimated parameters. *Journal of Quality Technology*, 47(2), 127-138.
+- Siegmund, D. (1985). *Sequential Analysis: Tests and Confidence Intervals*. Springer.
 - Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *Advances in Neural Information Processing Systems*, 32.
 - van Buuren, S. (2018). *Flexible Imputation of Missing Data* (2nd ed.). CRC Press.
 - van Buuren, S., and Groothuis-Oudshoorn, K. (2011). mice: Multivariate imputation by chained equations in R. *Journal of Statistical Software*, 45(3), 1-67.
