@@ -261,3 +261,12 @@ def test_synthesize_command(cfg, tmp_path, capsys):
     assert len(frame) == 300 and frame["customer_id"].str.startswith("S").all()
     text = capsys.readouterr().out
     assert "membership inference AUC" in text and "fidelity" in text
+
+
+def test_control_chart_command(cfg, tmp_path, capsys):
+    out = tmp_path / "stream.csv"
+    args = ["control-chart", "--config", str(cfg), "--batches", "60", "--start", "30"]
+    assert main([*args, "--shift", "0.3", "--output", str(out)]) == 0
+    text = capsys.readouterr().out
+    assert "MHWMA" in text and "delay" in text
+    assert len(pd.read_csv(out)) == 60

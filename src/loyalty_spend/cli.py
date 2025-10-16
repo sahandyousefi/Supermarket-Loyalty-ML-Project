@@ -811,6 +811,64 @@ def _synthesize(args: argparse.Namespace) -> int:
     return 0
 
 
+def _control_chart_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--batch-size", type=int, default=100)
+    p.add_argument("--batches", type=int, default=200)
+    p.add_argument("--shift", type=float, default=0.0, help="drop in spend")
+    p.add_argument("--band", default="1-3", help="tenure band that changes")
+    p.add_argument("--start", type=int, default=100, help="first changed batch")
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--output", default=None, help="CSV of the batch statistics")
+
+
+@command(
+    "control-chart",
+    "EWMA, CUSUM, HWMA and MHWMA charts on a simulated stream of batches",
+    _control_chart_args,
+)
+def _control_chart(args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.evaluation.cv import cross_validate, make_splits
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.registry import build_model
+    from loyalty_spend.monitoring.residual_stream import band_stream, chart_stream
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    X, y = split_xy(train)
+    splits = make_splits(len(y), cfg.cv.n_splits, 1, cfg.cv.seed)
+    cv = cross_validate("ols", build_model("ols"), X, y, splits)
+    stream = band_stream(
+        y.to_numpy() - cv.oof,
+        X["loyalty_years"].astype(str),
+        args.batch_size,
+        args.batches,
+        args.shift,
+        args.band if args.shift else None,
+        args.start,
+        args.seed,
+    )
+    table = chart_stream(stream)
+    if args.shift:
+        table["delay"] = table["first_signal"] - args.start
+        print(
+            f"spend of band {args.band} lowered by {args.shift:g} "
+            f"from batch {args.start}"
+        )
+    print(table.to_string(index=False))
+    # Run lengths are close to geometric, so false alarms are expected too.
+    p_false = 1 - (1 - 1 / 370) ** args.batches
+    print(
+        f"each chart is set for an in-control run length of 370 batches, so it "
+        f"raises a false alarm within {args.batches} batches with probability "
+        f"about {p_false:.2f}"
+    )
+    if args.output:
+        stream.to_csv(args.output, index_label="batch")
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")
