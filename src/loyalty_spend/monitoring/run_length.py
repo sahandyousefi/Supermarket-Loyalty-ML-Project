@@ -124,3 +124,44 @@ def simulate_run_lengths(
         keep = first > tau
         out.append(first[keep] - tau)
     return np.concatenate(out)
+
+
+# The limit parameter of each chart, which run length increases with.
+LIMIT_PARAMETER = {"ewma": "L", "cusum": "h", "hwma": "L", "mhwma": "h"}
+
+
+def calibrate(
+    chart: str,
+    params: dict[str, Any],
+    target: float,
+    low: float,
+    high: float,
+    n_reps: int = 2000,
+    dim: int = 1,
+    seed: int = 0,
+    tol: float = 0.005,
+) -> tuple[float, RunLengthSummary]:
+    """Control limit that gives in-control run length ``target``.
+
+    Bisection on the limit, with the same random streams at every step so
+    that the estimated run length is monotone in the limit.
+    """
+    name = LIMIT_PARAMETER[chart]
+    horizon = int(10 * target)
+
+    def arl(limit: float) -> RunLengthSummary:
+        rl = simulate_run_lengths(
+            chart, {**params, name: limit}, n_reps, horizon, dim=dim, seed=seed
+        )
+        return summarise(np.minimum(rl, horizon + 1), horizon)
+
+    if arl(low).mean > target or arl(high).mean < target:
+        raise ValueError("target run length is not bracketed by [low, high]")
+    while high - low > tol:
+        mid = (low + high) / 2
+        if arl(mid).mean < target:
+            low = mid
+        else:
+            high = mid
+    limit = (low + high) / 2
+    return limit, arl(limit)

@@ -55,3 +55,17 @@ def test_mhwma_vectorised_agrees():
 def test_steady_state_runs_drop_false_alarms():
     rl = simulate_run_lengths("ewma", {"lam": 0.1, "L": 2.0}, 300, 200, tau=100)
     assert (rl >= 1).all() and len(rl) < 300
+
+
+def test_calibration_hits_the_target():
+    from loyalty_spend.monitoring.run_length import calibrate
+
+    L, summary = calibrate("ewma", {"lam": 0.2}, 100.0, 1.5, 4.0, n_reps=400)
+    assert summary.mean == pytest.approx(100.0, rel=0.05)
+    h, _ = calibrate("cusum", {"k": 0.5}, 100.0, 1.0, 6.0, n_reps=400)
+    # Siegmund's approximation for a two-sided run length of 100.
+    from loyalty_spend.monitoring.control_charts import cusum_interval
+
+    assert h == pytest.approx(cusum_interval(0.5, 100.0), abs=0.25)
+    with pytest.raises(ValueError):
+        calibrate("ewma", {"lam": 0.2}, 100.0, 3.5, 4.0, n_reps=100)
