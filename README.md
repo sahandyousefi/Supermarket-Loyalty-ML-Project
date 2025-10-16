@@ -242,6 +242,20 @@ The best partition (8 segments) is essentially the grid of region by promotion u
 
 Accuracy differs by joining month and by little else, and no combination of attributes is forecast worse than chance alone would explain. The model degrades gracefully when amounts are noisy or missing, but a missing or unrecognised tenure band removes almost all of the signal for that member, so the contract check on that column matters more than any modelling choice. No single member drives the fit, the learning curve is flat beyond about 300 members, and the imputation of missing first-month spend does not affect conclusions even if the gaps are not random.
 
+### Monitoring with control charts
+
+Once the spend of scored members is known, the mean residual of each tenure band in every batch can be charted. All charts are calibrated to an in-control run length of 370 batches; the table gives the average number of batches until a signal when the spend of one band shifts by one standard error of its batch mean.
+
+| Chart | Shift present from the start | Shift after 50 in-control batches |
+| --- | --- | --- |
+| Shewhart | 169.7 | 172.7 |
+| EWMA, lambda 0.1 | 32.6 | 33.1 |
+| CUSUM, k 0.5 | 45.0 | 42.2 |
+| HWMA, lambda 0.1 | 31.5 | 48.6 |
+| Multivariate HWMA on the five bands | 12.6 | 26.1 |
+
+Watching the vector of band residuals detects a shift in one band fastest, but the homogeneously weighted charts lose much of their lead once a long in-control history has built up, while EWMA and CUSUM do not. Estimated limits matter as much as the choice of chart: with limits from 250 in-control batches, 44% of EWMA charts would raise false alarms at least 25% more often than intended. `loyalty-spend control-chart --shift 0.1` runs the charts on batches drawn from the out-of-fold residuals with a drop in the 1-3 year band.
+
 ### Synthetic members
 
 `loyalty-spend synthesize --evaluate` writes a synthetic copy of `train.csv` and checks it for fidelity, utility and privacy. Privacy is measured on a synthesiser fitted on half of the members, with the other half as non-members.
@@ -299,6 +313,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 **Robustness.** Subgroup errors with bootstrap intervals, slice search with Benjamini-Hochberg control, stress tests on damaged inputs, closed-form Cook's distance and DFBETAS, learning curves with fold intervals, multiple imputation pooled by Rubin's rules, and a delta adjustment for values missing not at random.
 
 **Synthetic data.** Gaussian copulas over empirical margins and frequency-encoded categories, stratified or with amounts conditional on the categories, evaluated by marginal and pairwise fidelity, train-on-synthetic test-on-real utility, distance to closest record against a held-out baseline, and a membership inference attack.
+
+**Monitoring.** EWMA with exact limits, tabular CUSUM with Siegmund's run length approximation, HWMA and multivariate HWMA charts, run lengths by vectorised simulation with common random numbers, zero- and steady-state comparisons, and the Brook-Evans Markov chain for the effect of estimated parameters.
 
 **Data contracts and drift.** Every extract is checked against a declarative contract. New extracts are compared with the training data by PSI, KS and chi-square tests with false discovery control, and by a domain classifier for joint shifts.
 
@@ -370,6 +386,7 @@ loyalty-spend design --output-dir artifacts/design     # schedule comparison, ri
 loyalty-spend bayes --nu 4                            # hierarchical model, diagnostics, WAIC
 loyalty-spend robustness --output-dir artifacts/robustness
 loyalty-spend synthesize --evaluate --output synthetic.csv
+loyalty-spend control-chart --shift 0.1               # charts on a stream of scored batches
 loyalty-spend narrate                                 # summary from the report facts
 loyalty-spend ask "How are prediction intervals built?"
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU

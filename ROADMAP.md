@@ -63,7 +63,6 @@ These items close the year and come after phases 16 to 23.
 
 The batch monitor of phase 8 compares one batch with the training data. Errors that creep up slowly over many batches are better caught by control charts on the standardised residuals of scored members once their spend is known.
 
-- [ ] 16.8 Documentation
 
 ## Phase 17: Design of the next promotion experiment
 
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-10-16: 16.5 Out-of-control run lengths under mean and variance shifts
 - [x] 2025-10-16: 16.6 Effect of estimated in-control parameters on run length
 - [x] 2025-10-16: 16.7 `loyalty-spend control-chart` on a stream of scored batches
+- [x] 2025-10-16: 16.8 Documentation
