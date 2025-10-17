@@ -52,3 +52,15 @@ def test_cuped_reduction_is_one_minus_rho_squared():
     t = rng.permutation(np.arange(n) < n // 2)
     ratio = (cuped(y, x, t).se / difference_in_means(y, t).se) ** 2
     assert ratio == pytest.approx(1 - 0.36, abs=0.03)
+
+
+def test_small_samples_fall_back_to_covariance_adjustment():
+    rng = np.random.default_rng(3)
+    y, x, band, t = _experiment(rng, n=60)
+    frame = pd.DataFrame(
+        {"x": x, "band": band, "extra": rng.choice(list("pqrstu"), 60)}
+    )
+    est = lin_adjusted(y, frame, t)
+    assert est.method == "ancova" and np.isfinite(est.se) and est.se > 0
+    y, x, band, t = _experiment(rng, n=400)
+    assert lin_adjusted(y, pd.DataFrame({"x": x, "band": band}), t).method == "lin"
