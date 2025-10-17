@@ -68,7 +68,6 @@ The batch monitor of phase 8 compares one batch with the training data. Errors t
 
 Phase 4 found no detectable effect of the sign-up promotion in observational data. A randomised test is the way to settle it.
 
-- [ ] 17.1 Sample size and power for a difference in mean spend
 - [ ] 17.2 Variance reduction with first-month spend (CUPED)
 - [ ] 17.3 Stratified randomisation by tenure band and region
 - [ ] 17.4 Group-sequential design with an alpha-spending function
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-10-16: 16.6 Effect of estimated in-control parameters on run length
 - [x] 2025-10-16: 16.7 `loyalty-spend control-chart` on a stream of scored batches
 - [x] 2025-10-16: 16.8 Documentation
+- [x] 2025-10-17: 17.1 Sample size and power for a difference in mean spend
