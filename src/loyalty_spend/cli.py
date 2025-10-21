@@ -869,6 +869,82 @@ def _control_chart(args: argparse.Namespace) -> int:
     return 0
 
 
+def _experiment_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--effect", type=float, default=0.1, help="effect on spend")
+    p.add_argument("--power", type=float, default=0.8)
+    p.add_argument("--alpha", type=float, default=0.05)
+    p.add_argument("--looks", type=int, default=4, help="equally spaced analyses")
+    p.add_argument(
+        "--spending", choices=["obrien-fleming", "pocock"], default="obrien-fleming"
+    )
+    p.add_argument("--reps", type=int, default=1000, help="simulated trials")
+    p.add_argument("--seed", type=int, default=0)
+
+
+@command("experiment", "design a randomised test of the promotion", _experiment_args)
+def _experiment(args: argparse.Namespace) -> int:
+    import numpy as np
+    from scipy.stats import norm
+
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.evaluation.cv import cross_validate, make_splits
+    from loyalty_spend.experiment.power import sample_size
+    from loyalty_spend.experiment.sequential import boundaries, design_properties
+    from loyalty_spend.experiment.simulation import simulate_trial, summarise_trials
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.registry import build_model
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    X, y = split_xy(train)
+    sd = float(y.std(ddof=1))
+    rho = float(np.corrcoef(y, X["first_month"])[0, 1])
+    splits = make_splits(len(y), cfg.cv.n_splits, 1, cfg.cv.seed)
+    oof = cross_validate("ols", build_model("ols"), X, y, splits).oof
+    r2 = float(1 - np.mean((y - oof) ** 2) / y.var(ddof=0))
+    designs = {
+        "difference in means": (0.0, 0),
+        "CUPED with first-month spend": (rho**2, 1),
+        "adjusted for all attributes": (r2, 24),
+    }
+    print(
+        f"effect {args.effect:g}, power {args.power:g}, two-sided alpha {args.alpha:g}"
+    )
+    for name, (share, k) in designs.items():
+        n_t, n_c = sample_size(
+            args.effect, sd, args.power, args.alpha, r2=share, n_covariates=k
+        )
+        print(f"{name:30s} R2 {share:.4f}  members per arm {n_c:,}")
+    fractions = [(i + 1) / args.looks for i in range(args.looks)]
+    bounds = boundaries(fractions, args.alpha, args.spending).tolist()
+    per_arm = sample_size(
+        args.effect, sd, args.power, args.alpha, r2=r2, n_covariates=24
+    )
+    n_total = 2 * per_arm[1]
+    # Inflate the fixed sample so the sequential design keeps the power.
+    drift = norm.ppf(1 - args.alpha / 2) + norm.ppf(args.power)
+    factor = 1.0
+    while (
+        design_properties(fractions, bounds, drift * np.sqrt(factor)).power < args.power
+    ):
+        factor += 0.01
+    n_seq = int(np.ceil(n_total * factor / 2)) * 2
+    print(f"boundaries ({args.spending}): " + ", ".join(f"{c:.3f}" for c in bounds))
+    print(f"maximum members with {args.looks} looks: {n_seq} (inflation {factor:.2f})")
+    for effect in (0.0, args.effect):
+        trials = simulate_trial(
+            train, n_seq, effect, fractions, bounds, "lin", args.reps, args.seed
+        )
+        s = summarise_trials(trials, effect)
+        print(
+            f"simulated effect {effect:g}: rejection rate {s['rejection_rate']:.3f} "
+            f"(se {s['rejection_se']:.3f}), mean members {s['mean_members']:.0f}, "
+            f"mean estimate {s['mean_estimate']:.3f}"
+        )
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")

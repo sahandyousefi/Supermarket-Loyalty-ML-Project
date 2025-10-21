@@ -270,3 +270,11 @@ def test_control_chart_command(cfg, tmp_path, capsys):
     text = capsys.readouterr().out
     assert "MHWMA" in text and "delay" in text
     assert len(pd.read_csv(out)) == 60
+
+
+def test_experiment_command(cfg, capsys):
+    args = ["experiment", "--config", str(cfg), "--reps", "40", "--looks", "2"]
+    assert main([*args, "--effect", "0.2"]) == 0
+    text = capsys.readouterr().out
+    assert "members per arm" in text and "boundaries" in text
+    assert "simulated effect 0.2" in text

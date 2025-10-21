@@ -68,7 +68,6 @@ The batch monitor of phase 8 compares one batch with the training data. Errors t
 
 Phase 4 found no detectable effect of the sign-up promotion in observational data. A randomised test is the way to settle it.
 
-- [ ] 17.6 `loyalty-spend experiment` command
 - [ ] 17.7 Documentation
 
 ## Phase 18: Group comparisons in the driver analysis
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-10-17: 17.3 Stratified randomisation by tenure band and region
 - [x] 2025-10-17: 17.4 Group-sequential design with an alpha-spending function
 - [x] 2025-10-17: 17.5 Operating characteristics by simulation
+- [x] 2025-10-21: 17.6 `loyalty-spend experiment` command
