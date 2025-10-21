@@ -3,8 +3,9 @@
 The business hypothesis is that tenure in the programme is the largest driver
 of spend. Group means alone cannot settle this: they ignore uncertainty,
 unequal variances and the contribution of other attributes. This module adds
-bootstrap intervals, Welch's ANOVA, effect sizes, Tukey's HSD and a Shapley
-decomposition of the explained variance.
+bootstrap intervals, Welch's ANOVA, effect sizes, Tukey's HSD, the
+Games-Howell procedure and a Shapley decomposition of the explained
+variance.
 """
 
 from __future__ import annotations
@@ -104,6 +105,58 @@ def tukey_table(df: pd.DataFrame, group: str, value: str = TARGET) -> pd.DataFra
                 "ci_low": float(ci.low[i, j]),
                 "ci_high": float(ci.high[i, j]),
                 "p_value": float(res.pvalue[i, j]),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def games_howell(
+    df: pd.DataFrame,
+    group: str,
+    value: str = TARGET,
+    alpha: float = 0.05,
+    intervals: bool = True,
+) -> pd.DataFrame:
+    r"""Pairwise comparisons that do not assume equal variances.
+
+    Tukey's HSD pools the variance of all groups, which misstates the error
+    of comparisons between groups whose spreads differ. Games and Howell
+    (1976) use the standard error of each pair,
+    :math:`\sqrt{s_i^2/n_i + s_j^2/n_j}`, Welch-Satterthwaite degrees of
+    freedom and the studentized range distribution for :math:`k` groups.
+    Quantiles of that distribution are slow to compute, so ``intervals``
+    can be switched off when only p-values are needed.
+    """
+    levels, parts = zip(
+        *[
+            (lvl, g[value].to_numpy(float))
+            for lvl, g in df.groupby(group, observed=True)
+        ]
+    )
+    k = len(parts)
+    rows = []
+    for i, j in combinations(range(k), 2):
+        a, b = parts[i], parts[j]
+        va, vb = a.var(ddof=1) / len(a), b.var(ddof=1) / len(b)
+        se = np.sqrt(va + vb)
+        dof = (va + vb) ** 2 / (va**2 / (len(a) - 1) + vb**2 / (len(b) - 1))
+        diff = a.mean() - b.mean()
+        q = abs(diff) / se * np.sqrt(2)
+        crit = (
+            stats.studentized_range.ppf(1 - alpha, k, dof) / np.sqrt(2)
+            if intervals
+            else np.nan
+        )
+        rows.append(
+            {
+                "group_a": levels[i],
+                "group_b": levels[j],
+                "diff": float(diff),
+                "se": float(se),
+                "df": float(dof),
+                "ci_low": float(diff - crit * se),
+                "ci_high": float(diff + crit * se),
+                "p_value": float(stats.studentized_range.sf(q, k, dof)),
             }
         )
     return pd.DataFrame(rows)
