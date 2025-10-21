@@ -202,6 +202,32 @@ The robustness value $\mathrm{RV}_q$ is the common value of the two partial $R^2
 
 **Counterfactuals.** For a member below a reward threshold, bisection finds the smallest first-month spend that lifts the forecast to the next threshold. Region, tenure, joining month and promotion never change, and the search stays below the 99th percentile of first-month spend in the training data. With two actionable attributes, a grid inside their 1st to 99th percentiles is searched for the change with the smallest total distance in units of each attribute's median absolute deviation (Wachter et al., 2018).
 
+## 10c. A randomised test of the promotion
+
+**Why.** Section 10 finds no detectable effect of the sign-up promotion, but that rests on unconfoundedness given region, joining month and tenure. Only randomisation removes that assumption. `loyalty-spend experiment` designs the test.
+
+**Sample size.** For $n$ members per arm and a difference $\delta$ in mean spend, the two-sample $t$ statistic is noncentral $t$ with noncentrality $\delta/(\sigma\sqrt{2/n})$. Adjusting for pre-treatment attributes that explain a share $R^2$ of the variance replaces $\sigma^2$ by $\sigma^2(1 - R^2)$ and costs one degree of freedom per attribute. CUPED (Deng et al., 2013) is the special case of a single covariate, with $R^2 = \rho^2$. With several attributes the estimator of Lin (2013) regresses spend on treatment, centred attributes and their interactions with treatment, with HC2 standard errors; it is consistent under randomisation whether or not the regression is right. When there are fewer than ten members per column the interactions are dropped (covariance adjustment), and collinear dummy columns are removed by a pivoted QR decomposition.
+
+| Effect on spend | Difference in means | CUPED with first-month spend | All attributes |
+| --- | --- | --- | --- |
+| $R^2$ | 0 | 0.0057 | 0.99987 |
+| 0.1 | 1,129,414 | 1,123,020 | 152 |
+
+The table gives members per arm for 80% power at the 5% level with the out-of-fold $R^2$ of the OLS champion. Spend has a standard deviation of 26.8, but almost all of it is explained by tenure band, joining month and region, which are known when a member signs up. First-month spend is nearly uncorrelated with annual spend once those are ignored ($\rho = 0.075$), so CUPED on its own is of no use here; adjustment for all attributes reduces the required sample by a factor of more than 7,000. An effect of 0.05 needs 604 members per arm.
+
+**Stratified randomisation.** Members are assigned within strata of tenure band and region, with the treated share rounded at random in every stratum, so the arms are balanced on the attributes that drive spend. A difference in means that ignores the stratification is valid but very conservative: in 400 simulated trials of 400 members it never rejected, neither without an effect nor with an effect of 0.1, which the adjusted estimator detected in 90% of them.
+
+**Sequential analysis.** With $K$ looks at information fractions $t_k$, two-sided boundaries $c_k$ are found one look at a time so that the probability of first crossing at look $k$ equals $\alpha(t_k) - \alpha(t_{k-1})$ for a spending function $\alpha(t)$ (Lan and DeMets, 1983). The O'Brien-Fleming type $2 - 2\Phi(z_{1-\alpha/2}/\sqrt t)$ keeps early looks strict, the Pocock type $\alpha\log(1 + (e-1)t)$ spends evenly. The density of the score process on paths that have not stopped is carried from look to look by Simpson integration of its convolution with the normal increment (Armitage, McPherson and Rowe, 1969; Jennison and Turnbull, 2000). The boundaries reproduce published values to three decimals, and the type I error of the recursion agrees with 200,000 simulated Brownian paths. Because the adjusted statistic has a $t$ distribution with $n - p$ degrees of freedom, each boundary is applied at its nominal level, $t^{-1}_{n-p}(\Phi(c_k))$.
+
+**Operating characteristics.** Trials are simulated by drawing members with replacement from `train.csv`, enrolling them in sequence, randomising each enrolment block within strata, adding the effect to the treated and analysing with the adjusted estimator at four equally spaced looks.
+
+| Spending | Boundaries | Maximum members | Type I error | Power for 0.1 | Mean members under 0.1 | Mean estimate under 0.1 |
+| --- | --- | --- | --- | --- | --- | --- |
+| O'Brien-Fleming | 3.920, 2.774, 2.298, 2.043 | 318 | 0.048 | 0.803 | 250 | 0.111 |
+| Pocock | 2.368, 2.368, 2.358, 2.350 | 366 | 0.036 | 0.810 | 246 | 0.116 |
+
+The type I error for O'Brien-Fleming spending is pooled over 5,000 simulated trials, the other figures come from 1,000 trials each. O'Brien-Fleming spending needs 4% more members than a fixed design at its last look and saves about a fifth of them on average when the effect is real. Trials that stop early do so because their estimate is large, so the estimate at stopping overstates the effect by 11% (O'Brien-Fleming) to 16% (Pocock); a bias-adjusted estimate or a median-unbiased estimator should be reported with the decision (Jennison and Turnbull, 2000, chapter 8).
+
 ## 11. Customer segments
 
 **Distance.** Member attributes are mixed: two amounts, an ordinal tenure band and three nominal attributes. The Gower (1971) distance averages per-attribute dissimilarities in $[0,1]$: the absolute difference divided by the range for amounts, the rank difference divided by the number of levels minus one for tenure (Podani, 1999), and a mismatch indicator for nominal attributes. A missing value removes that attribute from the average for the pairs it is part of.
@@ -324,6 +350,7 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Adegoke, N. A., Abbasi, S. A., Smith, A. N. H., Anderson, M. J., and Pawley, M. D. M. (2019). A multivariate homogeneously weighted moving average control chart. *IEEE Access*, 7, 9586-9597.
 - Akiba, T., Sano, S., Yanase, T., Ohta, T., and Koyama, M. (2019). Optuna: A next-generation hyperparameter optimization framework. *Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 2623-2631.
 - Apley, D. W., and Zhu, J. (2020). Visualizing the effects of predictor variables in black box supervised learning models. *Journal of the Royal Statistical Society, Series B*, 82(4), 1059-1086.
+- Armitage, P., McPherson, C. K., and Rowe, B. C. (1969). Repeated significance tests on accumulating data. *Journal of the Royal Statistical Society, Series A*, 132(2), 235-244.
 - Athey, S., and Wager, S. (2021). Policy learning with observational data. *Econometrica*, 89(1), 133-161.
 - Austin, P. C. (2009). Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. *Statistics in Medicine*, 28(25), 3083-3107.
 - Barber, R. F., Candes, E. J., Ramdas, A., and Tibshirani, R. J. (2021). Predictive inference with the jackknife+. *Annals of Statistics*, 49(1), 486-507.
@@ -340,6 +367,7 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
 - Crump, R. K., Hotz, V. J., Imbens, G. W., and Mitnik, O. A. (2009). Dealing with limited overlap in estimation of average treatment effects. *Biometrika*, 96(1), 187-199.
 - Dawid, A. P. (1984). Statistical theory: The prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2), 278-292.
+- Deng, A., Xu, Y., Kohavi, R., and Walker, T. (2013). Improving the sensitivity of online controlled experiments by utilizing pre-experiment data. *Proceedings of the Sixth ACM International Conference on Web Search and Data Mining*, 123-132.
 - Esteban, C., Hyland, S. L., and Ratsch, G. (2017). Real-valued (medical) time series generation with recurrent conditional GANs. *arXiv preprint arXiv:1706.02633*.
 - Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., and Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). CRC Press.
 - Geweke, J. (1993). Bayesian treatment of the independent Student-t linear model. *Journal of Applied Econometrics*, 8(S1), S19-S40.
@@ -353,6 +381,8 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1), 1-27.
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
 - Hennig, C. (2007). Cluster-wise assessment of cluster stability. *Computational Statistics and Data Analysis*, 52(1), 258-271.
+- Imbens, G. W., and Rubin, D. B. (2015). *Causal Inference for Statistics, Social, and Biomedical Sciences: An Introduction*. Cambridge University Press.
+- Jennison, C., and Turnbull, B. W. (2000). *Group Sequential Methods with Applications to Clinical Trials*. Chapman and Hall/CRC.
 - Jensen, W. A., Jones-Farmer, L. A., Champ, C. W., and Woodall, W. H. (2006). Effects of parameter estimation on control chart properties: A literature review. *Journal of Quality Technology*, 38(4), 349-364.
 - Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., and Liu, T.-Y. (2017). LightGBM: A highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30.
 - Kendall, M. G., and Babington Smith, B. (1939). The problem of m rankings. *Annals of Mathematical Statistics*, 10(3), 275-287.
@@ -362,7 +392,9 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Koenker, R., and Bassett, G. (1978). Regression quantiles. *Econometrica*, 46(1), 33-50.
 - Kunzel, S. R., Sekhon, J. S., Bickel, P. J., and Yu, B. (2019). Metalearners for estimating heterogeneous treatment effects using machine learning. *Proceedings of the National Academy of Sciences*, 116(10), 4156-4165.
 - Lakshminarayanan, B., Pritzel, A., and Blundell, C. (2017). Simple and scalable predictive uncertainty estimation using deep ensembles. *Advances in Neural Information Processing Systems*, 30.
+- Lan, K. K. G., and DeMets, D. L. (1983). Discrete sequential boundaries for clinical trials. *Biometrika*, 70(3), 659-663.
 - Lei, J., G'Sell, M., Rinaldo, A., Tibshirani, R. J., and Wasserman, L. (2018). Distribution-free predictive inference for regression. *Journal of the American Statistical Association*, 113(523), 1094-1111.
+- Lin, W. (2013). Agnostic notes on regression adjustments to experimental data: Reexamining Freedman's critique. *Annals of Applied Statistics*, 7(1), 295-318.
 - Lindeman, R. H., Merenda, P. F., and Gold, R. Z. (1980). *Introduction to Bivariate and Multivariate Analysis*. Scott, Foresman.
 - Lucas, J. M., and Saccucci, M. S. (1990). Exponentially weighted moving average control schemes: Properties and enhancements. *Technometrics*, 32(1), 1-12.
 - Nadeau, C., and Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239-281.
