@@ -25,6 +25,8 @@ class EffectEstimate:
     estimate: float
     se: float
     method: str
+    # Residual degrees of freedom for a t reference; infinite means normal.
+    df: float = float("inf")
 
     @property
     def interval(self) -> tuple[float, float]:
@@ -84,4 +86,9 @@ def lin_adjusted(
     meat = D.T @ (D * (resid**2 / (1 - np.minimum(hat, 0.999)))[:, None])
     cov = bread @ meat @ bread
     method = "lin" if interact else "ancova"
-    return EffectEstimate(float(beta[1]), float(np.sqrt(max(cov[1, 1], 0.0))), method)
+    return EffectEstimate(
+        float(beta[1]),
+        float(np.sqrt(max(cov[1, 1], 0.0))),
+        method,
+        float(len(y) - D.shape[1]),
+    )

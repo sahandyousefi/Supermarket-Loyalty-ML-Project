@@ -17,6 +17,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from loyalty_spend.experiment.adjustment import (
     EffectEstimate,
@@ -73,7 +74,10 @@ def simulate_trial(
             est = _estimate(sample.iloc[:n], y[:n], t[:n], method)
             z = est.estimate / est.se
             row.update({"n_used": n, "estimate": est.estimate, "se": est.se})
-            if abs(z) >= c:
+            # The boundary is on the normal scale; keep its nominal level
+            # when the statistic has a t distribution.
+            crit = stats.t.ppf(stats.norm.cdf(c), est.df) if np.isfinite(est.df) else c
+            if abs(z) >= crit:
                 row.update({"stopped_at": k, "rejected": True})
                 break
         rows.append(row)

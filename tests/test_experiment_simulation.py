@@ -24,3 +24,18 @@ def test_adjustment_detects_a_small_effect_that_raw_means_miss(train_df, bounds)
     assert summarise_trials(lin, 0.3)["rejection_rate"] > 0.9
     assert summarise_trials(raw, 0.3)["rejection_rate"] < 0.2
     assert set(lin["stopped_at"]) <= {1, 2}
+
+
+def test_adjusted_estimates_carry_residual_degrees_of_freedom(train_df):
+    import numpy as np
+    import pandas as pd
+
+    from loyalty_spend.experiment.adjustment import difference_in_means, lin_adjusted
+
+    y = train_df["spend"].to_numpy()[:120]
+    t = np.arange(120) % 2 == 0
+    X = pd.DataFrame({"x": train_df["first_month"].to_numpy()[:120]})
+    est = lin_adjusted(y, X, t)
+    # Intercept, treatment, the covariate and its interaction.
+    assert est.method == "lin" and est.df == 120 - 4
+    assert difference_in_means(y, t).df == float("inf")
