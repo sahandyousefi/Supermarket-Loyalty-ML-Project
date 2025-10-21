@@ -242,6 +242,18 @@ The best partition (8 segments) is essentially the grid of region by promotion u
 
 Accuracy differs by joining month and by little else, and no combination of attributes is forecast worse than chance alone would explain. The model degrades gracefully when amounts are noisy or missing, but a missing or unrecognised tenure band removes almost all of the signal for that member, so the contract check on that column matters more than any modelling choice. No single member drives the fit, the learning curve is flat beyond about 300 members, and the imputation of missing first-month spend does not affect conclusions even if the gaps are not random.
 
+### Designing a randomised test of the promotion
+
+The observational estimate of the promotion effect rests on unconfoundedness; a randomised test does not. `loyalty-spend experiment` sizes it and checks the design by simulation on members drawn from `train.csv`.
+
+| Analysis | Members per arm to detect 0.1 with 80% power |
+| --- | --- |
+| Difference in means | 1,129,414 |
+| CUPED with first-month spend | 1,123,020 |
+| Regression adjustment for all attributes | 152 |
+
+Spend varies by 26.8 between members, but tenure band, joining month and region, all known at sign-up, explain 99.99% of that, so an adjusted analysis needs a seven-thousandth of the members. First-month spend alone explains almost nothing, and CUPED on it does not help. Randomisation is stratified by tenure band and region. With four looks and O'Brien-Fleming spending, the trial needs at most 318 members, keeps a type I error of 0.048 in 5,000 simulated trials, and stops at 250 members on average when the effect is real; estimates from trials that stop early overstate the effect by about 11%.
+
 ### Monitoring with control charts
 
 Once the spend of scored members is known, the mean residual of each tenure band in every batch can be charted. All charts are calibrated to an in-control run length of 370 batches; the table gives the average number of batches until a signal when the spend of one band shifts by one standard error of its batch mean.
@@ -313,6 +325,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 **Robustness.** Subgroup errors with bootstrap intervals, slice search with Benjamini-Hochberg control, stress tests on damaged inputs, closed-form Cook's distance and DFBETAS, learning curves with fold intervals, multiple imputation pooled by Rubin's rules, and a delta adjustment for values missing not at random.
 
 **Synthetic data.** Gaussian copulas over empirical margins and frequency-encoded categories, stratified or with amounts conditional on the categories, evaluated by marginal and pairwise fidelity, train-on-synthetic test-on-real utility, distance to closest record against a held-out baseline, and a membership inference attack.
+
+**Experiment design.** Power from the noncentral t distribution with covariate adjustment, CUPED and the interacted regression estimator of Lin (2013) with HC2 errors, stratified randomisation, group-sequential boundaries from alpha-spending functions by recursive numerical integration, and simulated operating characteristics.
 
 **Monitoring.** EWMA with exact limits, tabular CUSUM with Siegmund's run length approximation, HWMA and multivariate HWMA charts, run lengths by vectorised simulation with common random numbers, zero- and steady-state comparisons, and the Brook-Evans Markov chain for the effect of estimated parameters.
 
@@ -387,6 +401,7 @@ loyalty-spend bayes --nu 4                            # hierarchical model, diag
 loyalty-spend robustness --output-dir artifacts/robustness
 loyalty-spend synthesize --evaluate --output synthetic.csv
 loyalty-spend control-chart --shift 0.1               # charts on a stream of scored batches
+loyalty-spend experiment --effect 0.1                 # sample size and sequential design
 loyalty-spend narrate                                 # summary from the report facts
 loyalty-spend ask "How are prediction intervals built?"
 loyalty-spend report                                  # full analysis, about 30 minutes on a laptop CPU
