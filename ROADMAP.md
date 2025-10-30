@@ -71,7 +71,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 ## Phase 18: Group comparisons in the driver analysis
 
-- [ ] 18.3 Confidence intervals for omega squared
 - [ ] 18.4 Report section with the pairwise comparisons
 
 ## Phase 19: Conditional coverage of prediction intervals
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-10-21: 17.7 Documentation
 - [x] 2025-10-21: 18.1 Games-Howell pairwise comparisons for unequal variances
 - [x] 2025-10-30: 18.2 Permutation test of the tenure effect
+- [x] 2025-10-30: 18.3 Confidence intervals for omega squared

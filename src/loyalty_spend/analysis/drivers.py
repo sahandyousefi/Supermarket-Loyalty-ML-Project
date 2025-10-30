@@ -16,6 +16,7 @@ from math import factorial
 import numpy as np
 import pandas as pd
 from scipy import stats
+from scipy.optimize import brentq
 from sklearn.linear_model import LinearRegression
 
 from loyalty_spend.data.schema import TARGET
@@ -261,4 +262,42 @@ def freedman_lane(
         "df2": float(df2),
         "p_permutation": (exceed + 1) / (n_perm + 1),
         "p_f": float(stats.f.sf(observed, df1, df2)),
+    }
+
+
+def omega_squared_interval(
+    df: pd.DataFrame, group: str, value: str = TARGET, level: float = 0.95
+) -> dict[str, float]:
+    """Confidence interval for the population omega squared of a one-way layout.
+
+    The ANOVA statistic has a noncentral F distribution with noncentrality
+    :math:`\\lambda = N\\omega^2/(1 - \\omega^2)`. Bounds for
+    :math:`\\lambda` are the values at which the observed F lies at the
+    upper and lower tail quantiles, and are mapped to
+    :math:`\\omega^2 = \\lambda/(\\lambda + N)` (Steiger, 2004).
+    """
+    parts = [g[value].to_numpy(float) for _, g in df.groupby(group, observed=True)]
+    k, n = len(parts), sum(len(p) for p in parts)
+    f_obs = float(stats.f_oneway(*parts).statistic)
+    df1, df2 = k - 1, n - k
+    tail = (1 - level) / 2
+
+    def bound(prob: float) -> float:
+        def g(lam: float) -> float:
+            return float(stats.ncf.cdf(f_obs, df1, df2, lam)) - prob
+
+        if g(0.0) <= 0:
+            return 0.0
+        hi = max(10.0, 2 * f_obs * df1)
+        while g(hi) > 0:
+            hi *= 2
+        return float(brentq(g, 0.0, hi))
+
+    lam_lo, lam_hi = bound(1 - tail), bound(tail)
+    point = effect_sizes(df, group, value)["omega_squared"]
+    return {
+        "omega_squared": point,
+        "low": lam_lo / (lam_lo + n),
+        "high": lam_hi / (lam_hi + n),
+        "f": f_obs,
     }
