@@ -21,7 +21,7 @@ This project answers that question end to end. It cleans and validates the raw e
 
 ## Key findings
 
-1. **Tenure is the dominant driver of spend, but not monotonically.** In `loyalty.csv`, tenure band explains 88% of the variance accounted for by all features (Shapley decomposition of R squared). Welch's ANOVA gives F = 2506 on (4, 483) df with omega squared 0.885. Spend peaks in the 5-10 year band (mean 135.15) and falls for members of 10 years or more (117.41), so "longer tenure means higher spend" is not supported as stated.
+1. **Tenure is the dominant driver of spend, but not monotonically.** In `loyalty.csv`, tenure band explains 88% of the variance accounted for by all features (Shapley decomposition of R squared). Welch's ANOVA gives F = 2506 on (4, 483) df with omega squared 0.885 (95% interval 0.876 to 0.894), and the effect survives adjustment for region, joining month and promotion (Freedman-Lane permutation p = 0.0005, the smallest attainable with 2,000 permutations). Spend peaks in the 5-10 year band (mean 135.15) and falls for members of 10 years or more (117.41), so "longer tenure means higher spend" is not supported as stated.
 2. **The supplied files cannot be joined.** `train.csv` and `loyalty.csv` share all customer ids, but region, tenure, joining month and promotion agree no more often than chance (Cohen's kappa between -0.004 and 0.052). Joining them on `customer_id` would silently corrupt every feature.
 3. **On the supplied data, a linear model is the right choice.** OLS reaches a cross-validated RMSE of 0.308 against a target standard deviation of 26.8 (R squared 0.9999). Every non-linear model, including gradient boosting and three neural networks, is significantly worse (corrected resampled t-test, p < 0.001).
 4. **Flexible models win only when the data demand them.** In a simulation calibrated to the real feature distribution, gradient boosting cuts the excess error over the irreducible noise from 2.6 times to 0.11 times the Bayes error once interactions are present. A plain MLP trails, and periodic numeric embeddings close most of that gap.
@@ -43,7 +43,7 @@ All figures below are produced by `loyalty-spend report`; the full tables are in
 | 5-10 | 250 | 135.15 | 14.10 | [134.70, 135.61] |
 | 10+ | 117 | 117.41 | 16.72 | [116.63, 118.12] |
 
-All ten pairwise differences are significant under Tukey's HSD.
+All ten pairwise differences are significant under Tukey's HSD and under the Games-Howell procedure, which does not pool the unequal band variances.
 
 <p>
   <img src="reports/figures/spend_by_tenure.png" width="48%" alt="Mean spend by tenure band with bootstrap intervals">
@@ -286,7 +286,7 @@ Full notation, derivations and references are in [docs/methodology.md](docs/meth
 
 **Data quality.** The raw extract is read as text so that placeholders survive parsing. In `loyalty.csv`, 125 values of `first_month` are the placeholder `.`, 125 joining months are empty and 125 promotion flags are upper case. The cleaning step applies the replacement rules of the data dictionary for Task 1 and logs every change. The models instead keep missing values missing and use median imputation with a missing-value indicator, because a recorded spend of zero and an unrecorded spend are different statements.
 
-**Driver analysis.** Group means come with bootstrap intervals. Welch's ANOVA is used because group variances range from 9.3 to 16.7, effect sizes are reported as $\eta^2$ and $\omega^2$, and Tukey's HSD gives simultaneous pairwise intervals. Whether tenure is the *largest* driver is answered with the LMG decomposition, which attributes the full-model $R^2$ to features as Shapley values over all orders of entry:
+**Driver analysis.** Group means come with bootstrap intervals. Welch's ANOVA is used because group variances range from 9.3 to 16.7, effect sizes are reported as $\eta^2$ and $\omega^2$ with a noncentral F interval, and Tukey's HSD and Games-Howell give simultaneous pairwise intervals. A Freedman-Lane permutation test checks the partial effect of tenure without assuming normal errors. Whether tenure is the *largest* driver is answered with the LMG decomposition, which attributes the full-model $R^2$ to features as Shapley values over all orders of entry:
 
 $$\phi_j = \sum_{S \subseteq F\setminus\{j\}} \frac{|S|!\,(p-|S|-1)!}{p!}\big[R^2(S\cup\{j\}) - R^2(S)\big].$$
 
@@ -351,17 +351,20 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── tasks.py                the four deliverables of the brief
 │   ├── data/                   schema, contracts, profiles, cleaning, IO, lineage, simulator
 │   ├── features/               preprocessing shared by all models
-│   ├── analysis/               bootstrap, Welch ANOVA, Tukey HSD, LMG decomposition
+│   ├── analysis/               bootstrap, Welch ANOVA, Tukey and Games-Howell, permutation tests, LMG
 │   ├── models/                 registry, linear, trees, quantile and distributional models, tuning, persistence
 │   │   └── deep/               encoder, MLP, PLR embeddings, FT-Transformer, training
 │   ├── evaluation/             metrics, scoring rules, repeated CV, corrected t-test, simulation study
 │   ├── uncertainty/            split, Mondrian, normalized and weighted conformal, CQR, predictive distributions
-│   ├── monitoring/             PSI, drift tests, domain classifier
+│   ├── monitoring/             PSI, drift tests, domain classifier, control charts, run lengths
 │   ├── explain/                additive contributions, TreeSHAP, permutation importance
 │   ├── causal/                 propensity, balance, IPW, AIPW, DML, sensitivity, meta-learners, targeting
+│   ├── experiment/             power, CUPED, regression adjustment, stratification, group-sequential design
 │   ├── bayes/                  Gibbs sampler, diagnostics, posterior checks, WAIC
 │   ├── segments/               Gower distance, k-medoids, silhouette, stability, profiles
-│   ├── business/               reward schedule and Monte Carlo cost forecast
+│   ├── business/               reward schedules, Monte Carlo cost forecast, programme design
+│   ├── robustness/             subgroup errors, slices, stress tests, imputation, influence, learning curves
+│   ├── synthetic/              copula synthesisers, fidelity, utility, privacy, membership inference
 │   ├── ops/                    registry, champion-challenger, batch scoring, monitoring, manifest
 │   ├── serving/                FastAPI scoring service
 │   ├── llm/                    fact sheets, grounding checks, retrieval, cited answers, guardrails

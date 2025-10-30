@@ -33,7 +33,11 @@ $$F_W = \frac{\sum_k w_k (\bar y_k - \tilde y)^2 / (k-1)}{1 + \frac{2(k-2)}{k^2-
 
 referred to an $F$ distribution with $k-1$ and $(k^2-1) / \big(3\sum_k (1-w_k/W)^2/(n_k-1)\big)$ degrees of freedom.
 
-**Effect size.** A p-value says nothing about magnitude, so $\eta^2 = SS_B/SS_T$ and the less biased $\omega^2 = (SS_B - (k-1)MS_W)/(SS_T + MS_W)$ are reported. Tukey's HSD gives simultaneous intervals for all pairwise differences.
+**Effect size.** A p-value says nothing about magnitude, so $\eta^2 = SS_B/SS_T$ and the less biased $\omega^2 = (SS_B - (k-1)MS_W)/(SS_T + MS_W)$ are reported. A point estimate of $\omega^2$ has no stated precision, so an interval is obtained by inverting the noncentral $F$ distribution: the bounds of the noncentrality $\lambda$ are the values at which the observed $F$ falls at the 97.5% and 2.5% quantiles, and $\omega^2 = \lambda/(\lambda + N)$ (Steiger, 2004). For tenure, $\omega^2 = 0.885$ with 95% interval 0.876 to 0.894.
+
+**Pairwise comparisons.** Tukey's HSD gives simultaneous intervals for all pairwise differences but pools the variance of all bands, while the standard deviation of spend rises from 3.05 in the 0-1 band to 4.09 in the 10+ band, which also has the fewest members (117). The Games-Howell procedure (Games and Howell, 1976) uses the standard error of each pair, Welch-Satterthwaite degrees of freedom and the studentized range distribution. In simulation with one small group of large spread, Tukey's familywise error was more than twice the nominal 5% while Games-Howell's stayed close to it. On `loyalty.csv` all ten differences are significant under both procedures; the Games-Howell intervals for comparisons with the 10+ band are 13% to 19% wider than Tukey's, the others are slightly narrower.
+
+**Tenure given the other attributes.** Welch's ANOVA compares raw band means. Whether tenure matters once region, joining month and promotion are accounted for is a partial $F$ test, $F = 199{,}142$ on (4, 1101) degrees of freedom. Its reference distribution is checked without the normality assumption by the permutation procedure of Freedman and Lane (1983): residuals of the reduced model are permuted and added to its fitted values, which keeps the covariate effects under the null hypothesis. None of 2,000 permutations reached the observed statistic ($p = 0.0005$, the smallest attainable). The same test gives $p = 0.62$ for the promotion and $p = 0.020$ for region given the other attributes.
 
 **Relative importance.** Whether tenure is the *largest* driver is a statement about all features together. The R squared of the OLS model with all features is decomposed with the LMG method (Lindeman, Merenda and Gold, 1980; Groemping, 2006): feature $j$ receives its increase in $R^2$ averaged over all orders in which features can enter,
 
@@ -369,6 +373,8 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Dawid, A. P. (1984). Statistical theory: The prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2), 278-292.
 - Deng, A., Xu, Y., Kohavi, R., and Walker, T. (2013). Improving the sensitivity of online controlled experiments by utilizing pre-experiment data. *Proceedings of the Sixth ACM International Conference on Web Search and Data Mining*, 123-132.
 - Esteban, C., Hyland, S. L., and Ratsch, G. (2017). Real-valued (medical) time series generation with recurrent conditional GANs. *arXiv preprint arXiv:1706.02633*.
+- Freedman, D., and Lane, D. (1983). A nonstochastic interpretation of reported significance levels. *Journal of Business and Economic Statistics*, 1(4), 292-298.
+- Games, P. A., and Howell, J. F. (1976). Pairwise multiple comparison procedures with unequal n's and/or variances: A Monte Carlo study. *Journal of Educational Statistics*, 1(2), 113-125.
 - Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., and Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). CRC Press.
 - Geweke, J. (1993). Bayesian treatment of the independent Student-t linear model. *Journal of Applied Econometrics*, 8(S1), S19-S40.
 - Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. *Journal of the American Statistical Association*, 102(477), 359-378.
@@ -413,6 +419,7 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Rubin, D. B. (1987). *Multiple Imputation for Nonresponse in Surveys*. Wiley.
 - Saleh, N. A., Mahmoud, M. A., Keefe, M. J., and Woodall, W. H. (2015). The difficulty in designing Shewhart X-bar and X control charts with estimated parameters. *Journal of Quality Technology*, 47(2), 127-138.
 - Siegmund, D. (1985). *Sequential Analysis: Tests and Confidence Intervals*. Springer.
+- Steiger, J. H. (2004). Beyond the F test: Effect size confidence intervals and tests of close fit in the analysis of variance and contrast analysis. *Psychological Methods*, 9(2), 164-182.
 - Tibshirani, R. J., Barber, R. F., Candes, E. J., and Ramdas, A. (2019). Conformal prediction under covariate shift. *Advances in Neural Information Processing Systems*, 32.
 - van Buuren, S. (2018). *Flexible Imputation of Missing Data* (2nd ed.). CRC Press.
 - van Buuren, S., and Groothuis-Oudshoorn, K. (2011). mice: Multivariate imputation by chained equations in R. *Journal of Statistical Software*, 45(3), 1-67.
