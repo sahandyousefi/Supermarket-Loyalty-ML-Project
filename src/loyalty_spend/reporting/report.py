@@ -12,7 +12,10 @@ import pandas as pd
 
 from loyalty_spend.analysis.drivers import (
     effect_sizes,
+    freedman_lane,
+    games_howell,
     lmg_importance,
+    omega_squared_interval,
     spend_by_group,
     tukey_table,
     welch_anova,
@@ -83,6 +86,10 @@ def driver_section(cfg: Config, fig_dir: Path) -> tuple[str, dict]:
     anova = welch_anova(clean, "loyalty_years")
     sizes = effect_sizes(clean, "loyalty_years")
     tukey = tukey_table(clean, "loyalty_years")
+    gh = games_howell(clean, "loyalty_years")
+    omega = omega_squared_interval(clean, "loyalty_years")
+    others = ["region", "joining_month", "promotion"]
+    partial = freedman_lane(clean, ["loyalty_years"], others, seed=cfg.cv.seed)
     shares = lmg_importance(clean, FEATURES)
     figures.plot_group_means(by_years, "loyalty_years", fig_dir / "spend_by_tenure.png")
     figures.plot_driver_shares(shares, fig_dir / "driver_shares.png")
@@ -95,14 +102,31 @@ def driver_section(cfg: Config, fig_dir: Path) -> tuple[str, dict]:
             f"Welch ANOVA: F = {anova['f']:.1f} on ({anova['df1']:.0f}, "
             f"{anova['df2']:.1f}) df, p = {anova['p_value']:.2e}. "
             f"Eta squared {sizes['eta_squared']:.3f}, "
-            f"omega squared {sizes['omega_squared']:.3f}.",
+            f"omega squared {sizes['omega_squared']:.3f} "
+            f"(95% interval {omega['low']:.3f} to {omega['high']:.3f}).",
             "### Tukey HSD",
             markdown_table(tukey, 3),
+            "### Games-Howell",
+            "Pairwise comparisons with the standard error of each pair, for "
+            "unequal variances across tenure bands.",
+            markdown_table(gh, 3),
+            "### Tenure given the other attributes",
+            f"Partial F = {partial['f']:.1f} on ({partial['df1']:.0f}, "
+            f"{partial['df2']:.0f}) df for tenure added to region, joining month "
+            f"and promotion; Freedman-Lane permutation p = "
+            f"{partial['p_permutation']:.4f} from 2,000 permutations.",
             "### Shapley decomposition of R squared",
             markdown_table(shares),
         ]
     )
-    return text, {"welch": anova, **sizes, "lmg": shares.to_dict("records")}
+    return text, {
+        "welch": anova,
+        **sizes,
+        "omega_squared_interval": [omega["low"], omega["high"]],
+        "freedman_lane": partial,
+        "games_howell": gh.to_dict("records"),
+        "lmg": shares.to_dict("records"),
+    }
 
 
 def lineage_section(cfg: Config) -> str:
