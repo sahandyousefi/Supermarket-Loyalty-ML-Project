@@ -92,3 +92,66 @@ def compare_intervals(
             }
         )
     return pd.DataFrame(rows)
+
+
+def conditional_coverage_comparison(
+    X: pd.DataFrame,
+    y: ArrayLike,
+    columns: tuple[str, ...] = ("loyalty_years", "region", "joining_month"),
+    alpha: float = 0.1,
+    n_splits: int = 5,
+    bandwidth: float = 0.5,
+    seed: int = 0,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Cross-fitted intervals for every member, audited by subgroup.
+
+    Each method is fitted on all folds but one and produces intervals for
+    the held-out fold, so every member gets an interval from a model that
+    did not see them. Returns a summary per method and the full audit.
+    """
+    from sklearn.model_selection import KFold
+
+    from loyalty_spend.uncertainty.audit import coverage_audit
+    from loyalty_spend.uncertainty.localized import LocalizedConformalRegressor
+
+    y = np.asarray(y, float)
+    methods = dict(interval_methods(alpha, seed=seed))
+    for col in ("loyalty_years", "joining_month"):
+
+        def mondrian(
+            Xa: pd.DataFrame, ya: ArrayLike, Xb: pd.DataFrame, col: str = col
+        ) -> Intervals:
+            # Months have about 17 calibration members each; 15 keeps the
+            # group quantile finite without pooling every month.
+            m = MondrianConformalRegressor(
+                build_model("ols"), by=col, alpha=alpha, min_group_size=15, seed=seed
+            )
+            return m.fit(Xa, ya).predict_interval(Xb)
+
+        methods[f"Mondrian ({col})"] = mondrian
+
+    def localized(Xa: pd.DataFrame, ya: ArrayLike, Xb: pd.DataFrame) -> Intervals:
+        m = LocalizedConformalRegressor(build_model("ols"), alpha, bandwidth, seed=seed)
+        return m.fit(Xa, ya).predict_interval(Xb)
+
+    methods[f"localised (h = {bandwidth:g})"] = localized
+    summaries, audits = [], []
+    for name, method in methods.items():
+        lower, upper = np.empty(len(y)), np.empty(len(y))
+        for tr, te in KFold(n_splits, shuffle=True, random_state=seed).split(X):
+            iv = method(X.iloc[tr], y[tr], X.iloc[te])
+            lower[te], upper[te] = iv.lower, iv.upper
+        iv = Intervals(lower, upper)
+        audit = coverage_audit(iv, y, X, list(columns), alpha).assign(method=name)
+        audits.append(audit)
+        worst = audit.loc[audit["coverage"].idxmin()]
+        summaries.append(
+            {
+                "method": name,
+                **interval_summary(y, lower, upper, alpha),
+                "levels_flagged": int(audit["flagged"].sum()),
+                "worst_level": f"{worst['attribute']}={worst['level']}",
+                "worst_coverage": float(worst["coverage"]),
+            }
+        )
+    return pd.DataFrame(summaries), pd.concat(audits, ignore_index=True)
