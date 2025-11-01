@@ -76,3 +76,47 @@ class LocalizedConformalRegressor:
         )
         pred = self.predict(X_new)
         return Intervals(pred - q, pred + q)
+
+
+def select_bandwidth(
+    estimator: BaseEstimator,
+    X: pd.DataFrame,
+    y: ArrayLike,
+    bandwidths: tuple[float, ...] = (0.02, 0.05, 0.1, 0.2, 0.5),
+    alpha: float = 0.1,
+    n_splits: int = 5,
+    tolerance: float = 0.01,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """Cross-validated interval score and coverage for each bandwidth.
+
+    The selected bandwidth has the lowest mean interval score among those
+    whose marginal coverage is within ``tolerance`` of ``1 - alpha``; the
+    interval score rewards narrow intervals and penalises misses by
+    :math:`2/\\alpha` times their distance (Gneiting and Raftery, 2007).
+    """
+    from sklearn.model_selection import KFold
+
+    from loyalty_spend.evaluation.scoring import interval_score
+
+    y = np.asarray(y, float)
+    rows = []
+    for h in bandwidths:
+        scores, covered = np.empty(len(y)), np.empty(len(y), bool)
+        for tr, te in KFold(n_splits, shuffle=True, random_state=seed).split(X):
+            model = LocalizedConformalRegressor(estimator, alpha, h, seed=seed)
+            iv = model.fit(X.iloc[tr], y[tr]).predict_interval(X.iloc[te])
+            scores[te] = interval_score(y[te], iv.lower, iv.upper, alpha)
+            covered[te] = (y[te] >= iv.lower) & (y[te] <= iv.upper)
+        rows.append(
+            {
+                "bandwidth": h,
+                "coverage": float(covered.mean()),
+                "interval_score": float(scores.mean()),
+            }
+        )
+    table = pd.DataFrame(rows)
+    ok = table["coverage"] >= 1 - alpha - tolerance
+    pool = table[ok] if ok.any() else table
+    table["selected"] = table.index == pool["interval_score"].idxmin()
+    return table

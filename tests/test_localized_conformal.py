@@ -57,3 +57,16 @@ def test_large_bandwidth_recovers_split_conformal(fitted):
         iv.width, split.predict_interval(X_new.iloc[:50]).width, rtol=0.02
     )
     assert (local.effective_size(X_new.iloc[:20]) < len(local.scores_)).all()
+
+
+def test_bandwidth_selection_prefers_local_calibration():
+    from sklearn.linear_model import LinearRegression
+
+    from loyalty_spend.uncertainty.localized import select_bandwidth
+
+    rng = np.random.default_rng(3)
+    X, y = _data(rng, 800)
+    X = X.assign(band=X["band"].cat.codes.astype(float))
+    table = select_bandwidth(LinearRegression(), X, y, (0.05, 1e3), n_splits=3)
+    assert table["selected"].sum() == 1
+    assert table.loc[table["selected"], "bandwidth"].item() == 0.05
