@@ -10,10 +10,9 @@ own weight :math:`w(x, x) = 1` placed at infinity, as in weighted conformal
 prediction. A small bandwidth :math:`h` calibrates on near neighbours and
 moves towards conditional coverage; a large one recovers split conformal.
 
-Without the level correction of Guan (2023) or the randomisation of Hore
-and Barber (2023), the finite-sample marginal guarantee is lost, so the
-marginal coverage is checked empirically together with the conditional
-coverage.
+Without the level correction of Guan (2023), the finite-sample marginal
+guarantee is lost, so the marginal coverage is checked empirically
+together with the conditional coverage.
 """
 
 from __future__ import annotations

@@ -102,6 +102,22 @@ Conformal prediction gives intervals with finite-sample marginal coverage $\Pr(y
 
 **Covariate shift.** If the customers to be scored differ in their features but not in how spend depends on the features, exchangeability fails. Weighted conformal prediction (Tibshirani et al., 2019) restores coverage by giving calibration point $i$ the weight $w(X_i) = dP_{\text{new}}/dP_{\text{train}}(X_i)$ and using the $1-\alpha$ quantile of $\sum_i p_i(x)\delta_{s_i} + p_{m+1}(x)\delta_{\infty}$ with $p_i(x) = w(X_i) / (\sum_j w(X_j) + w(x))$. The likelihood ratio is estimated from the domain classifier of Section 12 as $\frac{\hat p(x)}{1-\hat p(x)}\cdot\frac{m}{n_{\text{new}}}$, clipped to $[1/20, 20]$ because a few extreme weights would otherwise make the intervals infinite. Estimation error in the weights makes the intervals slightly conservative in the tests.
 
+**Localised intervals.** Localised conformal prediction (Guan, 2023) weights each calibration score by the similarity of its member to the member being scored, $w_i(x) = \exp(-d(X_i, x)/h)$ with Gower distance $d$, and uses the weighted quantile with the member's own weight placed at infinity. A small bandwidth $h$ calibrates on near neighbours; a large one recovers split conformal. The plain weighted form keeps marginal coverage only approximately, so it is checked empirically. The bandwidth is chosen by five-fold cross-validated interval score among values with marginal coverage within 0.01 of the target. On `train.csv`, $h \le 0.1$ gives infinite intervals for most members, because the member's own weight exceeds a tenth of the total and the quantile cannot be reached; $h = 0.5$ is selected, with an interval score of 1.403 against 1.410 for $h = 1{,}000$.
+
+**Auditing conditional coverage.** Every method is fitted on four folds and gives intervals for the fifth, so all 996 members of `train.csv` get an interval from a model that did not see them. For each level of tenure band, region and joining month, coverage gets a Clopper-Pearson interval and an exact binomial test of the 90% target, with Benjamini-Hochberg adjustment over the 21 levels.
+
+| Method | Coverage | Mean width | Interval score | Levels flagged | Worst level |
+| --- | --- | --- | --- | --- | --- |
+| Split conformal | 0.907 | 0.952 | 1.409 | 5 | August joiners, 0.707 |
+| Mondrian on prediction bins | 0.896 | 0.989 | 1.447 | 5 | August joiners, 0.720 |
+| Normalized conformal | 0.915 | 1.007 | 1.353 | 0 | November joiners, 0.841 |
+| CQR | 0.910 | 10.763 | 13.516 | 3 | December joiners, 0.771 |
+| Mondrian on tenure band | 0.910 | 1.060 | 1.474 | 5 | August joiners, 0.733 |
+| Mondrian on joining month | 0.920 | 1.083 | 1.390 | 0 | August joiners, 0.893 |
+| Localised, $h = 0.5$ | 0.913 | 0.999 | 1.403 | 4 | August joiners, 0.747 |
+
+All methods reach the marginal target, but split conformal covers only 71% of August joiners and 80% of September joiners, and 100% of April, June and October joiners. Error variance depends on the joining month (section 12a), not on the tenure band or the forecast, so calibrating within prediction bins or tenure bands does not help, and kernel weights over all attributes dilute the month among six other attributes. Calibrating within joining months removes every flag, at a 14% wider mean interval; normalized conformal removes them too and has the best interval score, because its difficulty model learns the month pattern. CQR's boosted quantile models are poorly calibrated on 750 members and give intervals ten times wider. `loyalty-spend intervals --audit` reproduces the table.
+
 ## 8. Probabilistic forecasts
 
 An interval answers one question at one level. Budgeting reward cost needs the whole predictive distribution of each customer's spend, and the distributions have to be judged as distributions.
@@ -369,6 +385,7 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Chernozhukov, V., Fernandez-Val, I., and Galichon, A. (2010). Quantile and probability curves without crossing. *Econometrica*, 78(3), 1093-1125.
 - Chung, Y., Kraska, T., Polyzotis, N., Tae, K. H., and Whang, S. E. (2019). Slice finder: Automated data slicing for model validation. *Proceedings of the 35th IEEE International Conference on Data Engineering*, 1550-1553.
 - Cinelli, C., and Hazlett, C. (2020). Making sense of sensitivity: Extending omitted variable bias. *Journal of the Royal Statistical Society, Series B*, 82(1), 39-67.
+- Clopper, C. J., and Pearson, E. S. (1934). The use of confidence or fiducial limits illustrated in the case of the binomial. *Biometrika*, 26(4), 404-413.
 - Crump, R. K., Hotz, V. J., Imbens, G. W., and Mitnik, O. A. (2009). Dealing with limited overlap in estimation of average treatment effects. *Biometrika*, 96(1), 187-199.
 - Dawid, A. P. (1984). Statistical theory: The prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2), 278-292.
 - Deng, A., Xu, Y., Kohavi, R., and Walker, T. (2013). Improving the sensitivity of online controlled experiments by utilizing pre-experiment data. *Proceedings of the Sixth ACM International Conference on Web Search and Data Mining*, 123-132.
@@ -385,6 +402,7 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Gower, J. C. (1971). A general coefficient of similarity and some of its properties. *Biometrics*, 27(4), 857-871.
 - Grinsztajn, L., Oyallon, E., and Varoquaux, G. (2022). Why do tree-based models still outperform deep learning on typical tabular data? *Advances in Neural Information Processing Systems*, 35, Datasets and Benchmarks Track.
 - Groemping, U. (2006). Relative importance for linear regression in R: The package relaimpo. *Journal of Statistical Software*, 17(1), 1-27.
+- Guan, L. (2023). Localized conformal prediction: A generalized inference framework for conformal prediction. *Biometrika*, 110(1), 33-50.
 - Guo, C., and Berkhahn, F. (2016). Entity embeddings of categorical variables. *arXiv:1604.06737*.
 - Hennig, C. (2007). Cluster-wise assessment of cluster stability. *Computational Statistics and Data Analysis*, 52(1), 258-271.
 - Imbens, G. W., and Rubin, D. B. (2015). *Causal Inference for Statistics, Social, and Biomedical Sciences: An Introduction*. Cambridge University Press.
