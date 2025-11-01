@@ -105,6 +105,18 @@ Both methods meet the marginal target. Split conformal uses one width for everyo
 
 <img src="reports/figures/conditional_coverage.png" width="60%" alt="Coverage by decile of predicted spend">
 
+On the real members of `train.csv`, cross-fitted intervals audited by tenure band, region and joining month tell a different story (`loyalty-spend intervals --audit`):
+
+| Method | Coverage | Mean width | Levels with coverage off target | Worst level |
+| --- | --- | --- | --- | --- |
+| Split conformal | 0.907 | 0.952 | 5 of 21 | August joiners, 0.707 |
+| Mondrian on tenure band | 0.910 | 1.060 | 5 of 21 | August joiners, 0.733 |
+| Localised, kernel weights | 0.913 | 0.999 | 4 of 21 | August joiners, 0.747 |
+| Mondrian on joining month | 0.920 | 1.083 | 0 of 21 | August joiners, 0.893 |
+| Normalized conformal | 0.915 | 1.007 | 0 of 21 | November joiners, 0.841 |
+
+Levels are flagged by an exact binomial test after Benjamini-Hochberg adjustment. Errors depend on the month a member joined, so only methods that can see the month restore coverage within months; normalized conformal does so with the best interval score.
+
 ### Predictive distributions
 
 Budgeting needs each customer's whole spend distribution, not one interval. Five forecasters are scored on the same heteroscedastic scenario with the continuous ranked probability score (CRPS) on a grid of 19 quantile levels (5-fold CV, 2,000 customers), and the interval methods are compared on 5,000 new customers. Coverage by group uses quintiles of predicted spend.
@@ -325,6 +337,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 **Robustness.** Subgroup errors with bootstrap intervals, slice search with Benjamini-Hochberg control, stress tests on damaged inputs, closed-form Cook's distance and DFBETAS, learning curves with fold intervals, multiple imputation pooled by Rubin's rules, and a delta adjustment for values missing not at random.
 
 **Synthetic data.** Gaussian copulas over empirical margins and frequency-encoded categories, stratified or with amounts conditional on the categories, evaluated by marginal and pairwise fidelity, train-on-synthetic test-on-real utility, distance to closest record against a held-out baseline, and a membership inference attack.
+
+**Conditional coverage.** Localised conformal intervals with Gower kernel weights and a bandwidth chosen by cross-validated interval score, and an audit of cross-fitted intervals by subgroup with Clopper-Pearson intervals, exact binomial tests and false discovery rate control.
 
 **Experiment design.** Power from the noncentral t distribution with covariate adjustment, CUPED and the interacted regression estimator of Lin (2013) with HC2 errors, stratified randomisation, group-sequential boundaries from alpha-spending functions by recursive numerical integration, and simulated operating characteristics.
 
