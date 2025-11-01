@@ -74,7 +74,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 ## Phase 19: Conditional coverage of prediction intervals
 
-- [ ] 19.2 Localised conformal intervals with kernel weights
 - [ ] 19.3 Conformalised quantile regression
 - [ ] 19.4 Comparison of interval methods by conditional coverage
 - [ ] 19.5 Documentation
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-10-30: 18.3 Confidence intervals for omega squared
 - [x] 2025-10-30: 18.4 Report section with the pairwise comparisons
 - [x] 2025-10-30: 19.1 Coverage audit by subgroup with exact binomial intervals
+- [x] 2025-11-01: 19.2 Localised conformal intervals with kernel weights
