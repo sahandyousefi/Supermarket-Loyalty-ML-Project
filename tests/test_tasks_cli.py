@@ -278,3 +278,16 @@ def test_experiment_command(cfg, capsys):
     text = capsys.readouterr().out
     assert "members per arm" in text and "boundaries" in text
     assert "simulated effect 0.2" in text
+
+
+def test_interval_audit(cfg, tmp_path, capsys):
+    out = tmp_path / "audit.csv"
+    assert (
+        main(["intervals", "--config", str(cfg), "--audit", "--output", str(out)]) == 0
+    )
+    assert "levels_flagged" in capsys.readouterr().out
+    assert set(pd.read_csv(out)["attribute"]) == {
+        "loyalty_years",
+        "region",
+        "joining_month",
+    }

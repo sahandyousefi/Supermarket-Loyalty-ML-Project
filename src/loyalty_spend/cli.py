@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from loyalty_spend import __version__
-from loyalty_spend.config import load_config
+from loyalty_spend.config import Config, load_config
 
 Handler = Callable[[argparse.Namespace], int]
 _COMMANDS: dict[
@@ -145,6 +145,37 @@ def _intervals_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--n-test", type=int, default=5000)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--output", default=None, help="write the table to this CSV")
+    p.add_argument(
+        "--audit",
+        action="store_true",
+        help="audit cross-fitted intervals on train.csv by subgroup instead",
+    )
+
+
+def _interval_audit(cfg: Config, args: argparse.Namespace) -> int:
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.uncertainty.compare import conditional_coverage_comparison
+
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    X, y = split_xy(train)
+    summary, audit = conditional_coverage_comparison(
+        X, y, alpha=cfg.conformal.alpha, seed=cfg.cv.seed
+    )
+    if args.output:
+        audit.to_csv(args.output, index=False)
+    cols = [
+        "method",
+        "coverage",
+        "mean_width",
+        "interval_score",
+        "levels_flagged",
+        "worst_level",
+        "worst_coverage",
+    ]
+    print(f"cross-fitted intervals, target coverage {1 - cfg.conformal.alpha:.0%}")
+    print(summary[cols].to_string(index=False, float_format=lambda v: f"{v:.3f}"))
+    return 0
 
 
 @command("intervals", "compare prediction interval methods", _intervals_args)
@@ -155,6 +186,8 @@ def _intervals(args: argparse.Namespace) -> int:
     from loyalty_spend.uncertainty.compare import compare_intervals
 
     cfg = load_config(args.config)
+    if args.audit:
+        return _interval_audit(cfg, args)
     if args.scenario not in SCENARIOS:
         raise SystemExit(f"unknown scenario; choose from {sorted(SCENARIOS)}")
     train, _ = load_modeling_data(
