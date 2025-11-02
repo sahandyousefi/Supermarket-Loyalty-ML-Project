@@ -77,7 +77,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 ## Phase 20: Gaussian process regression
 
-- [ ] 20.1 Kernel for mixed amounts and categories
 - [ ] 20.2 Hyperparameters by marginal likelihood with restarts
 - [ ] 20.3 Predictive intervals and their calibration
 - [ ] 20.4 Registration and comparison with the other models
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-11-01: 19.3 Bandwidth of the localised intervals by cross-validated interval score
 - [x] 2025-11-01: 19.4 Comparison of interval methods by conditional coverage
 - [x] 2025-11-01: 19.5 Documentation
+- [x] 2025-11-02: 20.1 Kernel for mixed amounts and categories
