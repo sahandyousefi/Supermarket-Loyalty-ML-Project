@@ -6,6 +6,18 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Control charts for model monitoring: EWMA with exact limits, tabular CUSUM with Siegmund's run length approximation, HWMA and multivariate HWMA, vectorised run length simulation with limit calibration, zero- and steady-state comparisons, and the Brook-Evans Markov chain for the effect of estimated parameters; `loyalty-spend control-chart`.
+- Design of a randomised promotion test: power and sample size with covariate adjustment, CUPED and Lin's interacted regression estimator, stratified randomisation, group-sequential boundaries from alpha-spending functions, and simulated operating characteristics; `loyalty-spend experiment`.
+- Games-Howell pairwise comparisons, a Freedman-Lane permutation test of the partial tenure effect and noncentral F intervals for omega squared, reported in the driver section.
+- Localised conformal intervals with Gower kernel weights, bandwidth selection by interval score, and an audit of cross-fitted interval coverage by subgroup; `loyalty-spend intervals --audit`.
+- A Gaussian process model with a linear plus ARD kernel, restart diagnostics for the marginal likelihood and calibration of its predictive intervals.
+
+### Fixed
+
+- The interacted regression estimator drops interactions and collinear columns in small samples, where its standard error could be undefined.
+
 ## [1.4.0] - 2025-10-12
 
 ### Added
