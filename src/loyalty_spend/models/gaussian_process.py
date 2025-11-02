@@ -22,6 +22,7 @@ uncertainty of the mean.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import (
     RBF,
@@ -70,3 +71,39 @@ def gaussian_process(n_restarts_optimizer: int = 2, random_state: int = 0) -> Pi
             ("model", MixedGaussianProcess(n_restarts_optimizer, random_state)),
         ]
     )
+
+
+def restart_table(
+    X: np.ndarray, y: np.ndarray, n_starts: int = 8, seed: int = 0
+) -> pd.DataFrame:
+    """Optimise the log marginal likelihood from several starting points.
+
+    Starting values are drawn log-uniformly within the bounds of every
+    hyperparameter. The table shows whether the optima agree; a likelihood
+    surface with separated optima of similar height means the data cannot
+    tell the explanations apart, and predictions should be compared across
+    them before trusting one.
+    """
+    X = np.asarray(X, float)
+    y = np.asarray(y, float)
+    base = mixed_kernel(X.shape[1])
+    bounds = base.bounds
+    rng = np.random.default_rng(seed)
+    rows = []
+    for start in range(n_starts):
+        theta = rng.uniform(bounds[:, 0], bounds[:, 1]) if start else base.theta
+        kernel = base.clone_with_theta(theta)
+        gp = GaussianProcessRegressor(kernel, normalize_y=True, random_state=seed)
+        gp.fit(X, y)
+        k = gp.kernel_
+        rows.append(
+            {
+                "start": start,
+                "log_marginal_likelihood": float(gp.log_marginal_likelihood_value_),
+                "sigma_0": float(k.k1.k1.sigma_0),
+                "rbf_amplitude": float(np.sqrt(k.k1.k2.k1.constant_value)),
+                "min_length_scale": float(np.min(k.k1.k2.k2.length_scale)),
+                "noise_sd": float(np.sqrt(k.k2.noise_level) * gp._y_train_std),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("log_marginal_likelihood", ascending=False)

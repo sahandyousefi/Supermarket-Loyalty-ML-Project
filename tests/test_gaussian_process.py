@@ -36,3 +36,16 @@ def test_pipeline_fits_the_member_data(train_df):
     X, y = split_xy(train_df.iloc[:300])
     model = build_model("gp", n_restarts_optimizer=0).fit(X, y)
     assert np.isfinite(model.predict(X)).all()
+
+
+def test_restarts_reach_the_same_optimum_on_a_simple_problem():
+    from loyalty_spend.models.gaussian_process import restart_table
+
+    rng = np.random.default_rng(1)
+    X = rng.uniform(-2, 2, (120, 2))
+    y = np.sin(2 * X[:, 0]) + rng.normal(0, 0.1, 120)
+    table = restart_table(X, y, n_starts=4)
+    assert len(table) == 4
+    best = table["log_marginal_likelihood"].iloc[0]
+    assert (table["log_marginal_likelihood"] <= best + 1e-6).all()
+    assert table["noise_sd"].iloc[0] == pytest.approx(0.1, rel=0.3)
