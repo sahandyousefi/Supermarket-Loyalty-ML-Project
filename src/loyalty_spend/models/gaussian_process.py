@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import (
     RBF,
@@ -107,3 +108,42 @@ def restart_table(
             }
         )
     return pd.DataFrame(rows).sort_values("log_marginal_likelihood", ascending=False)
+
+
+def predictive(pipeline: Pipeline, X: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Mean and standard deviation of spend, noise included."""
+    Z = pipeline.named_steps["prep"].transform(X)
+    mean, sd = pipeline.named_steps["model"].predict(Z, return_std=True)
+    return np.asarray(mean, float), np.asarray(sd, float)
+
+
+def cross_fitted_calibration(
+    X: pd.DataFrame,
+    y: np.ndarray,
+    alpha: float = 0.1,
+    n_splits: int = 5,
+    seed: int = 0,
+) -> dict[str, float]:
+    """Coverage, CRPS and PIT uniformity of out-of-fold GP predictions."""
+    from sklearn.model_selection import KFold
+
+    from loyalty_spend.evaluation.scoring import (
+        calibration_test,
+        crps_gaussian,
+        interval_summary,
+        pit_gaussian,
+    )
+
+    y = np.asarray(y, float)
+    mu, sd = np.empty(len(y)), np.empty(len(y))
+    for tr, te in KFold(n_splits, shuffle=True, random_state=seed).split(X):
+        model = gaussian_process(n_restarts_optimizer=0, random_state=seed)
+        model.fit(X.iloc[tr], y[tr])
+        mu[te], sd[te] = predictive(model, X.iloc[te])
+    z = norm.ppf(1 - alpha / 2)
+    pit = pit_gaussian(y, mu, sd)
+    return {
+        **interval_summary(y, mu - z * sd, mu + z * sd, alpha),
+        "crps": float(crps_gaussian(y, mu, sd).mean()),
+        **{f"pit_{k}": v for k, v in calibration_test(pit).items()},
+    }
