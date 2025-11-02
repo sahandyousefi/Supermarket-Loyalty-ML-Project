@@ -60,6 +60,7 @@ Five-fold cross-validation repeated three times, identical splits for every mode
 | Ridge | linear | 0.308 (0.040) | 0.215 | -0.000 | 0.85 |
 | Huber | linear | 0.309 (0.041) | 0.213 | 0.001 | 0.68 |
 | Spline ridge | linear | 0.310 (0.041) | 0.216 | 0.002 | 0.27 |
+| Gaussian process, linear plus ARD kernel | kernel | 0.310 (0.042) | 0.216 | 0.002 | 0.33 |
 | Histogram GBM | tree | 0.433 (0.053) | 0.297 | 0.125 | < 0.001 |
 | Elastic net | linear | 0.452 (0.042) | 0.322 | 0.144 | < 0.001 |
 | MLP, periodic embeddings | deep | 0.454 (0.037) | 0.341 | 0.145 | < 0.001 |
@@ -70,7 +71,7 @@ Five-fold cross-validation repeated three times, identical splits for every mode
 | Gamma GLM | linear | 1.081 (0.041) | 0.817 | 0.773 | < 0.001 |
 | Random forest | tree | 2.173 (0.379) | 1.316 | 1.865 | < 0.001 |
 
-Standard deviation across folds in parentheses; p-values from the corrected resampled t-test. The target is almost an exact linear function of tenure, joining month and first-month spend. Tree ensembles approximate the linear effect of first-month spend with steps, and networks fit it only approximately, so both pay a small but significant price. The Gamma GLM's log link imposes multiplicative effects where the true effects are additive.
+Standard deviation across folds in parentheses; p-values from the corrected resampled t-test. The target is almost an exact linear function of tenure, joining month and first-month spend. Tree ensembles approximate the linear effect of first-month spend with steps, and networks fit it only approximately, so both pay a small but significant price. The Gamma GLM's log link imposes multiplicative effects where the true effects are additive. The Gaussian process puts almost all of its variance into the linear part of its kernel: the fitted RBF amplitude sits at its lower bound, so the data offer no smooth interaction for it to find.
 
 <img src="reports/figures/model_comparison.png" width="60%" alt="Cross-validated RMSE by model">
 

@@ -77,7 +77,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 ## Phase 20: Gaussian process regression
 
-- [ ] 20.4 Registration and comparison with the other models
 
 ## Phase 21: Documentation site
 
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-11-02: 20.1 Kernel for mixed amounts and categories
 - [x] 2025-11-02: 20.2 Hyperparameters by marginal likelihood with restarts
 - [x] 2025-11-02: 20.3 Predictive intervals and their calibration
+- [x] 2025-11-02: 20.4 Registration and comparison with the other models
