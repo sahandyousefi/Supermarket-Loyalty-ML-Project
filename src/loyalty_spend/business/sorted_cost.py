@@ -20,7 +20,12 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike
 
-from loyalty_spend.business.rewards import MarginalSchedule, RewardSchedule
+from loyalty_spend.business.rewards import (
+    FloatArray,
+    IntArray,
+    MarginalSchedule,
+    RewardSchedule,
+)
 
 
 class SortedDraws:
@@ -36,7 +41,7 @@ class SortedDraws:
         self.prefix = np.concatenate([np.zeros((self.m, 1)), prefix], axis=1)
         self.total = prefix[:, -1] if self.n else np.zeros(self.m)
 
-    def below(self, threshold: float) -> tuple[np.ndarray, np.ndarray]:
+    def below(self, threshold: float) -> tuple[IntArray, FloatArray]:
         """Count and total spend of members strictly below ``threshold``."""
         if np.isinf(threshold):
             return np.full(self.m, self.n), self.total
@@ -50,7 +55,7 @@ class SortedDraws:
         count, _ = self.below(threshold)
         return float(1.0 - count.mean() / self.n)
 
-    def totals(self, schedule: RewardSchedule | MarginalSchedule) -> np.ndarray:
+    def totals(self, schedule: RewardSchedule | MarginalSchedule) -> FloatArray:
         """Total reward in every draw."""
         thresholds = [t for t, _ in schedule.tiers]
         rates = [r for _, r in schedule.tiers]

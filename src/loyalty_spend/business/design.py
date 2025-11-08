@@ -15,7 +15,12 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
-from loyalty_spend.business.rewards import MarginalSchedule, RewardSchedule, Sampler
+from loyalty_spend.business.rewards import (
+    FloatArray,
+    MarginalSchedule,
+    RewardSchedule,
+    Sampler,
+)
 from loyalty_spend.business.sorted_cost import SortedDraws
 
 Schedule = RewardSchedule | MarginalSchedule
@@ -27,10 +32,10 @@ def schedule_cost_draws(
     n_simulations: int = 5000,
     seed: int = 0,
     batch: int = 500,
-) -> dict[str, np.ndarray]:
+) -> dict[str, FloatArray]:
     """Total cost of every schedule on shared draws of spend."""
     rng = np.random.default_rng(seed)
-    out = {name: np.empty(n_simulations) for name in schedules}
+    out: dict[str, FloatArray] = {name: np.empty(n_simulations) for name in schedules}
     for start in range(0, n_simulations, batch):
         m = min(batch, n_simulations - start)
         spend = np.clip(sampler(rng, m), 0.0, None)
@@ -180,12 +185,12 @@ def search_thresholds(
 
 
 def apply_bunching(
-    spend: np.ndarray,
+    spend: FloatArray,
     schedule: Schedule,
     rng: np.random.Generator,
     window: float = 5.0,
     probability: float = 0.5,
-) -> np.ndarray:
+) -> FloatArray:
     """Move some spend just below a threshold up to the threshold.
 
     A whole-spend schedule pays a jump in reward at each threshold, so a
@@ -203,7 +208,7 @@ def apply_bunching(
         near = (out >= threshold - window) & (out < threshold)
         move = near & (rng.uniform(size=out.shape) < probability)
         out = np.where(move, threshold, out)
-    return out
+    return np.asarray(out, float)
 
 
 def behavioural_cost(

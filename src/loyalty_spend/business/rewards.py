@@ -15,7 +15,10 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
+
+FloatArray = NDArray[np.float64]
+IntArray = NDArray[np.intp]
 
 
 @dataclass(frozen=True)
@@ -36,18 +39,18 @@ class RewardSchedule:
         if any(not 0.0 <= r < 1.0 for _, r in self.tiers):
             raise ValueError("reward rates must be in [0, 1)")
 
-    def rate(self, spend: ArrayLike) -> np.ndarray:
+    def rate(self, spend: ArrayLike) -> FloatArray:
         spend = np.asarray(spend, float)
         thresholds = np.array([t for t, _ in self.tiers])
         rates = np.array([r for _, r in self.tiers])
         idx = np.searchsorted(thresholds, spend, side="right") - 1
         return np.where(idx >= 0, rates[np.clip(idx, 0, None)], 0.0)
 
-    def reward(self, spend: ArrayLike) -> np.ndarray:
+    def reward(self, spend: ArrayLike) -> FloatArray:
         spend = np.asarray(spend, float)
-        return self.rate(spend) * np.clip(spend, 0.0, None)
+        return np.asarray(self.rate(spend) * np.clip(spend, 0.0, None), float)
 
-    def tier(self, spend: ArrayLike) -> np.ndarray:
+    def tier(self, spend: ArrayLike) -> IntArray:
         thresholds = np.array([t for t, _ in self.tiers])
         return np.searchsorted(thresholds, np.asarray(spend, float), side="right") - 1
 
@@ -55,9 +58,9 @@ class RewardSchedule:
 @dataclass
 class LiabilityForecast:
     per_customer: pd.DataFrame
-    total_draws: np.ndarray
-    spend_draws: np.ndarray | None = None
-    tier_shares: np.ndarray | None = None
+    total_draws: FloatArray
+    spend_draws: FloatArray | None = None
+    tier_shares: FloatArray | None = None
 
     def standard_errors(
         self, levels: Sequence[float] = (0.05, 0.5, 0.95), n_batches: int = 20
@@ -128,7 +131,7 @@ class LiabilityForecast:
         return out
 
 
-Sampler = Callable[[np.random.Generator, int], np.ndarray]
+Sampler = Callable[[np.random.Generator, int], FloatArray]
 
 
 def residual_sampler(predicted_spend: ArrayLike, residuals: ArrayLike) -> Sampler:
@@ -136,8 +139,8 @@ def residual_sampler(predicted_spend: ArrayLike, residuals: ArrayLike) -> Sample
     pred = np.asarray(predicted_spend, float)
     resid = np.asarray(residuals, float)
 
-    def draw(rng: np.random.Generator, m: int) -> np.ndarray:
-        return pred[None, :] + rng.choice(resid, size=(m, len(pred)))
+    def draw(rng: np.random.Generator, m: int) -> FloatArray:
+        return np.asarray(pred[None, :] + rng.choice(resid, size=(m, len(pred))))
 
     return draw
 
@@ -147,7 +150,7 @@ def gaussian_sampler(mean: ArrayLike, sigma: ArrayLike) -> Sampler:
     mu = np.asarray(mean, float)
     sd = np.broadcast_to(np.asarray(sigma, float), mu.shape)
 
-    def draw(rng: np.random.Generator, m: int) -> np.ndarray:
+    def draw(rng: np.random.Generator, m: int) -> FloatArray:
         return mu[None, :] + sd[None, :] * rng.standard_normal((m, len(mu)))
 
     return draw
@@ -169,9 +172,9 @@ def gaussian_qmc_sampler(mean: ArrayLike, sigma: ArrayLike, seed: int = 0) -> Sa
     sd = np.broadcast_to(np.asarray(sigma, float), mu.shape)
     engine = qmc.Sobol(d=len(mu), scramble=True, seed=seed)
 
-    def draw(rng: np.random.Generator, m: int) -> np.ndarray:
+    def draw(rng: np.random.Generator, m: int) -> FloatArray:
         u = np.clip(engine.random(m), 1e-12, 1 - 1e-12)
-        return mu[None, :] + sd[None, :] * norm.ppf(u)
+        return np.asarray(mu[None, :] + sd[None, :] * norm.ppf(u), float)
 
     return draw
 
@@ -298,10 +301,10 @@ class MarginalSchedule:
     def __post_init__(self) -> None:
         RewardSchedule(self.tiers)
 
-    def tier(self, spend: ArrayLike) -> np.ndarray:
+    def tier(self, spend: ArrayLike) -> IntArray:
         return RewardSchedule(self.tiers).tier(spend)
 
-    def reward(self, spend: ArrayLike) -> np.ndarray:
+    def reward(self, spend: ArrayLike) -> FloatArray:
         s = np.clip(np.asarray(spend, float), 0.0, None)
         thresholds = [t for t, _ in self.tiers]
         rates = [r for _, r in self.tiers]
@@ -309,9 +312,9 @@ class MarginalSchedule:
         total = np.zeros_like(s)
         for lo, hi, rate in zip(thresholds, upper, rates):
             total += rate * np.clip(np.minimum(s, hi) - lo, 0.0, None)
-        return total
+        return np.asarray(total, float)
 
-    def rate(self, spend: ArrayLike) -> np.ndarray:
+    def rate(self, spend: ArrayLike) -> FloatArray:
         """Average rate, the reward as a share of spend."""
         s = np.asarray(spend, float)
         with np.errstate(divide="ignore", invalid="ignore"):
