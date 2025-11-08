@@ -24,35 +24,40 @@ import numpy as np
 from numpy.typing import ArrayLike
 from scipy import stats
 
+from loyalty_spend.arrays import FloatArray
 
-def pinball_loss(y: ArrayLike, q_pred: ArrayLike, tau: float) -> np.ndarray:
+
+def pinball_loss(y: ArrayLike, q_pred: ArrayLike, tau: float) -> FloatArray:
     """Quantile (pinball) loss of a ``tau`` quantile forecast, per observation."""
     if not 0.0 < tau < 1.0:
         raise ValueError("tau must be in (0, 1)")
     diff = np.asarray(y, float) - np.asarray(q_pred, float)
-    return np.maximum(tau * diff, (tau - 1.0) * diff)
+    return np.asarray(np.maximum(tau * diff, (tau - 1.0) * diff), float)
 
 
-def mean_pinball(y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]) -> np.ndarray:
+def mean_pinball(y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]) -> FloatArray:
     """Mean pinball loss for each column of ``q_pred`` (one column per level)."""
     q = np.asarray(q_pred, float)
     if q.ndim != 2 or q.shape[1] != len(taus):
         raise ValueError("q_pred must have one column per quantile level")
-    return np.array([pinball_loss(y, q[:, j], t).mean() for j, t in enumerate(taus)])
+    return np.array(
+        [pinball_loss(y, q[:, j], t).mean() for j, t in enumerate(taus)], float
+    )
 
 
-def crps_gaussian(y: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> np.ndarray:
+def crps_gaussian(y: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> FloatArray:
     """Closed-form CRPS of a normal forecast (Gneiting et al., 2005)."""
     sigma = np.asarray(sigma, float)
     if np.any(sigma <= 0):
         raise ValueError("sigma must be positive")
     z = (np.asarray(y, float) - np.asarray(mu, float)) / sigma
-    return sigma * (
+    crps = sigma * (
         z * (2 * stats.norm.cdf(z) - 1) + 2 * stats.norm.pdf(z) - 1 / np.sqrt(np.pi)
     )
+    return np.asarray(crps, float)
 
 
-def crps_sample(y: ArrayLike, samples: ArrayLike) -> np.ndarray:
+def crps_sample(y: ArrayLike, samples: ArrayLike) -> FloatArray:
     """CRPS of an ensemble or Monte Carlo forecast, one row of draws per case.
 
     Uses the identity ``E|X - X'| = 2 / m^2 * sum_i (2i - m - 1) x_(i)`` for
@@ -66,12 +71,12 @@ def crps_sample(y: ArrayLike, samples: ArrayLike) -> np.ndarray:
     first = np.abs(x - y[:, None]).mean(axis=1)
     weights = 2 * np.arange(1, m + 1) - m - 1
     spread = 2 * (x * weights).sum(axis=1) / m**2
-    return first - 0.5 * spread
+    return np.asarray(first - 0.5 * spread, float)
 
 
 def interval_score(
     y: ArrayLike, lower: ArrayLike, upper: ArrayLike, alpha: float
-) -> np.ndarray:
+) -> FloatArray:
     """Interval score of a central ``1 - alpha`` interval (Gneiting and Raftery, 2007).
 
     The width plus a penalty of ``2 / alpha`` times the distance by which the
@@ -87,7 +92,7 @@ def interval_score(
         raise ValueError("upper bounds must not be below lower bounds")
     below = np.clip(lo - y, 0.0, None)
     above = np.clip(y - hi, 0.0, None)
-    return (hi - lo) + 2.0 / alpha * (below + above)
+    return np.asarray((hi - lo) + 2.0 / alpha * (below + above), float)
 
 
 def interval_summary(
@@ -110,12 +115,14 @@ def interval_summary(
     }
 
 
-def pit_gaussian(y: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> np.ndarray:
+def pit_gaussian(y: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> FloatArray:
     """Probability integral transform values of normal forecasts."""
-    return stats.norm.cdf(np.asarray(y, float), np.asarray(mu, float), sigma)
+    return np.asarray(
+        stats.norm.cdf(np.asarray(y, float), np.asarray(mu, float), sigma), float
+    )
 
 
-def pit_sample(y: ArrayLike, samples: ArrayLike, seed: int = 0) -> np.ndarray:
+def pit_sample(y: ArrayLike, samples: ArrayLike, seed: int = 0) -> FloatArray:
     """Randomised PIT of sample forecasts.
 
     Ties between the outcome and the draws are broken uniformly at random, so
@@ -127,10 +134,10 @@ def pit_sample(y: ArrayLike, samples: ArrayLike, seed: int = 0) -> np.ndarray:
     y = np.asarray(y, float).reshape(-1, 1)
     below = (x < y).mean(axis=1)
     equal = (x == y).mean(axis=1)
-    return below + rng.uniform(size=len(below)) * equal
+    return np.asarray(below + rng.uniform(size=len(below)) * equal, float)
 
 
-def pit_quantiles(y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]) -> np.ndarray:
+def pit_quantiles(y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]) -> FloatArray:
     """PIT values from quantile forecasts by linear interpolation of the CDF.
 
     Outcomes beyond the outermost quantiles get the outermost levels, which
@@ -164,7 +171,7 @@ def calibration_test(pit: ArrayLike, n_bins: int = 10) -> dict[str, float]:
 
 def crps_quantiles(
     y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]
-) -> np.ndarray:
+) -> FloatArray:
     """CRPS approximated from quantile forecasts on an equally spaced grid.
 
     The CRPS equals twice the pinball loss integrated over all levels, so
@@ -174,12 +181,12 @@ def crps_quantiles(
     """
     q = np.asarray(q_pred, float)
     losses = np.column_stack([pinball_loss(y, q[:, j], t) for j, t in enumerate(taus)])
-    return 2.0 * losses.mean(axis=1)
+    return np.asarray(2.0 * losses.mean(axis=1), float)
 
 
 def quantile_reliability(
     y: ArrayLike, q_pred: ArrayLike, taus: Sequence[float]
-) -> np.ndarray:
+) -> FloatArray:
     """Observed share of outcomes at or below each forecast quantile.
 
     For a calibrated forecast the share equals the nominal level; plotted
@@ -188,4 +195,4 @@ def quantile_reliability(
     q = np.asarray(q_pred, float)
     if q.shape[1] != len(taus):
         raise ValueError("q_pred must have one column per level")
-    return (np.asarray(y, float)[:, None] <= q).mean(axis=0)
+    return np.asarray((np.asarray(y, float)[:, None] <= q).mean(axis=0), float)

@@ -15,10 +15,9 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 
-FloatArray = NDArray[np.float64]
-IntArray = NDArray[np.intp]
+from loyalty_spend.arrays import FloatArray, IntArray
 
 
 @dataclass(frozen=True)

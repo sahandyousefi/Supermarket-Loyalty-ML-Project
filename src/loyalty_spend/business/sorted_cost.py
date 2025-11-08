@@ -20,9 +20,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike
 
+from loyalty_spend.arrays import FloatArray, IntArray
 from loyalty_spend.business.rewards import (
-    FloatArray,
-    IntArray,
     MarginalSchedule,
     RewardSchedule,
 )

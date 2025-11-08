@@ -17,6 +17,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator, clone
 from sklearn.pipeline import Pipeline
 
+from loyalty_spend.arrays import FloatArray, Split
+
 
 def split_pipeline(estimator: BaseEstimator) -> tuple[Any, Any] | None:
     """The ``prep`` step and the rest of a two-part pipeline, if it is one."""
@@ -32,7 +34,7 @@ class FoldCache:
         self,
         X: pd.DataFrame,
         y: pd.Series,
-        splits: list[tuple[np.ndarray, np.ndarray]],
+        splits: list[Split],
     ) -> None:
         self.X, self.y, self.splits = X, y, splits
         self._store: dict[tuple[str, int], tuple[Any, Any, Any]] = {}
@@ -58,7 +60,7 @@ class FoldCache:
 
     def fit_predict(
         self, estimator: BaseEstimator, fold: int
-    ) -> tuple[BaseEstimator, np.ndarray]:
+    ) -> tuple[BaseEstimator, FloatArray]:
         """Fitted estimator (a pipeline again) and its test-fold predictions."""
         tr, te = self.splits[fold]
         parts = split_pipeline(estimator)

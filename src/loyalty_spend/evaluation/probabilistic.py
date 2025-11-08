@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
+from loyalty_spend.arrays import FloatArray, Split
 from loyalty_spend.evaluation.cv import corrected_ttest
 from loyalty_spend.evaluation.scoring import (
     calibration_test,
@@ -29,7 +30,7 @@ from loyalty_spend.models.forecasters import TAU_GRID, QuantileForecaster
 class DistributionCVResult:
     name: str
     folds: pd.DataFrame
-    pit: np.ndarray
+    pit: FloatArray
     n_train: float
     n_test: float
 
@@ -46,7 +47,7 @@ def cross_validate_distribution(
     factory: Callable[[], QuantileForecaster],
     X: pd.DataFrame,
     y: ArrayLike,
-    splits: list[tuple[np.ndarray, np.ndarray]],
+    splits: list[Split],
 ) -> DistributionCVResult:
     y = np.asarray(y, float)
     lo_idx, hi_idx = TAU_GRID.index(0.05), TAU_GRID.index(0.95)

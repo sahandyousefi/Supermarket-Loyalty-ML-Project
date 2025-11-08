@@ -12,6 +12,7 @@ from scipy.stats import t as student_t
 from sklearn.base import BaseEstimator, clone
 from sklearn.model_selection import RepeatedKFold
 
+from loyalty_spend.arrays import FloatArray, IntArray, Split
 from loyalty_spend.evaluation.fold_cache import FoldCache
 from loyalty_spend.evaluation.metrics import regression_report
 
@@ -22,7 +23,7 @@ class CVResult:
 
     name: str
     folds: pd.DataFrame
-    oof: np.ndarray
+    oof: FloatArray
     n_train: float
     n_test: float
 
@@ -36,7 +37,7 @@ class CVResult:
 
 def make_splits(
     n: int, n_splits: int = 5, n_repeats: int = 3, seed: int = 42
-) -> list[tuple[np.ndarray, np.ndarray]]:
+) -> list[Split]:
     """Fixed splits so that every model is evaluated on identical folds."""
     cv = RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=seed)
     return list(cv.split(np.zeros(n)))
@@ -46,9 +47,9 @@ def _fit_predict(
     estimator: BaseEstimator,
     X: pd.DataFrame,
     y: pd.Series,
-    tr: np.ndarray,
-    te: np.ndarray,
-) -> tuple[BaseEstimator, np.ndarray]:
+    tr: IntArray,
+    te: IntArray,
+) -> tuple[BaseEstimator, FloatArray]:
     model = clone(estimator)
     model.fit(X.iloc[tr], y.iloc[tr])
     return model, np.asarray(model.predict(X.iloc[te]), float)
@@ -59,7 +60,7 @@ def cross_validate(
     estimator: BaseEstimator,
     X: pd.DataFrame,
     y: pd.Series,
-    splits: list[tuple[np.ndarray, np.ndarray]],
+    splits: list[Split],
     fit_hook: Callable[[BaseEstimator], None] | None = None,
     n_jobs: int = 1,
     cache: FoldCache | None = None,
@@ -98,7 +99,7 @@ def cross_validate(
 
 
 def corrected_ttest(
-    diffs: np.ndarray, n_train: float, n_test: float
+    diffs: FloatArray, n_train: float, n_test: float
 ) -> tuple[float, float]:
     """Corrected resampled t-test of Nadeau and Bengio (2003).
 

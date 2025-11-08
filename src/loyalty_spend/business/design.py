@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.business.rewards import (
-    FloatArray,
     MarginalSchedule,
     RewardSchedule,
     Sampler,
