@@ -17,18 +17,19 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from loyalty_spend.arrays import FloatArray, Split
 from loyalty_spend.features.preprocess import split_xy
 from loyalty_spend.models.registry import build_model
 
 
-def _rmse(a: np.ndarray, b: np.ndarray) -> float:
+def _rmse(a: FloatArray, b: FloatArray) -> float:
     return float(np.sqrt(np.mean((np.asarray(a) - np.asarray(b)) ** 2)))
 
 
 def train_synthetic_test_real(
     data: pd.DataFrame,
     synthesizers: dict[str, Callable[[int], Any]],
-    splits: list[tuple[np.ndarray, np.ndarray]],
+    splits: list[Split],
     models: tuple[str, ...] = ("ols",),
 ) -> pd.DataFrame:
     """Fold-level RMSE on real held-out data for each synthesiser and model.

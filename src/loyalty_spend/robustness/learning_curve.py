@@ -14,12 +14,14 @@ import pandas as pd
 from numpy.typing import ArrayLike
 from sklearn.base import BaseEstimator, clone
 
+from loyalty_spend.arrays import Split
+
 
 def learning_curve(
     model: BaseEstimator,
     X: pd.DataFrame,
     y: ArrayLike,
-    splits: list[tuple[np.ndarray, np.ndarray]],
+    splits: list[Split],
     sizes: tuple[float, ...] = (0.1, 0.2, 0.4, 0.6, 0.8, 1.0),
     seed: int = 0,
 ) -> pd.DataFrame:

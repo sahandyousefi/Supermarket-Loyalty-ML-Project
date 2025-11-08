@@ -20,18 +20,20 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from loyalty_spend.arrays import FloatArray, ObjectArray
 
-def nearest_correlation(r: np.ndarray, floor: float = 1e-6) -> np.ndarray:
+
+def nearest_correlation(r: FloatArray, floor: float = 1e-6) -> FloatArray:
     """Clip eigenvalues at ``floor`` and rescale to a unit diagonal."""
     w, v = np.linalg.eigh((r + r.T) / 2)
     fixed = (v * np.maximum(w, floor)) @ v.T
     d = np.sqrt(np.diag(fixed))
-    return fixed / np.outer(d, d)
+    return np.asarray(fixed / np.outer(d, d), float)
 
 
 @dataclass
 class _Numeric:
-    sorted_values: np.ndarray
+    sorted_values: FloatArray
     integer: bool
     lower: float
     upper: float
@@ -40,7 +42,7 @@ class _Numeric:
 @dataclass
 class _Categorical:
     levels: list[str]
-    edges: np.ndarray
+    edges: FloatArray
 
 
 @dataclass
@@ -51,14 +53,14 @@ class GaussianCopulaSynthesizer:
     numeric_: dict[str, _Numeric] = field(default_factory=dict)
     categorical_: dict[str, _Categorical] = field(default_factory=dict)
     latent_: list[str] = field(default_factory=list)
-    corr_: np.ndarray | None = None
+    corr_: FloatArray | None = None
     dtypes_: dict[str, object] = field(default_factory=dict)
 
     def fit(self, frame: pd.DataFrame) -> GaussianCopulaSynthesizer:
         rng = np.random.default_rng(self.seed)
         self.columns_ = list(frame.columns)
         self.dtypes_ = dict(frame.dtypes)
-        scores: dict[str, np.ndarray] = {}
+        scores: dict[str, FloatArray] = {}
         for col in self.columns_:
             s = frame[col]
             if pd.api.types.is_numeric_dtype(s) and not isinstance(
@@ -94,8 +96,8 @@ class GaussianCopulaSynthesizer:
                     levels.append("__nan__")
                 scores[col] = self._encode_categorical(col, labels, levels, rng)
         self.latent_ = list(scores)
-        z = np.column_stack([scores[c] for c in self.latent_])
-        r = np.atleast_2d(np.corrcoef(z, rowvar=False))
+        latent = np.column_stack([scores[c] for c in self.latent_])
+        r = np.atleast_2d(np.corrcoef(latent, rowvar=False))
         r = (1 - self.shrinkage) * r + self.shrinkage * np.eye(len(r))
         self.corr_ = nearest_correlation(r)
         return self
@@ -106,14 +108,14 @@ class GaussianCopulaSynthesizer:
         labels: pd.Series,
         levels: list[str],
         rng: np.random.Generator,
-    ) -> np.ndarray:
+    ) -> FloatArray:
         freq = labels.value_counts(normalize=True).reindex(levels, fill_value=0.0)
         edges = np.concatenate([[0.0], np.cumsum(freq.to_numpy())])
         edges[-1] = 1.0
         self.categorical_[col] = _Categorical(levels, edges)
         pos = labels.map({lv: i for i, lv in enumerate(levels)}).to_numpy(int)
         u = edges[pos] + rng.uniform(size=len(pos)) * (edges[pos + 1] - edges[pos])
-        return stats.norm.ppf(np.clip(u, 1e-9, 1 - 1e-9))
+        return np.asarray(stats.norm.ppf(np.clip(u, 1e-9, 1 - 1e-9)), float)
 
     def sample(self, n: int, seed: int | None = None) -> pd.DataFrame:
         if self.corr_ is None:
@@ -149,11 +151,11 @@ class GaussianCopulaSynthesizer:
                     out[col] = pd.Categorical(values, categories=spec_levels)
         return pd.DataFrame(out, columns=self.columns_)
 
-    def _decode(self, col: str, u: np.ndarray) -> np.ndarray:
+    def _decode(self, col: str, u: FloatArray) -> ObjectArray:
         spec = self.categorical_[col]
         idx = np.searchsorted(spec.edges, u, side="right") - 1
         idx = np.clip(idx, 0, len(spec.levels) - 1)
-        return np.asarray(spec.levels, dtype=object)[idx]
+        return np.asarray(np.asarray(spec.levels, dtype=object)[idx], dtype=object)
 
 
 @dataclass

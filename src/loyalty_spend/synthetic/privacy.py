@@ -16,6 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.segments.gower import ORDINAL
 
 
@@ -29,7 +30,7 @@ def gower_cross(
     rows: pd.DataFrame,
     reference: pd.DataFrame,
     ordinal: dict[str, list[str]] | None = None,
-) -> np.ndarray:
+) -> FloatArray:
     """Gower distances from ``rows`` to ``reference`` with reference ranges."""
     ordinal = ORDINAL if ordinal is None else ordinal
     total = np.zeros((len(rows), len(reference)))

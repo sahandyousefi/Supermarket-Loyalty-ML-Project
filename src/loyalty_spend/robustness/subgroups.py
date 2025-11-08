@@ -12,10 +12,12 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
+from loyalty_spend.arrays import FloatArray
+
 
 def _bootstrap(
-    errors: np.ndarray, n_boot: int, rng: np.random.Generator
-) -> tuple[np.ndarray, np.ndarray]:
+    errors: FloatArray, n_boot: int, rng: np.random.Generator
+) -> tuple[FloatArray, FloatArray]:
     idx = rng.integers(0, len(errors), size=(n_boot, len(errors)))
     sample = errors[idx]
     return np.sqrt((sample**2).mean(axis=1)), sample.mean(axis=1)

@@ -81,13 +81,20 @@ module = [
     "loyalty_spend.models.*",
     "loyalty_spend.uncertainty.*",
     "loyalty_spend.business.*",
+    "loyalty_spend.synthetic.*",
+    "loyalty_spend.robustness.*",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
 # Packages that pass the full strict set, extended one package at a time.
 [[tool.mypy.overrides]]
-module = ["loyalty_spend.business.*", "loyalty_spend.evaluation.*"]
+module = [
+    "loyalty_spend.business.*",
+    "loyalty_spend.evaluation.*",
+    "loyalty_spend.synthetic.*",
+    "loyalty_spend.robustness.*",
+]
 disallow_any_generics = true
 disallow_untyped_calls = true
 disallow_untyped_decorators = true

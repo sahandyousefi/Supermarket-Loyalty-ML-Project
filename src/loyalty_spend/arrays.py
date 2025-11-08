@@ -8,4 +8,5 @@ from numpy.typing import NDArray
 FloatArray = NDArray[np.float64]
 IntArray = NDArray[np.intp]
 BoolArray = NDArray[np.bool_]
+ObjectArray = NDArray[np.object_]
 Split = tuple[IntArray, IntArray]

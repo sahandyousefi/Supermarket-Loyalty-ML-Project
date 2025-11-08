@@ -17,6 +17,7 @@ from sklearn.experimental import enable_iterative_imputer  # noqa: F401
 from sklearn.impute import IterativeImputer
 from sklearn.linear_model import BayesianRidge
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.data.schema import CATEGORICAL, NUMERIC
 
 
@@ -52,7 +53,7 @@ def multiple_imputations(
     return out
 
 
-def pool_rubin(estimates: np.ndarray, variances: np.ndarray) -> pd.DataFrame:
+def pool_rubin(estimates: FloatArray, variances: FloatArray) -> pd.DataFrame:
     r"""Combine ``m`` sets of estimates and their sampling variances.
 
     With :math:`\bar Q` the mean estimate, :math:`W` the mean within-imputation
@@ -90,7 +91,7 @@ def pool_rubin(estimates: np.ndarray, variances: np.ndarray) -> pd.DataFrame:
 
 
 def pooled_ols(
-    completed: list[pd.DataFrame], y: np.ndarray, columns: list[str]
+    completed: list[pd.DataFrame], y: FloatArray, columns: list[str]
 ) -> pd.DataFrame:
     """OLS on every completed data set, pooled with Rubin's rules."""
     estimates, variances, names = [], [], None

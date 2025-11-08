@@ -14,9 +14,10 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.data.schema import CATEGORICAL, NUMERIC
 
-Predict = Callable[[pd.DataFrame], np.ndarray]
+Predict = Callable[[pd.DataFrame], FloatArray]
 
 
 def add_noise(
@@ -63,7 +64,7 @@ def stress_test(
     y = np.asarray(y, float)
     rng = np.random.default_rng(seed)
     base = float(np.sqrt(np.mean((predict(X) - y) ** 2)))
-    scenarios = {
+    scenarios: dict[str, Callable[[float], pd.DataFrame]] = {
         "noise on amounts": lambda s: add_noise(X, list(NUMERIC), s, rng),
         "missing amounts": lambda s: delete_values(X, list(NUMERIC), s, rng),
         "missing categories": lambda s: delete_values(X, list(CATEGORICAL), s, rng),
