@@ -357,7 +357,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 .
 ├── configs/default.yaml        paths, CV, network, reward and interval settings
 ├── data/raw/                   loyalty.csv, train.csv, test.csv (see data/README.md)
-├── docs/                       methodology, model card, deployment, language model design
+├── docs/                       methodology, model card, deployment, language model design, API reference
 ├── notebooks/                  original exam notebook
 ├── reports/                    results.md, summary.json and figures from a full run
 ├── src/loyalty_spend/
@@ -433,9 +433,10 @@ loyalty-spend report                                  # full analysis, about 30 
 make lint
 make test        # fast suite
 make test-all    # includes network training and the simulation study
+pip install -e ".[docs]" && mkdocs serve   # documentation site on localhost
 ```
 
-The tests check the cleaning rules against the data dictionary, Welch's ANOVA against SciPy's Welch t-test in the two-group case, LMG shares summing to $R^2$, the additivity of attributions, conformal coverage on simulated data, the Jensen gap in the reward forecast, reproducibility of network training and a full train, predict and rewards cycle through the CLI. GitHub Actions runs lint and the fast suite on Python 3.10 and 3.12.
+The tests check the cleaning rules against the data dictionary, Welch's ANOVA against SciPy's Welch t-test in the two-group case, LMG shares summing to $R^2$, the additivity of attributions, conformal coverage on simulated data, the Jensen gap in the reward forecast, reproducibility of network training and a full train, predict and rewards cycle through the CLI. GitHub Actions runs the pre-commit hooks, lint, type checks and the fast suite on Python 3.10 and 3.12, builds and checks the package, and builds the documentation site with `mkdocs build --strict`, so a broken link or a docstring that no longer matches its module fails the build.
 
 ## Limitations
 
