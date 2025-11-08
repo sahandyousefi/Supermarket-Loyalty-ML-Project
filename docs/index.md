@@ -15,6 +15,7 @@ The project answers four questions from the original brief and then asks what a 
 - [Model card](model_card.md): intended use, data, performance and limitations of the deployed model.
 - [Deployment](deployment.md): registry, champion-challenger promotion, batch scoring, the service and monitoring.
 - [Language model components](llm_design.md): grounded summaries, retrieval and their evaluation.
+- [API reference](api.md): the main public functions and classes, from their docstrings.
 
 ## Reproducing the results
 
