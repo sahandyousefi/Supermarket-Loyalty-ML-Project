@@ -1,0 +1,35 @@
+site_name: Supermarket loyalty spend
+site_description: Forecasting annual spend of loyalty members, with methods and results
+repo_url: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - toc.follow
+    - content.code.copy
+
+nav:
+  - Overview: index.md
+  - Methodology: methodology.md
+  - Model card: model_card.md
+  - Deployment: deployment.md
+  - Language model components: llm_design.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

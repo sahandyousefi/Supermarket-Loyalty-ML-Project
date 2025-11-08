@@ -12,3 +12,4 @@ coverage.xml
 artifacts/
 mlruns/
 .DS_Store
+site/

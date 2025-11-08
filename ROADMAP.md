@@ -80,7 +80,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 ## Phase 21: Documentation site
 
-- [ ] 21.1 MkDocs configuration with the existing documents
 - [ ] 21.2 API reference from docstrings
 - [ ] 21.3 Strict documentation build in CI
 
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-11-02: 20.2 Hyperparameters by marginal likelihood with restarts
 - [x] 2025-11-02: 20.3 Predictive intervals and their calibration
 - [x] 2025-11-02: 20.4 Registration and comparison with the other models
+- [x] 2025-11-08: 21.1 MkDocs configuration with the existing documents

@@ -12,5 +12,7 @@ repos:
         exclude: ^(notebooks/|reports/summary\.json$)
       - id: trailing-whitespace
       - id: check-yaml
+        # mkdocs.yml names a Python function with a YAML tag.
+        args: [--unsafe]
       - id: check-added-large-files
         args: [--maxkb=1024]
