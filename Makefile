@@ -1,4 +1,4 @@
-.PHONY: install install-all lint typecheck format test test-all tasks report clean docker-build docker-serve
+.PHONY: install install-all lint typecheck format test test-all mutation docs tasks report clean docker-build docker-serve
 
 CONFIG ?= configs/default.yaml
 
@@ -25,6 +25,14 @@ test:
 
 test-all:
 	pytest -q
+
+mutation:
+	python scripts/mutation_check.py src/loyalty_spend/business/rewards.py \
+		tests/test_rewards.py tests/test_properties_rewards.py \
+		tests/test_memory_bounded.py
+
+docs:
+	mkdocs build --strict
 
 tasks:
 	loyalty-spend tasks --config $(CONFIG)
