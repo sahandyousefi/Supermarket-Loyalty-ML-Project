@@ -2,12 +2,21 @@
 
 The application is built by a factory so that tests and deployments can pass
 their own model path; ``LOYALTY_MODEL`` names the bundle otherwise.
+
+Every response carries an ``X-Request-ID`` header, taken from the request
+when the caller sends one and generated otherwise, and every request is
+logged as one JSON line with that identifier, the path, status, latency and
+model version, so that a score can be traced from the caller's logs to the
+service's.
 """
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import time
+import uuid
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -38,7 +47,10 @@ from loyalty_spend.serving.schemas import (
     RewardResponse,
 )
 
+logger = logging.getLogger("loyalty_spend.serving")
+
 DEFAULT_MODEL = "artifacts/model.joblib"
+REQUEST_ID = "X-Request-ID"
 MAX_BATCH = 10_000
 
 
@@ -58,9 +70,26 @@ def create_app(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         start = time.perf_counter()
+        # Accept a caller's identifier only if it is short and printable.
+        given = request.headers.get(REQUEST_ID, "")
+        rid = given if 0 < len(given) <= 128 and given.isprintable() else ""
+        rid = rid or uuid.uuid4().hex
         response = await call_next(request)
-        metrics.record(
-            request.url.path, response.status_code, time.perf_counter() - start
+        seconds = time.perf_counter() - start
+        metrics.record(request.url.path, response.status_code, seconds)
+        response.headers[REQUEST_ID] = rid
+        logger.info(
+            json.dumps(
+                {
+                    "request_id": rid,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "ms": round(1000 * seconds, 2),
+                    "model": bundle.name,
+                    "version": __version__,
+                }
+            )
         )
         return response
 

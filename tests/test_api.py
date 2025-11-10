@@ -146,3 +146,20 @@ def test_next_tier_endpoint(client):
             assert row["feasible"] == (row["first_month_needed"] is not None)
     missing = {"customers": [{**CUSTOMER, "first_month": None}]}
     assert client.post("/next-tier", json=missing).status_code == 422
+
+
+def test_request_id_is_echoed_or_generated(client, caplog):
+    import json
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="loyalty_spend.serving"):
+        given = client.get("/health", headers={"X-Request-ID": "abc-123"})
+        made = client.get("/health")
+        bad = client.get("/health", headers={"X-Request-ID": "x" * 200})
+    assert given.headers["X-Request-ID"] == "abc-123"
+    assert len(made.headers["X-Request-ID"]) == 32
+    assert bad.headers["X-Request-ID"] != "x" * 200
+    records = [json.loads(r.getMessage()) for r in caplog.records]
+    assert records[0]["request_id"] == "abc-123"
+    assert {"path", "status", "ms", "model", "version"} <= set(records[0])
+    assert records[0]["status"] == 200
