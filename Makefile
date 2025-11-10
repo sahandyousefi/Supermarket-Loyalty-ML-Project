@@ -29,7 +29,7 @@ test-all:
 mutation:
 	python scripts/mutation_check.py src/loyalty_spend/business/rewards.py \
 		tests/test_rewards.py tests/test_properties_rewards.py \
-		tests/test_memory_bounded.py
+		tests/test_memory_bounded.py tests/test_rewards_mutants.py
 
 docs:
 	mkdocs build --strict
