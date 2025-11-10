@@ -83,7 +83,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 ## Phase 22: Code quality
 
-- [ ] 22.5 Property-based tests for the sorted-draw costing
 - [ ] 22.6 Mutation testing of the reward module
 
 ## Phase 23: Serving
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-11-08: 22.2 Strict type checking for `evaluation`
 - [x] 2025-11-08: 22.3 Strict type checking for `synthetic` and `robustness`
 - [x] 2025-11-10: 22.4 Strict type checking for `causal`
+- [x] 2025-11-10: 22.5 Property-based tests for the sorted-draw costing

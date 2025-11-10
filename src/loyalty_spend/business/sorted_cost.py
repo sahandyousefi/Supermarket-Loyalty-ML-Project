@@ -29,25 +29,34 @@ from loyalty_spend.business.rewards import (
 
 class SortedDraws:
     def __init__(self, spend: ArrayLike) -> None:
-        s = np.sort(np.clip(np.asarray(spend, float), 0.0, None), axis=1)
-        self.m, self.n = s.shape
-        # Each draw is shifted by a multiple of a span larger than its range, so
-        # one search over the flattened array answers a query in every draw.
-        self.span = float(s.max()) + 1.0 if s.size else 1.0
-        self.offset = np.arange(self.m) * self.span
-        self.keys = (s + self.offset[:, None]).ravel()
-        prefix = np.cumsum(s, axis=1)
+        self.sorted = np.sort(np.clip(np.asarray(spend, float), 0.0, None), axis=1)
+        self.m, self.n = self.sorted.shape
+        self.rows = np.arange(self.m)
+        prefix = np.cumsum(self.sorted, axis=1)
         self.prefix = np.concatenate([np.zeros((self.m, 1)), prefix], axis=1)
         self.total = prefix[:, -1] if self.n else np.zeros(self.m)
 
     def below(self, threshold: float) -> tuple[IntArray, FloatArray]:
-        """Count and total spend of members strictly below ``threshold``."""
+        r"""Count and total spend of members strictly below ``threshold``.
+
+        A binary search runs in every draw at once: each step compares one
+        element per draw, so the work is :math:`O(m \log n)` and every
+        comparison is exact. (Searching one flattened array with each draw
+        shifted by an offset is faster but loses thresholds that differ
+        from a spend value by less than the rounding error of the offset.)
+        """
         if np.isinf(threshold):
             return np.full(self.m, self.n), self.total
-        t = min(max(threshold, 0.0), self.span - 0.5)
-        pos = np.searchsorted(self.keys, t + self.offset, side="left")
-        count = pos - np.arange(self.m) * self.n
-        return count, self.prefix[np.arange(self.m), count]
+        lo: IntArray = np.zeros(self.m, int)
+        hi: IntArray = np.full(self.m, self.n)
+        while np.any(lo < hi):
+            mid = (lo + hi) // 2
+            active = lo < hi
+            probe = self.sorted[self.rows, np.minimum(mid, self.n - 1)]
+            smaller = active & (probe < threshold)
+            lo = np.where(smaller, mid + 1, lo)
+            hi = np.where(active & ~smaller, mid, hi)
+        return lo, self.prefix[self.rows, lo]
 
     def reach(self, threshold: float) -> float:
         """Expected share of members with spend at or above ``threshold``."""
