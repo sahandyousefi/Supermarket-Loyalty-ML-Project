@@ -19,6 +19,8 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
+from loyalty_spend.arrays import FloatArray
+
 
 def indicator_frame(X: pd.DataFrame) -> pd.DataFrame:
     """Numeric columns as they are, categorical columns as level indicators."""
@@ -32,8 +34,8 @@ def indicator_frame(X: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(parts, axis=1)
 
 
-def _weighted_mean(x: np.ndarray, w: np.ndarray) -> np.ndarray:
-    return (w[:, None] * x).sum(axis=0) / w.sum()
+def _weighted_mean(x: FloatArray, w: FloatArray) -> FloatArray:
+    return np.asarray((w[:, None] * x).sum(axis=0) / w.sum(), float)
 
 
 def standardized_mean_differences(
@@ -52,14 +54,14 @@ def standardized_mean_differences(
     return pd.Series(smd, index=D.columns)
 
 
-def ate_weights(propensity: ArrayLike, t: ArrayLike) -> np.ndarray:
+def ate_weights(propensity: ArrayLike, t: ArrayLike) -> FloatArray:
     """Inverse probability weights for the average treatment effect."""
     e = np.asarray(propensity, float)
     t = np.asarray(t, int)
     return np.where(t == 1, 1 / e, 1 / (1 - e))
 
 
-def att_weights(propensity: ArrayLike, t: ArrayLike) -> np.ndarray:
+def att_weights(propensity: ArrayLike, t: ArrayLike) -> FloatArray:
     """Weights that reweight controls to the treated population."""
     e = np.asarray(propensity, float)
     t = np.asarray(t, int)

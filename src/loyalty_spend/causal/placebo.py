@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.causal.data import CausalData
 from loyalty_spend.causal.estimators import _g_computation, outcome_model
 
@@ -29,7 +30,7 @@ def regression_point_estimate(data: CausalData) -> float:
 @dataclass
 class PlaceboResult:
     observed: float
-    placebo: np.ndarray
+    placebo: FloatArray
 
     @property
     def p_value(self) -> float:

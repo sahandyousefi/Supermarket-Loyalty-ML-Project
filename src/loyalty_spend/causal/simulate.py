@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from scipy.special import expit, logit
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.causal.data import PRE_TREATMENT, TREATMENT
 from loyalty_spend.data.schema import FEATURES, ID, LOYALTY_ORDER, TARGET
 from loyalty_spend.features.preprocess import split_xy
@@ -24,8 +25,8 @@ from loyalty_spend.features.preprocess import split_xy
 @dataclass
 class SimulatedStudy:
     frame: pd.DataFrame
-    effect: np.ndarray
-    propensity: np.ndarray
+    effect: FloatArray
+    propensity: FloatArray
 
     @property
     def true_ate(self) -> float:
@@ -37,7 +38,7 @@ class SimulatedStudy:
         return float(self.effect[treated].mean())
 
 
-def _pre_treatment_signal(train: pd.DataFrame, X: pd.DataFrame) -> np.ndarray:
+def _pre_treatment_signal(train: pd.DataFrame, X: pd.DataFrame) -> FloatArray:
     from sklearn.linear_model import LinearRegression
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import OneHotEncoder
@@ -47,7 +48,8 @@ def _pre_treatment_signal(train: pd.DataFrame, X: pd.DataFrame) -> np.ndarray:
     ).fit(train[PRE_TREATMENT].astype(str), train[TARGET].astype(float))
     signal = model.predict(X[PRE_TREATMENT].astype(str))
     sd = signal.std()
-    return (signal - signal.mean()) / sd if sd > 0 else signal * 0.0
+    out = (signal - signal.mean()) / sd if sd > 0 else signal * 0.0
+    return np.asarray(out, float)
 
 
 def simulate_promotion(

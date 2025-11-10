@@ -19,6 +19,8 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+from loyalty_spend.arrays import FloatArray
+
 
 def design(X: pd.DataFrame) -> ColumnTransformer:
     """One-hot categories and standardized numerics of any covariate frame."""
@@ -62,7 +64,7 @@ def crossfit_propensity(
     n_folds: int = 5,
     seed: int = 0,
     clip: float = 1e-3,
-) -> np.ndarray:
+) -> FloatArray:
     """Out-of-fold estimates of ``P(T = 1 | X)``, clipped to ``[clip, 1 - clip]``."""
     t = np.asarray(t, int)
     model = model if model is not None else propensity_model(X)

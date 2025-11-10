@@ -20,6 +20,7 @@ from sklearn.base import BaseEstimator, clone
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.pipeline import Pipeline
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.causal.propensity import design
 
 TREATMENT_COLUMN = "_treatment"
@@ -67,10 +68,11 @@ class SLearner:
         self.model_ = clone(learner).fit(Xt, np.asarray(y, float))
         return self
 
-    def effect(self, X: pd.DataFrame) -> np.ndarray:
+    def effect(self, X: pd.DataFrame) -> FloatArray:
         treated = X.assign(**{TREATMENT_COLUMN: 1.0})
         control = X.assign(**{TREATMENT_COLUMN: 0.0})
-        return self.model_.predict(treated) - self.model_.predict(control)
+        effect = self.model_.predict(treated) - self.model_.predict(control)
+        return np.asarray(effect, float)
 
 
 class TLearner:
@@ -92,8 +94,8 @@ class TLearner:
         self.mu1_ = clone(learner).fit(X[t == 1], y[t == 1])
         return self
 
-    def effect(self, X: pd.DataFrame) -> np.ndarray:
-        return self.mu1_.predict(X) - self.mu0_.predict(X)
+    def effect(self, X: pd.DataFrame) -> FloatArray:
+        return np.asarray(self.mu1_.predict(X) - self.mu0_.predict(X), float)
 
 
 class XLearner:
@@ -126,9 +128,10 @@ class XLearner:
         self.propensity_ = propensity_model(X).fit(X, t)
         return self
 
-    def effect(self, X: pd.DataFrame) -> np.ndarray:
+    def effect(self, X: pd.DataFrame) -> FloatArray:
         e = self.propensity_.predict_proba(X)[:, 1]
-        return e * self.tau0_.predict(X) + (1 - e) * self.tau1_.predict(X)
+        effect = e * self.tau0_.predict(X) + (1 - e) * self.tau1_.predict(X)
+        return np.asarray(effect, float)
 
 
 class DRLearner:
@@ -163,8 +166,8 @@ class DRLearner:
         self.model_ = clone(learner).fit(data.X, self.pseudo_outcome_)
         return self
 
-    def effect(self, X: pd.DataFrame) -> np.ndarray:
-        return self.model_.predict(X)
+    def effect(self, X: pd.DataFrame) -> FloatArray:
+        return np.asarray(self.model_.predict(X), float)
 
 
 class RLearner:
@@ -216,8 +219,8 @@ class RLearner:
         )
         return self
 
-    def effect(self, X: pd.DataFrame) -> np.ndarray:
-        return self.model_.predict(X)
+    def effect(self, X: pd.DataFrame) -> FloatArray:
+        return np.asarray(self.model_.predict(X), float)
 
 
 LEARNERS = {

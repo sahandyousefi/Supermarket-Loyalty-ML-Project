@@ -22,12 +22,14 @@ import pandas as pd
 from numpy.typing import ArrayLike
 from scipy import stats
 
+from loyalty_spend.arrays import BoolArray, FloatArray
 
-def threshold_rule(tau_hat: ArrayLike, cost: float, margin: float = 1.0) -> np.ndarray:
+
+def threshold_rule(tau_hat: ArrayLike, cost: float, margin: float = 1.0) -> BoolArray:
     """Offer the promotion where its predicted profit exceeds its cost."""
     if margin <= 0:
         raise ValueError("margin must be positive")
-    return np.asarray(tau_hat, float) * margin > cost
+    return np.asarray(np.asarray(tau_hat, float) * margin > cost, bool)
 
 
 def policy_value(
@@ -68,7 +70,7 @@ def compare_policies(
 
 def budget_rule(
     tau_hat: ArrayLike, max_share: float, cost: float = 0.0, margin: float = 1.0
-) -> np.ndarray:
+) -> FloatArray:
     """Offer the promotion to at most ``max_share`` of members, best first.
 
     Members are ranked by predicted effect and only those whose predicted
@@ -84,7 +86,7 @@ def budget_rule(
         return chosen
     order = np.argsort(-tau, kind="stable")[:k]
     chosen[order] = True
-    return chosen & threshold_rule(tau, cost, margin)
+    return np.asarray(chosen & threshold_rule(tau, cost, margin), bool)
 
 
 def budget_curve(

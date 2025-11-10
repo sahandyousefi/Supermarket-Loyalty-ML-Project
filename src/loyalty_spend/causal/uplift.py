@@ -24,12 +24,14 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
+from loyalty_spend.arrays import FloatArray, IntArray
 
-def _order(tau_hat: np.ndarray, seed: int) -> np.ndarray:
+
+def _order(tau_hat: FloatArray, seed: int) -> IntArray:
     # Random tie-breaking so that constant predictions give the random line.
     # The extra entropy keeps the stream apart from a caller's data generator.
     rng = np.random.default_rng((seed, 17))
-    return np.lexsort((rng.uniform(size=len(tau_hat)), -tau_hat))
+    return np.asarray(np.lexsort((rng.uniform(size=len(tau_hat)), -tau_hat)))
 
 
 def qini_curve(

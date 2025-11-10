@@ -27,6 +27,7 @@ from scipy import stats
 from sklearn.base import BaseEstimator, clone
 from sklearn.model_selection import StratifiedKFold
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.causal.data import CausalData
 from loyalty_spend.causal.estimators import EffectEstimate, outcome_model
 from loyalty_spend.causal.propensity import propensity_model
@@ -36,9 +37,9 @@ from loyalty_spend.causal.propensity import propensity_model
 class Nuisance:
     """Out-of-fold propensity and outcome predictions for every unit."""
 
-    e: np.ndarray
-    mu0: np.ndarray
-    mu1: np.ndarray
+    e: FloatArray
+    mu0: FloatArray
+    mu1: FloatArray
 
 
 def crossfit_nuisance(
@@ -65,7 +66,7 @@ def crossfit_nuisance(
 
 
 def _estimate(
-    method: str, estimand: str, scores: np.ndarray, value: float
+    method: str, estimand: str, scores: FloatArray, value: float
 ) -> EffectEstimate:
     n = len(scores)
     se = float(scores.std(ddof=1) / np.sqrt(n))
@@ -75,7 +76,7 @@ def _estimate(
     )
 
 
-def aipw_scores(data: CausalData, nuisance: Nuisance) -> np.ndarray:
+def aipw_scores(data: CausalData, nuisance: Nuisance) -> FloatArray:
     t, y = data.t, data.y
     e, mu0, mu1 = nuisance.e, nuisance.mu0, nuisance.mu1
     return mu1 - mu0 + t * (y - mu1) / e - (1 - t) * (y - mu0) / (1 - e)

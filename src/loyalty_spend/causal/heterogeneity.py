@@ -27,6 +27,8 @@ from numpy.typing import ArrayLike
 from scipy import stats
 from sklearn.model_selection import StratifiedKFold
 
+from loyalty_spend.arrays import FloatArray
+
 
 def crossfit_cate(
     factory: Callable[[], object],
@@ -35,7 +37,7 @@ def crossfit_cate(
     y: ArrayLike,
     n_folds: int = 5,
     seed: int = 0,
-) -> np.ndarray:
+) -> FloatArray:
     """Out-of-fold CATE predictions from a meta-learner factory."""
     t = np.asarray(t, int)
     y = np.asarray(y, float)
@@ -47,14 +49,14 @@ def crossfit_cate(
     return out
 
 
-def _ols_hc1(Z: np.ndarray, v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _ols_hc1(Z: FloatArray, v: FloatArray) -> tuple[FloatArray, FloatArray]:
     beta, *_ = np.linalg.lstsq(Z, v, rcond=None)
     resid = v - Z @ beta
     n, k = Z.shape
     bread = np.linalg.pinv(Z.T @ Z)
     meat = Z.T @ (Z * resid[:, None] ** 2)
     cov = bread @ meat @ bread * n / (n - k)
-    return beta, np.sqrt(np.diag(cov))
+    return np.asarray(beta, float), np.asarray(np.sqrt(np.diag(cov)), float)
 
 
 def blp_test(proxy: ArrayLike, scores: ArrayLike) -> dict[str, float]:

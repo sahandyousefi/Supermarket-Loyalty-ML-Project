@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
+from loyalty_spend.arrays import BoolArray
 from loyalty_spend.causal.data import CausalData
 from loyalty_spend.causal.doubly_robust import aipw_scores, split_nuisance
 from loyalty_spend.causal.heterogeneity import blp_test, clan, gates
@@ -36,7 +38,7 @@ def _halves(
         idx = np.flatnonzero(data.t == arm)
         main[rng.permutation(idx)[: len(idx) // 2]] = True
 
-    def subset(mask: np.ndarray) -> CausalData:
+    def subset(mask: BoolArray) -> CausalData:
         return CausalData(
             data.X[mask].reset_index(drop=True), data.t[mask], data.y[mask]
         )
@@ -85,7 +87,7 @@ def analyse_targeting(
         budgets.append(budget_curve(proxy, psi, cost, margin))
         qinis.append(qini_coefficient(dr_gain_curve(proxy, psi, seed=seed), len(psi)))
 
-    def median_dict(items: list[dict]) -> dict[str, float]:
+    def median_dict(items: list[dict[str, Any]]) -> dict[str, float]:
         frame = pd.DataFrame(items)
         out = {k: float(v) for k, v in frame.median().items()}
         for k in [c for c in frame.columns if c.endswith("p_value")]:

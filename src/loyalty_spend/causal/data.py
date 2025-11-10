@@ -33,6 +33,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.data.schema import TARGET
 
 TREATMENT = "promotion"
@@ -45,15 +46,15 @@ class CausalData:
     """Covariates, binary treatment and outcome of an observational study."""
 
     X: pd.DataFrame
-    t: np.ndarray
-    y: np.ndarray
+    t: FloatArray
+    y: FloatArray
 
     def __post_init__(self) -> None:
         if not (len(self.X) == len(self.t) == len(self.y)):
             raise ValueError("X, t and y must have the same length")
         if not set(np.unique(self.t)) <= {0, 1}:
             raise ValueError("treatment must be coded 0 or 1")
-        if self.t.min() == self.t.max():
+        if np.min(self.t) == np.max(self.t):
             raise ValueError("need both treated and control units")
 
     @property

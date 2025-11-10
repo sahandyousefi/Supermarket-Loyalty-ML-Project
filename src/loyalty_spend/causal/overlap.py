@@ -17,6 +17,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike
 
+from loyalty_spend.arrays import BoolArray
+
 
 def effective_sample_size(weights: ArrayLike) -> float:
     w = np.asarray(weights, float)
@@ -66,9 +68,9 @@ def crump_threshold(propensity: ArrayLike) -> float:
     return 0.1
 
 
-def trim_mask(propensity: ArrayLike, alpha: float) -> np.ndarray:
+def trim_mask(propensity: ArrayLike, alpha: float) -> BoolArray:
     """Units whose propensity lies in ``[alpha, 1 - alpha]``."""
     if not 0.0 <= alpha < 0.5:
         raise ValueError("alpha must be in [0, 0.5)")
     e = np.asarray(propensity, float)
-    return (e >= alpha) & (e <= 1 - alpha)
+    return np.asarray((e >= alpha) & (e <= 1 - alpha), bool)

@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from loyalty_spend.arrays import FloatArray
 from loyalty_spend.causal.balance import indicator_frame
 from loyalty_spend.causal.data import CausalData
 
@@ -49,7 +50,7 @@ class RegressionFit:
         return float(t2 / (t2 + self.df))
 
 
-def _ols_coefficient(Z: np.ndarray, y: np.ndarray, column: int) -> RegressionFit:
+def _ols_coefficient(Z: FloatArray, y: FloatArray, column: int) -> RegressionFit:
     Z = np.column_stack([np.ones(len(y)), Z])
     beta, *_ = np.linalg.lstsq(Z, y, rcond=None)
     resid = y - Z @ beta
@@ -103,12 +104,12 @@ def sensitivity_summary(
 
 
 def adjusted_estimates(
-    fit: RegressionFit, grid: np.ndarray | None = None
+    fit: RegressionFit, grid: FloatArray | None = None
 ) -> pd.DataFrame:
     """Estimate after removing the worst-case bias, on a grid of equal strengths."""
-    grid = np.linspace(0.0, 0.3, 7) if grid is None else grid
+    strengths = np.linspace(0.0, 0.3, 7) if grid is None else np.asarray(grid, float)
     rows = []
-    for r2 in grid:
+    for r2 in strengths:
         bias = bias_bound(fit, r2, r2)
         rows.append(
             {
@@ -120,14 +121,14 @@ def adjusted_estimates(
     return pd.DataFrame(rows)
 
 
-def _rss(Z: np.ndarray, v: np.ndarray) -> float:
+def _rss(Z: FloatArray, v: FloatArray) -> float:
     Z = np.column_stack([np.ones(len(v)), Z]) if Z.size else np.ones((len(v), 1))
     beta, *_ = np.linalg.lstsq(Z, v, rcond=None)
     r = v - Z @ beta
     return float(r @ r)
 
 
-def _partial_r2(v: np.ndarray, full: np.ndarray, reduced: np.ndarray) -> float:
+def _partial_r2(v: FloatArray, full: FloatArray, reduced: FloatArray) -> float:
     rss_reduced = _rss(reduced, v)
     return (rss_reduced - _rss(full, v)) / rss_reduced if rss_reduced > 0 else 0.0
 

@@ -83,6 +83,7 @@ module = [
     "loyalty_spend.business.*",
     "loyalty_spend.synthetic.*",
     "loyalty_spend.robustness.*",
+    "loyalty_spend.causal.*",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
@@ -94,6 +95,7 @@ module = [
     "loyalty_spend.evaluation.*",
     "loyalty_spend.synthetic.*",
     "loyalty_spend.robustness.*",
+    "loyalty_spend.causal.*",
 ]
 disallow_any_generics = true
 disallow_untyped_calls = true

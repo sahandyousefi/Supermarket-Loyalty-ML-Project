@@ -17,6 +17,7 @@ from sklearn.base import BaseEstimator, clone
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 
+from loyalty_spend.arrays import FloatArray, IntArray
 from loyalty_spend.causal.data import CausalData
 from loyalty_spend.causal.propensity import crossfit_propensity, design
 
@@ -66,20 +67,20 @@ def hajek_ipw(y: ArrayLike, t: ArrayLike, e: ArrayLike, estimand: str = "ate") -
 
 
 def _bootstrap(
-    stat: Callable[[np.ndarray], float],
+    stat: Callable[[IntArray], float],
     n: int,
     n_boot: int,
     seed: int,
-    t: np.ndarray,
-) -> np.ndarray:
+    t: FloatArray,
+) -> FloatArray:
     rng = np.random.default_rng(seed)
     draws = []
     for _ in range(n_boot):
         idx = rng.integers(0, n, size=n)
-        if t[idx].min() == t[idx].max():
+        if np.min(t[idx]) == np.max(t[idx]):
             continue
         draws.append(stat(idx))
-    return np.asarray(draws)
+    return np.asarray(draws, float)
 
 
 def ipw(
@@ -128,7 +129,7 @@ def outcome_model(X: pd.DataFrame) -> Pipeline:
 
 
 def _g_computation(
-    X: pd.DataFrame, t: np.ndarray, y: np.ndarray, estimand: str, model: BaseEstimator
+    X: pd.DataFrame, t: FloatArray, y: FloatArray, estimand: str, model: BaseEstimator
 ) -> float:
     mu0 = clone(model).fit(X[t == 0], y[t == 0]).predict(X)
     if estimand == "att":
