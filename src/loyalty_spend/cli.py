@@ -1079,8 +1079,8 @@ def _train(args: argparse.Namespace) -> int:
 
 
 def _predict_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument("input", help="CSV of customers to score")
-    p.add_argument("output")
+    p.add_argument("input", help="CSV or Parquet file of customers to score")
+    p.add_argument("output", help="CSV or Parquet file, chosen by suffix")
     p.add_argument("--model", default="artifacts/model.joblib")
     p.add_argument(
         "--alpha",
@@ -1099,7 +1099,7 @@ def _predict_args(p: argparse.ArgumentParser) -> None:
 def _predict(args: argparse.Namespace) -> int:
     import pandas as pd
 
-    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.data.io import load_clean, write_table
     from loyalty_spend.data.schema import ID, TARGET
     from loyalty_spend.models.persistence import load_bundle
 
@@ -1117,7 +1117,7 @@ def _predict(args: argparse.Namespace) -> int:
     else:
         pred = bundle.predict(frame)
         out = pd.DataFrame({ID: frame[ID], TARGET: pred.round(2)})
-    out.to_csv(args.output, index=False)
+    write_table(out, args.output)
     print(f"scored {len(out)} customers with '{bundle.name}', wrote {args.output}")
     return 0
 
