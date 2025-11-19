@@ -91,7 +91,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 The coverage audit of phase 19 shows that forecast errors are larger for members who joined in August and September and smaller for April, June and October joiners. The model treats the noise as constant.
 
-- [ ] 24.1 Tests of equal error variance across joining months
 - [ ] 24.2 Feasible weighted least squares with a variance per month
 - [ ] 24.3 Predictive intervals and calibration of the weighted model
 - [ ] 24.4 Month-specific variances in the hierarchical Bayesian model
@@ -349,3 +348,4 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 - [x] 2025-11-10: 23.2 Request identifiers and structured logs
 - [x] 2025-11-19: 23.3 Latency benchmark of the service
 - [x] 2025-11-19: 23.4 Snapshot test of the OpenAPI schema
+- [x] 2025-11-19: 24.1 Tests of equal error variance across joining months
