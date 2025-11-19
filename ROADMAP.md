@@ -50,7 +50,7 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 15: Documentation and release
 
-These items close the year and come after phases 16 to 23.
+These items close the year and come after phases 16 to 27.
 
 - [ ] 15.1 Walkthrough notebook for the promotion analysis
 - [ ] 15.2 Walkthrough notebook for reward programme design
@@ -86,6 +86,36 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 ## Phase 23: Serving
 
+
+## Phase 24: Error variance that depends on the joining month
+
+The coverage audit of phase 19 shows that forecast errors are larger for members who joined in August and September and smaller for April, June and October joiners. The model treats the noise as constant.
+
+- [ ] 24.1 Tests of equal error variance across joining months
+- [ ] 24.2 Feasible weighted least squares with a variance per month
+- [ ] 24.3 Predictive intervals and calibration of the weighted model
+- [ ] 24.4 Month-specific variances in the hierarchical Bayesian model
+- [ ] 24.5 Residual diagnostics of the high-variance months
+- [ ] 24.6 Documentation
+
+## Phase 25: Reproducibility
+
+- [ ] 25.1 Reference values of the reported results with tolerances
+- [ ] 25.2 `loyalty-spend reproduce` to compare a fresh run with the reference
+- [ ] 25.3 Determinism across processes and thread counts
+- [ ] 25.4 Pinned environment for the release
+
+## Phase 26: Checks at intake
+
+- [ ] 26.1 Duplicate and near-duplicate members
+- [ ] 26.2 Robust outlier screening of the amounts
+- [ ] 26.3 Intake section in the report
+
+## Phase 27: Release hygiene
+
+- [ ] 27.1 Consistency check of version, changelog and citation before a release
+- [ ] 27.2 Dependency audit in CI
+- [ ] 27.3 Container build and smoke test in CI
 
 ## Completed
 - [x] 2025-05-05: 1.1 Add a changelog that records the 1.0.0 release
