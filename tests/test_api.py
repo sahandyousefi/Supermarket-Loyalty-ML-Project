@@ -163,3 +163,11 @@ def test_request_id_is_echoed_or_generated(client, caplog):
     assert records[0]["request_id"] == "abc-123"
     assert {"path", "status", "ms", "model", "version"} <= set(records[0])
     assert records[0]["status"] == 200
+
+
+def test_benchmark_reports_every_batch_size(client):
+    from loyalty_spend.serving.benchmark import benchmark
+
+    table = benchmark(client, sizes=(1, 5), repeats=3)
+    assert list(table["batch_size"]) == [1, 5]
+    assert (table["p95_ms"] >= table["median_ms"]).all()

@@ -86,7 +86,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 ## Phase 23: Serving
 
-- [ ] 23.3 Latency benchmark of the service
 - [ ] 23.4 Snapshot test of the OpenAPI schema
 
 ## Completed
@@ -319,3 +318,4 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 - [x] 2025-11-10: 22.6 Mutation testing of the reward module
 - [x] 2025-11-10: 23.1 Batch scoring from Parquet files
 - [x] 2025-11-10: 23.2 Request identifiers and structured logs
+- [x] 2025-11-19: 23.3 Latency benchmark of the service
