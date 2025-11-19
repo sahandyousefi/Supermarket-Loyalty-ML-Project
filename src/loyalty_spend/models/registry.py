@@ -17,6 +17,7 @@ _MODULES = (
     "loyalty_spend.models.linear",
     "loyalty_spend.models.trees",
     "loyalty_spend.models.gaussian_process",
+    "loyalty_spend.models.weighted",
     "loyalty_spend.models.deep.estimator",
 )
 
