@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -171,3 +173,27 @@ def test_benchmark_reports_every_batch_size(client):
     table = benchmark(client, sizes=(1, 5), repeats=3)
     assert list(table["batch_size"]) == [1, 5]
     assert (table["p95_ms"] >= table["median_ms"]).all()
+
+
+SNAPSHOT = Path(__file__).parent / "snapshots" / "openapi.json"
+
+
+def _schema(client):
+    schema = client.app.openapi()
+    schema["info"].pop("version", None)
+    return schema
+
+
+def test_openapi_schema_matches_the_snapshot(client):
+    """A change to the public interface must be made on purpose.
+
+    Regenerate with ``UPDATE_SNAPSHOTS=1 pytest tests/test_api.py`` and
+    review the diff of the snapshot together with the code.
+    """
+    import json
+    import os
+
+    current = json.dumps(_schema(client), indent=2, sort_keys=True) + "\n"
+    if os.environ.get("UPDATE_SNAPSHOTS") == "1":
+        SNAPSHOT.write_text(current)
+    assert SNAPSHOT.read_text() == current
