@@ -47,3 +47,24 @@ def test_group_sd_intervals_cover_the_truth():
         table = group_variances(rng.normal(0, 2.0, 40), np.zeros(40))
         hits += table["sd_low"].item() <= 2.0 <= table["sd_high"].item()
     assert hits / 300 == pytest.approx(0.95, abs=0.035)
+
+
+def test_variance_profile_finds_the_driving_attribute():
+    import pandas as pd
+
+    from loyalty_spend.robustness.heteroscedasticity import variance_profile
+
+    rng = np.random.default_rng(4)
+    g = np.repeat(np.arange(10), 100)
+    scale = np.linspace(0.1, 1.0, 10)[g]
+    frame = pd.DataFrame(
+        {
+            "g": g.astype(str),
+            "driver": rng.normal(0, scale),
+            "unrelated": rng.normal(0, 1, len(g)),
+        }
+    )
+    resid = rng.normal(0, scale)
+    table, corr = variance_profile(resid, frame, "g", ["driver", "unrelated"])
+    assert len(table) == 10 and "sd_driver" in table
+    assert corr["driver"] > 0.9 and abs(corr["unrelated"]) < 0.7

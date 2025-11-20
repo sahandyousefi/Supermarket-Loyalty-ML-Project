@@ -80,3 +80,30 @@ def variance_tests(residuals: ArrayLike, groups: ArrayLike) -> pd.DataFrame:
             },
         ]
     )
+
+
+def variance_profile(
+    residuals: ArrayLike,
+    frame: pd.DataFrame,
+    group: str,
+    columns: list[str],
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Residual SD of every group next to the within-group SD of other columns.
+
+    If the error variance of a group follows the spread of an observed
+    attribute within that group, the attribute is a candidate for modelling
+    the variance; the second result gives the rank correlation across
+    groups between the residual SD and the SD of each column.
+    """
+    data = frame[[group, *columns]].copy()
+    data["residual"] = np.asarray(residuals, float)
+    table = data.groupby(group, observed=True)[["residual", *columns]].std()
+    table.columns = [f"sd_{c}" for c in table.columns]
+    corr = pd.Series(
+        {
+            c: float(stats.spearmanr(table["sd_residual"], table[f"sd_{c}"]).statistic)
+            for c in columns
+        },
+        name="spearman_with_residual_sd",
+    )
+    return table.reset_index(), corr

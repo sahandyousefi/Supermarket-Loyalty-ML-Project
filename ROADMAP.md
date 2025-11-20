@@ -91,7 +91,6 @@ Phase 4 found no detectable effect of the sign-up promotion in observational dat
 
 The coverage audit of phase 19 shows that forecast errors are larger for members who joined in August and September and smaller for April, June and October joiners. The model treats the noise as constant.
 
-- [ ] 24.5 Residual diagnostics of the high-variance months
 - [ ] 24.6 Documentation
 
 ## Phase 25: Reproducibility
@@ -349,3 +348,4 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 - [x] 2025-11-19: 24.2 Feasible weighted least squares with a variance per month
 - [x] 2025-11-20: 24.3 Predictive intervals and calibration of the weighted model
 - [x] 2025-11-20: 24.4 Month-specific variances in the hierarchical Bayesian model
+- [x] 2025-11-20: 24.5 Residual diagnostics of the high-variance months
