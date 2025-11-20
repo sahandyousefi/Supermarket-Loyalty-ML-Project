@@ -50,3 +50,17 @@ def test_unseen_group_gets_the_pooled_variance():
     new["joining_month"] = pd.Categorical(["Dec"] * 3)
     assert np.allclose(model.predict_sd(new), np.sqrt(model.pooled_variance_))
     assert "wls_month" in available_models()
+
+
+def test_weighted_intervals_are_calibrated_within_groups():
+    from loyalty_spend.models.weighted import (
+        cross_fitted_predictive,
+        predictive_comparison,
+    )
+
+    X, y, _ = _data(np.random.default_rng(4), 1500)
+    table = cross_fitted_predictive(X, y, n_splits=3)
+    result = predictive_comparison(table, X["joining_month"]).set_index("model")
+    assert result.loc["ols", "months_flagged"] == 2
+    assert result.loc["wls", "months_flagged"] == 0
+    assert result.loc["wls", "crps"] < 0.8 * result.loc["ols", "crps"]
