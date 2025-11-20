@@ -358,6 +358,33 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 
 **On the supplied data.** `loyalty-spend control-chart` draws batches of 100 members with replacement from the out-of-fold residuals of the OLS champion and lowers the spend of the 1-3 year band from batch 100. Over 200 simulated streams, a drop of 0.1 (about one standard error of that band's batch mean) is detected with a median delay of 25 batches by EWMA and CUSUM, 30 by MHWMA and 40 by HWMA; a drop of 0.2 within 8 to 10 batches by all but HWMA (18). In 20 to 28% of the streams a chart raised a false alarm before the change, close to the $1 - (1 - 1/370)^{100} = 0.24$ implied by the design. EWMA or CUSUM on the overall mean, combined with a Shewhart check of the spread, is the recommended setup.
 
+## 12d. Error variance by joining month
+
+**Tests.** Out-of-fold OLS residuals are grouped by attribute. Bartlett's test assumes normal errors and rejects for heavy tails alone; the Brown-Forsythe test (Levene's test on absolute deviations from group medians) and the Koenker form of the Breusch-Pagan test, $nR^2$ from regressing the squared residuals on the group dummies (Koenker, 1981), keep their level without normality, as a simulation with $t_5$ errors in the tests confirms. For joining month all three reject ($F_{\mathrm{BF}} = 14.9$, $nR^2 = 55.7$ on 11 degrees of freedom, both $p < 10^{-6}$). For region and promotion only Bartlett rejects, and for tenure band only Bartlett and, marginally, Breusch-Pagan ($p = 0.094$). The residual standard deviation ranges from 0.104 for June joiners (95% interval 0.091 to 0.122) to 0.551 for August joiners (0.475 to 0.657).
+
+**Where it comes from.** Across the twelve months, the residual standard deviation follows the within-month standard deviation of first-month spend almost one for one (0.110 against 0.104 in June, 0.464 against 0.551 in August; Spearman correlation 0.87 over months). Within a month the residuals are uncorrelated with first-month spend ($|r| \le 0.04$), so the amount itself does not predict the error; rather, months whose members are more varied in their first month are also more varied in the rest of the year. This makes the within-month dispersion of first-month spend a usable proxy for the error variance of a joining cohort before any annual spend has been observed.
+
+**Weighted least squares.** Feasible WLS estimates a variance per month from OLS residuals, shrinks it towards the pooled variance on the log scale, $\log\hat\sigma_g^2 = (n_g\log s_g^2 + k\log s^2)/(n_g + k)$ with $k = 10$, and refits with weights $1/\hat\sigma_g^2$, three times. Shrinking the variances themselves rather than their logarithms pulls a quiet month far towards a pooled value dominated by the noisy ones; in a simulation with standard deviations 0.5 and 5 the quiet group was over-covered (93.4% for a 90% target) until the shrinkage was moved to the log scale. With five-fold cross-fitting on `train.csv` and normal intervals:
+
+| Model | RMSE | Coverage | Mean width | Interval score | CRPS | PIT $\chi^2$ | Months flagged |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| OLS, one variance | 0.310 | 0.909 | 0.992 | 1.408 | 0.161 | 81.6 | 4 |
+| WLS, variance per month | 0.309 | 0.912 | 0.905 | 1.233 | 0.154 | 28.6 | 0 |
+
+The point forecasts barely change, but the intervals become 9% narrower on average while covering every month, and the probability integral transform is much closer to uniform. Months are flagged by the audit of section 7.
+
+**Bayesian model.** The hierarchical model of section 10a can give each month its own variance. With independent $\mathrm{IG}(1, 1)$ priors the prior scale of 1 is ten times the typical residual variance and inflates the variances of small months; letting the scale be unknown, $\sigma_k^2 \sim \mathrm{IG}(a_0, b)$ with $b \sim \mathrm{Gamma}(1, 1)$, and drawing $b$ from its conjugate conditional in every sweep pools the month variances towards a common scale learned from the data. WAIC, four chains of 1,000 kept draws each, all $\hat R \le 1.005$:
+
+| Error model | WAIC | $p_{\mathrm{WAIC}}$ |
+| --- | --- | --- |
+| Normal, one variance | 497.2 | 27.5 |
+| Student-t, $\nu = 4$, one variance | 263.4 | 22.9 |
+| Normal, variance per month, fixed prior scale | 217.3 | 30.1 |
+| Normal, variance per month, pooled | 103.3 | 44.1 |
+| Student-t, $\nu = 4$, variance per month, pooled | 55.4 | 33.3 |
+
+Most of what the Student-t errors gained over the normal model came from the months with larger errors; modelling the month variances directly does more, and the two together fit best. `loyalty-spend bayes --variance-by joining_month --pool-variances --nu 4` fits the last model.
+
 ## 13. Assumptions and limitations
 
 - The data are a small synthetic sample from a certification exercise. Results on `train.csv` describe that sample; the simulation study exists because those data cannot discriminate between methods.
@@ -416,6 +443,7 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 - Kennedy, E. H. (2023). Towards optimal doubly robust estimation of heterogeneous causal effects. *Electronic Journal of Statistics*, 17(2), 3008-3049.
 - Kleven, H. J. (2016). Bunching. *Annual Review of Economics*, 8, 435-464.
 - Knoth, S., Saleh, N. A., Mahmoud, M. A., Woodall, W. H., and Tercero-Gomez, V. G. (2021). A critique of a variety of memory-based process monitoring methods. *arXiv preprint arXiv:2110.10680*.
+- Koenker, R. (1981). A note on studentizing a test for heteroscedasticity. *Journal of Econometrics*, 17(1), 107-112.
 - Koenker, R., and Bassett, G. (1978). Regression quantiles. *Econometrica*, 46(1), 33-50.
 - Kunzel, S. R., Sekhon, J. S., Bickel, P. J., and Yu, B. (2019). Metalearners for estimating heterogeneous treatment effects using machine learning. *Proceedings of the National Academy of Sciences*, 116(10), 4156-4165.
 - Lakshminarayanan, B., Pritzel, A., and Blundell, C. (2017). Simple and scalable predictive uncertainty estimation using deep ensembles. *Advances in Neural Information Processing Systems*, 30.
