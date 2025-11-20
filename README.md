@@ -210,8 +210,19 @@ Almost all of the cost sensitivity sits at the top threshold, where many custome
 | Normal errors | 497.2 | 27.5 | 0.37 to 0.91 |
 | Student-t errors, nu = 4 | 263.4 | 22.9 | 0.01 to 0.85 |
 | Normal errors, variance by tenure band | 470.5 | 34.9 | 0.12 to 0.88 |
+| Normal errors, variance by joining month, pooled scale | 103.3 | 44.1 | |
+| Student-t errors, variance by joining month, pooled scale | 55.4 | 33.3 | |
 
-Lower WAIC is better: heavy-tailed errors fit the residuals far better than normal ones, and the residual scale differs by tenure band (0.27 for 10+ years, 0.40 for 1-3 years). Every region effect lies within 0.06 of the average of the four, and all four 90% intervals include zero. Because only four regions inform the between-region scale, its posterior is set by the prior, which the prior sensitivity analysis makes explicit. With parameter uncertainty included, the reward cost of `test.csv` has a mean of 1,219.32 and a 90% interval of 1,215.03 to 1,223.91.
+Lower WAIC is better: heavy-tailed errors fit the residuals far better than normal ones, but most of that gain comes from the joining months with larger errors. Giving each month its own variance, pooled towards a scale learned from the data, does more, and combined with Student-t errors it fits best. Every region effect lies within 0.06 of the average of the four, and all four 90% intervals include zero. Because only four regions inform the between-region scale, its posterior is set by the prior, which the prior sensitivity analysis makes explicit. With parameter uncertainty included, the reward cost of `test.csv` has a mean of 1,219.32 and a 90% interval of 1,215.03 to 1,223.91.
+
+### Error variance by joining month
+
+Forecast errors are five times larger for August joiners (residual SD 0.551) than for June joiners (0.104); the Brown-Forsythe and Koenker-Breusch-Pagan tests reject equal variances across months at p < 10^-6, while neither finds a difference across regions or the promotion. Across months, the error SD tracks the within-month SD of first-month spend almost one for one (Spearman 0.87), so a new cohort's first month already signals how predictable its annual spend will be.
+
+| Cross-fitted on train.csv | RMSE | Mean width of 90% interval | Interval score | Months with coverage off target |
+| --- | --- | --- | --- | --- |
+| OLS, one error variance | 0.310 | 0.992 | 1.408 | 4 of 12 |
+| Weighted least squares, variance per month | 0.309 | 0.905 | 1.233 | 0 of 12 |
 
 ### Explanations and what would change a tier
 
@@ -335,7 +346,7 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 
 **Segments.** Gower distance for mixed attributes, k-medoids with restarts, the number of segments by average silhouette width, and bootstrap Jaccard stability (Hennig, 2007) to tell real segments from artefacts of one sample.
 
-**Robustness.** Subgroup errors with bootstrap intervals, slice search with Benjamini-Hochberg control, stress tests on damaged inputs, closed-form Cook's distance and DFBETAS, learning curves with fold intervals, multiple imputation pooled by Rubin's rules, and a delta adjustment for values missing not at random.
+**Robustness.** Subgroup errors with bootstrap intervals, slice search with Benjamini-Hochberg control, stress tests on damaged inputs, closed-form Cook's distance and DFBETAS, learning curves with fold intervals, multiple imputation pooled by Rubin's rules, and a delta adjustment for values missing not at random. Tests of equal error variance that keep their level without normal errors, feasible weighted least squares with log-scale shrinkage of the month variances, and month variances pooled through a learned prior scale in the Gibbs sampler.
 
 **Synthetic data.** Gaussian copulas over empirical margins and frequency-encoded categories, stratified or with amounts conditional on the categories, evaluated by marginal and pairwise fidelity, train-on-synthetic test-on-real utility, distance to closest record against a held-out baseline, and a membership inference attack.
 
