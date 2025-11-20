@@ -116,3 +116,29 @@ def test_group_contrasts_sum_to_zero(synthetic):
     table = post.group_contrasts()
     assert table["mean"].sum() == pytest.approx(0.0, abs=1e-9)
     assert np.corrcoef(table["mean"], u - u.mean())[0, 1] > 0.98
+
+
+def test_pooled_variances_help_small_groups_with_a_misscaled_prior():
+    # Twelve groups of 15 members with residual SD near 0.2: the default
+    # prior scale b0 = 1 pulls every group variance up, a learned scale does not.
+    rng = np.random.default_rng(5)
+    n = 180
+    band = np.repeat(np.arange(12), 15)
+    sd = np.linspace(0.15, 0.25, 12)[band]
+    x = rng.normal(size=n)
+    y = 1 + x + rng.normal(size=n) * sd
+    X = pd.DataFrame(
+        {"x": x, "grp": rng.integers(0, 3, n).astype(str), "band": band.astype(str)}
+    )
+    kwargs = dict(group="grp", fixed=["x"], variance_by="band", n_chains=2)
+    fixed = fit_hierarchical(X, y, n_iter=600, n_warmup=200, **kwargs)
+    pooled = fit_hierarchical(
+        X, y, n_iter=600, n_warmup=200, pool_variances=True, **kwargs
+    )
+    est_fixed = np.sqrt(fixed.flat("sigma2")).mean(axis=0)
+    est_pooled = np.sqrt(pooled.flat("sigma2")).mean(axis=0)
+    truth = np.linspace(0.15, 0.25, 12)
+    assert np.mean(np.abs(est_pooled - truth)) < 0.5 * np.mean(
+        np.abs(est_fixed - truth)
+    )
+    assert pooled.variance_scale is not None and fixed.variance_scale is None

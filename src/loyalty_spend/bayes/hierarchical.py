@@ -22,7 +22,13 @@ down-weight outlying members (Geweke, 1993).
 
 With ``variance_by`` set, each level of that column has its own residual
 variance with an inverse-gamma prior, so tenure bands with more erratic
-spend get wider predictive distributions.
+spend get wider predictive distributions. With ``pool_variances`` the
+scale of that prior is itself unknown, :math:`\sigma_k^2 \sim
+\mathrm{IG}(a_0, b)` with :math:`b \sim \mathrm{Gamma}(c_0, d_0)`, and
+its conditional :math:`\mathrm{Gamma}(c_0 + K a_0, d_0 + \sum_k
+\sigma_k^{-2})` is drawn in every sweep, so the level variances are
+partially pooled towards a common scale learned from the data instead of
+towards the fixed prior scale.
 
 Fixed effects enter through the usual design (standardized numerics, one-hot
 categories); the grouping factor (region by default) gets partially pooled
@@ -55,6 +61,9 @@ class Priors:
     beta_variance: float = 1e4
     a0: float = 1.0
     b0: float = 1.0
+    # Gamma hyperprior on the scale of pooled variances.
+    c0: float = 1.0
+    d0: float = 1.0
 
 
 @dataclass
@@ -73,6 +82,7 @@ class Posterior:
     nu: float | None = None
     variance_column: str | None = None
     variance_levels: list[str] = field(default_factory=lambda: ["all"])
+    variance_scale: np.ndarray | None = None
 
     @property
     def n_chains(self) -> int:
@@ -227,6 +237,7 @@ def fit_hierarchical(
     n_iter: int = 1500,
     n_warmup: int = 500,
     seed: int = 0,
+    pool_variances: bool = False,
 ) -> Posterior:
     priors = priors or Priors()
     fixed = list(DEFAULT_FIXED if fixed is None else fixed)
@@ -263,6 +274,7 @@ def fit_hierarchical(
         "u": np.empty((n_chains, keep, G)),
         "sigma2": np.empty((n_chains, keep, K)),
         "tau2": np.empty((n_chains, keep)),
+        "scale": np.empty((n_chains, keep)),
     }
     root = np.random.default_rng(seed)
     for c in range(n_chains):
@@ -270,6 +282,7 @@ def fit_hierarchical(
         sigma2: np.ndarray = np.full(K, float(np.var(y)) * rng.uniform(0.1, 2.0))
         tau2 = float(np.var(y)) * rng.uniform(0.01, 1.0)
         u = rng.normal(scale=np.sqrt(tau2), size=G)
+        b = priors.b0
         for it in range(n_iter):
             # Joint draw of fixed and group effects: drawing them one after
             # the other mixes badly because the intercept and the mean of the
@@ -288,7 +301,13 @@ def fit_hierarchical(
                 # Student-t errors as a scale mixture: precision weights per member.
                 lam = rng.gamma((nu + 1) / 2, 2 / (nu + e**2 / sigma2[vi]))
             ssr = np.bincount(vi, weights=lam * e**2, minlength=K)
-            sigma2 = 1 / rng.gamma(priors.a0 + n_v / 2, 1 / (priors.b0 + ssr / 2))
+            sigma2 = 1 / rng.gamma(priors.a0 + n_v / 2, 1 / (b + ssr / 2))
+            if pool_variances:
+                b = float(
+                    rng.gamma(
+                        priors.c0 + K * priors.a0, 1 / (priors.d0 + np.sum(1 / sigma2))
+                    )
+                )
             tau2 = 1 / float(rng.gamma(priors.a0 + G / 2, 1 / (priors.b0 + u @ u / 2)))
             if it >= n_warmup:
                 k = it - n_warmup
@@ -296,6 +315,7 @@ def fit_hierarchical(
                 out["u"][c, k] = u
                 out["sigma2"][c, k] = sigma2
                 out["tau2"][c, k] = tau2
+                out["scale"][c, k] = b
     if variance_by is None:
         out["sigma2"] = out["sigma2"][:, :, 0]
     return Posterior(
@@ -311,6 +331,7 @@ def fit_hierarchical(
         nu,
         variance_by,
         levels,
+        out["scale"] if pool_variances else None,
     )
 
 

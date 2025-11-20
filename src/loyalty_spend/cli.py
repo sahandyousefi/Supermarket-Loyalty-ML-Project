@@ -565,6 +565,11 @@ def _bayes_args(p: argparse.ArgumentParser) -> None:
         "--nu", type=float, default=None, help="Student-t degrees of freedom"
     )
     p.add_argument("--variance-by", default=None, help="column with its own variance")
+    p.add_argument(
+        "--pool-variances",
+        action="store_true",
+        help="learn a common scale for the variances of --variance-by",
+    )
     p.add_argument("--chains", type=int, default=4)
     p.add_argument("--iter", type=int, default=1500)
     p.add_argument("--warmup", type=int, default=500)
@@ -593,6 +598,7 @@ def _bayes(args: argparse.Namespace) -> int:
         group=args.group,
         nu=args.nu,
         variance_by=args.variance_by,
+        pool_variances=args.pool_variances,
         n_chains=args.chains,
         n_iter=args.iter,
         n_warmup=args.warmup,
