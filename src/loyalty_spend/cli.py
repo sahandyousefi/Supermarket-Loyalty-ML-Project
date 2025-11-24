@@ -984,6 +984,51 @@ def _experiment(args: argparse.Namespace) -> int:
     return 0
 
 
+def _reproduce_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument("--reference", default="configs/reference.yaml")
+    p.add_argument(
+        "--update",
+        action="store_true",
+        help="overwrite the reference values with this run, keeping tolerances",
+    )
+
+
+@command(
+    "reproduce",
+    "rerun report sections and compare their results with the reference",
+    _reproduce_args,
+)
+def _reproduce(args: argparse.Namespace) -> int:
+    import dataclasses
+    import tempfile
+
+    import yaml
+
+    from loyalty_spend.ops.reproduce import compare, load_reference, write_reference
+    from loyalty_spend.reporting.report import build_report
+
+    cfg = load_config(args.config)
+    spec = yaml.safe_load(Path(args.reference).read_text())
+    references = load_reference(args.reference)
+    with tempfile.TemporaryDirectory() as tmp:
+        paths = dataclasses.replace(cfg.paths, report_dir=tmp)
+        build_report(
+            dataclasses.replace(cfg, paths=paths), sections=tuple(spec["sections"])
+        )
+        summary = json.loads((Path(tmp) / "summary.json").read_text())
+    if args.update:
+        tolerances = {r.path: r.rel_tol for r in references}
+        write_reference(summary, tolerances, args.reference, spec["sections"])
+        print(f"updated {len(tolerances)} reference values in {args.reference}")
+        return 0
+    table = compare(summary, references)
+    print(table.to_string(index=False, float_format=lambda v: f"{v:.6g}"))
+    failed = int((~table["ok"]).sum())
+    print(f"{len(table) - failed} of {len(table)} results reproduced")
+    return 1 if failed else 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")

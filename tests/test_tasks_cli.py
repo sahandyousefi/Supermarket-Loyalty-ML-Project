@@ -291,3 +291,19 @@ def test_interval_audit(cfg, tmp_path, capsys):
         "region",
         "joining_month",
     }
+
+
+def test_reproduce_command(cfg, tmp_path, capsys):
+    from loyalty_spend.ops.reproduce import load_reference
+
+    ref = tmp_path / "ref.yaml"
+    ref.write_text(
+        "sections: [drivers]\nresults:\n"
+        "- {path: drivers.welch.f, value: 1.0, rel_tol: 1.0e-6}\n"
+    )
+    args = ["reproduce", "--config", str(cfg), "--reference", str(ref)]
+    assert main(args) == 1
+    assert main([*args, "--update"]) == 0
+    assert load_reference(ref)[0].value > 1.0
+    assert main(args) == 0
+    assert "1 of 1 results reproduced" in capsys.readouterr().out
