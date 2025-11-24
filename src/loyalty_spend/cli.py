@@ -992,6 +992,11 @@ def _reproduce_args(p: argparse.ArgumentParser) -> None:
         action="store_true",
         help="overwrite the reference values with this run, keeping tolerances",
     )
+    p.add_argument(
+        "--output",
+        default=None,
+        help="JSON record of the comparison with the run environment",
+    )
 
 
 @command(
@@ -1026,6 +1031,25 @@ def _reproduce(args: argparse.Namespace) -> int:
     print(table.to_string(index=False, float_format=lambda v: f"{v:.6g}"))
     failed = int((~table["ok"]).sum())
     print(f"{len(table) - failed} of {len(table)} results reproduced")
+    if args.output:
+        from loyalty_spend.ops.manifest import build_manifest, thread_pools
+
+        inputs = [
+            cfg.paths.raw(name)
+            for name in (
+                cfg.paths.train_file,
+                cfg.paths.test_file,
+                cfg.paths.loyalty_file,
+            )
+        ]
+        record = {
+            "manifest": build_manifest(cfg, inputs),
+            "thread_pools": thread_pools(),
+            "sections": spec["sections"],
+            "results": table.to_dict("records"),
+        }
+        Path(args.output).write_text(json.dumps(record, indent=2, default=str))
+        print(f"wrote {args.output}")
     return 1 if failed else 0
 
 

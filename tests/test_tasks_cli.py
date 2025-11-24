@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 import pytest
 
@@ -305,5 +307,9 @@ def test_reproduce_command(cfg, tmp_path, capsys):
     assert main(args) == 1
     assert main([*args, "--update"]) == 0
     assert load_reference(ref)[0].value > 1.0
-    assert main(args) == 0
+    record = tmp_path / "record.json"
+    assert main([*args, "--output", str(record)]) == 0
     assert "1 of 1 results reproduced" in capsys.readouterr().out
+    saved = json.loads(record.read_text())
+    assert saved["results"][0]["ok"] and "packages" in saved["manifest"]
+    assert isinstance(saved["thread_pools"], list)

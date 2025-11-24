@@ -13,6 +13,7 @@ import importlib.metadata
 import json
 import platform
 import subprocess
+from collections.abc import Sequence
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,8 +66,23 @@ def git_commit(cwd: str | Path = ".") -> str | None:
     return result.stdout.strip() or None
 
 
+def thread_pools() -> list[dict[str, Any]]:
+    """BLAS and OpenMP libraries in use with their thread counts.
+
+    Results that involve large matrix products can differ in the last bits
+    between BLAS builds and thread counts, so a record of a run says which
+    were used.
+    """
+    try:
+        from threadpoolctl import threadpool_info
+    except ImportError:
+        return []
+    keep = ("user_api", "internal_api", "version", "num_threads")
+    return [{k: info.get(k) for k in keep} for info in threadpool_info()]
+
+
 def build_manifest(
-    config: Any, inputs: list[str | Path], cwd: str | Path = "."
+    config: Any, inputs: Sequence[str | Path], cwd: str | Path = "."
 ) -> dict[str, Any]:
     return {
         "created_at": datetime.now(timezone.utc).isoformat(),

@@ -51,7 +51,7 @@ loyalty_spend = ["py.typed", "llm/prompts/*.yaml", "llm/eval/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["slow: trains neural networks or runs searches"]
+markers = ["slow: trains neural networks, runs searches or starts fresh processes"]
 filterwarnings = ["ignore::UserWarning:torch.*"]
 
 [tool.coverage.run]
