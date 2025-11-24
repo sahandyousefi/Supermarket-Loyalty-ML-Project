@@ -1,0 +1,57 @@
+sections:
+- drivers
+- promotion
+- design
+- bayes
+results:
+- path: drivers.welch.f
+  value: 2506.2496295406636
+  rel_tol: 1.0e-06
+- path: drivers.welch.df2
+  value: 483.07016012166775
+  rel_tol: 1.0e-06
+- path: drivers.omega_squared
+  value: 0.8854185283783614
+  rel_tol: 1.0e-06
+- path: drivers.omega_squared_interval[0]
+  value: 0.8759376201051466
+  rel_tol: 0.0001
+- path: drivers.omega_squared_interval[1]
+  value: 0.8938938969634367
+  rel_tol: 0.0001
+- path: drivers.freedman_lane.f
+  value: 199142.1345569418
+  rel_tol: 1.0e-06
+- path: drivers.lmg[0].r2_share
+  value: 0.8782089035036984
+  rel_tol: 1.0e-06
+- path: promotion.estimates[0].estimate
+  value: -0.9935669467877517
+  rel_tol: 1.0e-06
+- path: promotion.estimates[1].estimate
+  value: -0.016941433855195618
+  rel_tol: 0.0001
+- path: promotion.estimates[3].estimate
+  value: -0.015230010125135484
+  rel_tol: 0.001
+- path: promotion.sensitivity.rv
+  value: 0.027114098416569057
+  rel_tol: 0.0001
+- path: design.tail_risk.var
+  value: 1223.4725752688348
+  rel_tol: 0.001
+- path: design.tail_risk.expected_shortfall
+  value: 1224.3563743345674
+  rel_tol: 0.001
+- path: design.cost_to_spend
+  value: 0.03788439585104499
+  rel_tol: 0.001
+- path: design.best[0].expected_cost
+  value: 917.5384684442781
+  rel_tol: 0.001
+- path: bayes.models[0].waic
+  value: 497.1992546285984
+  rel_tol: 0.002
+- path: bayes.models[1].waic
+  value: 263.37796569368305
+  rel_tol: 0.002
