@@ -1,4 +1,4 @@
-.PHONY: install install-all lint typecheck format test test-all mutation docs tasks report clean docker-build docker-serve
+.PHONY: install install-all lint typecheck format test test-all mutation docs tasks report reproduce clean docker-build docker-serve
 
 CONFIG ?= configs/default.yaml
 
@@ -39,6 +39,9 @@ tasks:
 
 report:
 	loyalty-spend report --config $(CONFIG)
+
+reproduce:
+	loyalty-spend reproduce --config $(CONFIG)
 
 docker-build:
 	docker build --target cli -t loyalty-spend:latest .

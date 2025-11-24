@@ -447,7 +447,7 @@ make test-all    # includes network training and the simulation study
 pip install -e ".[docs]" && mkdocs serve   # documentation site on localhost
 ```
 
-The tests check the cleaning rules against the data dictionary, Welch's ANOVA against SciPy's Welch t-test in the two-group case, LMG shares summing to $R^2$, the additivity of attributions, conformal coverage on simulated data, the Jensen gap in the reward forecast, reproducibility of network training and a full train, predict and rewards cycle through the CLI. GitHub Actions runs the pre-commit hooks, lint, type checks and the fast suite on Python 3.10 and 3.12, builds and checks the package, and builds the documentation site with `mkdocs build --strict`, so a broken link or a docstring that no longer matches its module fails the build.
+The tests check the cleaning rules against the data dictionary, Welch's ANOVA against SciPy's Welch t-test in the two-group case, LMG shares summing to $R^2$, the additivity of attributions, conformal coverage on simulated data, the Jensen gap in the reward forecast, reproducibility of network training and a full train, predict and rewards cycle through the CLI. GitHub Actions runs the pre-commit hooks, lint, type checks and the fast suite on Python 3.10 and 3.12, builds and checks the package, and builds the documentation site with `mkdocs build --strict`, so a broken link or a docstring that no longer matches its module fails the build. `make reproduce` reruns the report sections behind 17 reference results and fails if any moves beyond its tolerance; `make mutation` measures how many deliberate faults in the reward module the tests catch (87 of 91).
 
 ## Limitations
 

@@ -67,3 +67,14 @@ A request costs about 30 ms whatever its size, mostly fixed work in validation a
 ## 4. Record what ran
 
 `loyalty_spend.ops.manifest.build_manifest` records the package version, git commit, library versions, a hash of the configuration and a SHA-256 hash of every input file. `loyalty_spend.ops.tracking.log_run` logs parameters and metrics to MLflow when the `tracking` extra is installed and to `artifacts/runs.jsonl` otherwise.
+
+## 5. Check that the results reproduce
+
+`configs/reference.yaml` lists 17 reported results (driver statistics, promotion estimates, reward cost and tail risk of the programme design, WAIC of the Bayesian models) with the value obtained when the reference was made and a relative tolerance. Closed-form statistics have tolerances of $10^{-6}$; Monte Carlo and Gibbs results, which depend on the order of floating point operations in the linear algebra library, have $10^{-3}$ to $2 \times 10^{-3}$.
+
+```bash
+loyalty-spend reproduce --output artifacts/reproduce.json   # exit code 1 if any result moved
+loyalty-spend reproduce --update                            # after an intended change
+```
+
+The record written by `--output` holds the comparison, the manifest of section 4 and the BLAS and OpenMP libraries in use with their thread counts. A separate test runs the out-of-fold forecasts, a conformal quantile, the reward simulation and the synthetic sampler in fresh processes with different hash seeds and one or two threads: everything agrees exactly except least squares, which differs by less than $10^{-9}$ because more threads sum in a different order.
