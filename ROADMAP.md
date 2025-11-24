@@ -94,7 +94,6 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 
 ## Phase 25: Reproducibility
 
-- [ ] 25.3 Determinism across processes and thread counts
 - [ ] 25.4 Pinned environment for the release
 
 ## Phase 26: Checks at intake
@@ -349,3 +348,4 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 - [x] 2025-11-20: 24.6 Documentation
 - [x] 2025-11-24: 25.1 Reference values of the reported results with tolerances
 - [x] 2025-11-24: 25.2 `loyalty-spend reproduce` to compare a fresh run with the reference
+- [x] 2025-11-24: 25.3 Determinism across processes and thread counts
