@@ -21,6 +21,8 @@ $$\kappa = \frac{p_o - p_e}{1 - p_e}.$$
 
 All four attributes have $|\kappa| < 0.06$, so the ids do not identify the same customers across files. The files are analysed separately and never joined.
 
+**Intake checks.** Every file is checked for repeated ids, for records identical apart from the id, for pairs that agree on every category and on every amount within one cent, and for outlying amounts. No file repeats an id. `loyalty.csv` and `test.csv` each contain one pair of members identical in everything but the id, and the three files contain 4, 1 and 5 pairs that differ by exactly one cent; these are reported, not removed, because two genuine members can coincide when there are seven attributes and amounts concentrate within a joining month. Outlying amounts are found by regressing each amount on the category dummies and scaling the residuals by the median absolute deviation within each joining month, since the residual spread differs fivefold between months (section 12d): members with a robust z-score above 6 are flagged. This flags 5 members of `loyalty.csv` and 2 of `train.csv`, the largest a spend 10.1 robust standard deviations above what its categories imply. A single robust covariance (the minimum covariance determinant) flagged 5% of `train.csv` instead, nearly all of them August and September joiners whose errors are merely larger. Basket size is left out of the screen: within a month it is almost constant, so one item more than usual is already six standard deviations away.
+
 ## 3. Is tenure the main driver of spend? (Task 2)
 
 The brief asks for the mean and variance of spend by tenure band. A table of means does not answer whether tenure is the *largest* driver, so four further analyses are run on `loyalty.csv`.

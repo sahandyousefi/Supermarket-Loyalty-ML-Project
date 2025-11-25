@@ -29,6 +29,10 @@ Three files are supplied with the original brief. They are small and are kept in
 
 `loyalty-spend clean` applies the dictionary rules and prints a log of every change. The modeling code reads the files with `impute=False`, so a missing `first_month` stays missing and is handled by median imputation with a missing-value indicator instead of being set to zero.
 
+## Duplicates and outliers
+
+`loyalty-spend report --sections intake` lists, for each file, repeated ids (none), records identical apart from the id (one pair each in `loyalty.csv`, ids 302 and 365, and in `test.csv`, ids 535 and 685), pairs equal within one cent, and members whose spend or first-month spend lies more than six robust standard deviations from what their categories imply. Nothing is removed automatically.
+
 ## Relationship between the files
 
 `train.csv` and `test.csv` together contain the same 1,246 customer ids as `loyalty.csv`, but their attributes do not match: region agrees for 25% of shared ids, which is the agreement expected by chance (Cohen's kappa about 0). The files are therefore treated as independent samples and are never joined. `loyalty-spend report` includes this check.
