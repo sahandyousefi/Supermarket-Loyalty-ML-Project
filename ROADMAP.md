@@ -100,7 +100,6 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 
 ## Phase 27: Release hygiene
 
-- [ ] 27.1 Consistency check of version, changelog and citation before a release
 - [ ] 27.2 Dependency audit in CI
 - [ ] 27.3 Container build and smoke test in CI
 
@@ -349,3 +348,4 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 - [x] 2025-11-24: 26.1 Duplicate and near-duplicate members
 - [x] 2025-11-25: 26.2 Robust outlier screening of the amounts
 - [x] 2025-11-25: 26.3 Intake section in the report
+- [x] 2025-11-25: 27.1 Consistency check of version, changelog and citation before a release
