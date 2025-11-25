@@ -1307,6 +1307,7 @@ def _tasks(args: argparse.Namespace) -> int:
 
 
 REPORT_SECTIONS = (
+    "intake",
     "drivers",
     "lineage",
     "benchmark",

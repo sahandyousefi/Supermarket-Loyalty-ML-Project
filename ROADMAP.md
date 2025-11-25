@@ -97,7 +97,6 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 
 ## Phase 26: Checks at intake
 
-- [ ] 26.3 Intake section in the report
 
 ## Phase 27: Release hygiene
 
@@ -349,3 +348,4 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 - [x] 2025-11-24: 25.4 Record of the run environment with the reproduced results
 - [x] 2025-11-24: 26.1 Duplicate and near-duplicate members
 - [x] 2025-11-25: 26.2 Robust outlier screening of the amounts
+- [x] 2025-11-25: 26.3 Intake section in the report
