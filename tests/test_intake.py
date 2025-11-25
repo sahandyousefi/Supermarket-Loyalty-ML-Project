@@ -46,3 +46,21 @@ def test_supplied_files(loyalty_df, train_df):
     s = intake_summary(loyalty_df, numeric)
     # Two members of loyalty.csv share every value but the id.
     assert s["duplicate_id_rows"] == 0 and s["exact_duplicate_rows"] == 2
+
+
+def test_robust_outliers_find_planted_errors(train_df):
+    from loyalty_spend.data.intake import robust_outliers
+
+    df = train_df.copy()
+    numeric = ["spend", "first_month"]
+    categorical = ["loyalty_years", "joining_month", "region", "promotion"]
+    # A spend typed ten times too large and a first month in the wrong unit.
+    df.loc[5, "spend"] *= 10
+    df.loc[9, "first_month"] *= 100
+    flagged = robust_outliers(df, numeric, categorical)
+    top = set(flagged.head(2)["customer_id"])
+    assert top == {df.loc[5, "customer_id"], df.loc[9, "customer_id"]}
+    planted = flagged.head(2)["max_abs_z"]
+    assert (planted > 50).all()
+    # Apart from the two planted errors only a handful of members stand out.
+    assert flagged["flagged"].sum() <= 4

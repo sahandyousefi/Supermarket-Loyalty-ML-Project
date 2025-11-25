@@ -80,3 +80,49 @@ def intake_summary(
             near_duplicates(frame, numeric, id_column=id_column)
         ),
     }
+
+
+def robust_outliers(
+    frame: pd.DataFrame,
+    numeric: list[str],
+    categorical: list[str],
+    scale_by: str = "joining_month",
+    threshold: float = 6.0,
+) -> pd.DataFrame:
+    """Members whose amounts are far from what their categories imply.
+
+    Amounts depend strongly on joining month and tenure band, so each amount
+    is replaced by its residual from a regression on the category dummies.
+    Residuals are scaled by the median absolute deviation within each level
+    of ``scale_by``, because their spread differs fivefold between joining
+    months (section 12d of the methodology); a single robust covariance, as
+    in the minimum covariance determinant, would flag every member of a
+    noisy month. A member is flagged when any robust z-score exceeds
+    ``threshold`` in absolute value; with normal residuals a z-score of 6 is
+    expected for one member in five hundred million. Rows with a missing
+    amount are not scored.
+
+    Basket size is better left out: within a joining month it is nearly
+    constant (standard deviation 0.15 to 0.58 items), so a member one item
+    away from the usual count already has a z-score above 6 although
+    nothing is wrong with the record.
+    """
+    data = frame[[*numeric, *categorical, scale_by]].dropna(subset=numeric)
+    data = data.loc[:, ~data.columns.duplicated()]
+    D = pd.get_dummies(data[categorical].astype(object), drop_first=True, dtype=float)
+    X = np.column_stack([np.ones(len(data)), D.to_numpy()])
+    Y = data[numeric].to_numpy(float)
+    beta, *_ = np.linalg.lstsq(X, Y, rcond=None)
+    resid = pd.DataFrame(Y - X @ beta, columns=numeric, index=data.index)
+    groups = data[scale_by].astype(object).fillna("<missing>")
+    center = resid.groupby(groups).transform("median")
+    mad = (resid - center).abs().groupby(groups).transform("median") * 1.4826
+    z = (resid - center) / mad.replace(0.0, np.nan)
+    out = pd.DataFrame(index=data.index)
+    if ID in frame:
+        out[ID] = frame.loc[data.index, ID]
+    for col in numeric:
+        out[f"z_{col}"] = z[col]
+    out["max_abs_z"] = z.abs().max(axis=1)
+    out["flagged"] = out["max_abs_z"] > threshold
+    return out.sort_values("max_abs_z", ascending=False)
