@@ -1204,10 +1204,16 @@ def _rewards_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--output", default=None, help="per-customer CSV")
     p.add_argument(
         "--uncertainty",
-        choices=["residual", "heteroscedastic"],
+        choices=["residual", "heteroscedastic", "month"],
         default="residual",
-        help="residual bootstrap around the saved model, or a heteroscedastic "
-        "Gaussian model fitted to train.csv",
+        help="residual bootstrap around the saved model, a heteroscedastic "
+        "Gaussian model, or residuals scaled by joining month, both fitted "
+        "to train.csv",
+    )
+    p.add_argument(
+        "--compare-noise",
+        action="store_true",
+        help="compare the cost distribution under all three noise models",
     )
     p.add_argument(
         "--max-memory-mb",
@@ -1232,7 +1238,30 @@ def _rewards(args: argparse.Namespace) -> int:
     cfg = load_config(args.config)
     frame, _ = load_clean(args.input, impute=False, require_target=False)
     schedule = RewardSchedule(cfg.rewards.tiers)
-    if args.uncertainty == "heteroscedastic":
+    if args.compare_noise:
+        from loyalty_spend.business.noise import compare_noise_models
+
+        train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+        table, _ = compare_noise_models(
+            train, frame, schedule, cfg.rewards.n_simulations, cfg.rewards.seed
+        )
+        print(table.to_string(index=False, float_format=lambda v: f"{v:.2f}"))
+        return 0
+    if args.uncertainty == "month":
+        from loyalty_spend.business.noise import noise_samplers
+
+        train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+        mean, sampler = noise_samplers(train, frame)["scaled residuals by month"]
+        fc = simulate_liability(
+            frame[ID],
+            mean,
+            sampler,
+            schedule,
+            cfg.rewards.n_simulations,
+            cfg.rewards.seed,
+            max_memory_mb=args.max_memory_mb,
+        )
+    elif args.uncertainty == "heteroscedastic":
         from loyalty_spend.models.distributional import (
             HeteroscedasticGaussianRegressor,
         )

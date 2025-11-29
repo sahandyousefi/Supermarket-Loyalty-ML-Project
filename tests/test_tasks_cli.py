@@ -313,3 +313,11 @@ def test_reproduce_command(cfg, tmp_path, capsys):
     saved = json.loads(record.read_text())
     assert saved["results"][0]["ok"] and "packages" in saved["manifest"]
     assert isinstance(saved["thread_pools"], list)
+
+
+def test_rewards_with_month_noise(cfg, raw_dir, capsys):
+    test = str(raw_dir / "test.csv")
+    assert main(["rewards", "--config", str(cfg), test, "--uncertainty", "month"]) == 0
+    assert "expected_total" in capsys.readouterr().out
+    assert main(["rewards", "--config", str(cfg), test, "--compare-noise"]) == 0
+    assert "scaled residuals by month" in capsys.readouterr().out
