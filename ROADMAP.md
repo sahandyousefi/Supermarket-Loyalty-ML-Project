@@ -50,7 +50,7 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 15: Documentation and release
 
-These items close the year and come after phases 16 to 27.
+These items close the year and come after phases 16 to 30.
 
 - [ ] 15.1 Walkthrough notebook for the promotion analysis
 - [ ] 15.2 Walkthrough notebook for reward programme design
@@ -100,6 +100,27 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 
 ## Phase 27: Release hygiene
 
+
+## Phase 28: Reward cost with month-dependent noise
+
+The residual bootstrap of phase 3 draws every member's error from the same pool, although errors are five times larger for some joining months than for others.
+
+- [ ] 28.1 Sampler from the weighted model with a per-member error SD
+- [ ] 28.2 Cost, tail risk and tier shares under month-dependent noise
+- [ ] 28.3 `rewards --uncertainty month`
+- [ ] 28.4 Documentation
+
+## Phase 29: Simulation scenarios with month-dependent noise
+
+- [ ] 29.1 Scenario whose noise differs by joining month
+- [ ] 29.2 Interval methods under that scenario
+- [ ] 29.3 Weighted model in the simulation study
+
+## Phase 30: Champion choice on interval quality
+
+- [ ] 30.1 Champion-challenger rule that weighs the interval score
+- [ ] 30.2 Decision between OLS and the weighted model
+- [ ] 30.3 Model card for the champion
 
 ## Completed
 - [x] 2025-05-05: 1.1 Add a changelog that records the 1.0.0 release
