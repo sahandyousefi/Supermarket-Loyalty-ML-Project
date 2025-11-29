@@ -144,6 +144,29 @@ def residual_sampler(predicted_spend: ArrayLike, residuals: ArrayLike) -> Sample
     return draw
 
 
+def scaled_residual_sampler(
+    mean: ArrayLike, sigma: ArrayLike, standardized: ArrayLike
+) -> Sampler:
+    """Spend as ``mean + sigma * r`` with ``r`` resampled from standardized residuals.
+
+    The residual bootstrap gives every member the same error distribution;
+    when the error scale differs between groups of members (by joining
+    month here) the residuals are first divided by the scale of their group,
+    the pooled standardized residuals keep the shape of the errors, such as
+    heavy tails, and each member's draws are scaled back by that member's
+    own scale.
+    """
+    mu = np.asarray(mean, float)
+    sd = np.broadcast_to(np.asarray(sigma, float), mu.shape)
+    pool = np.asarray(standardized, float)
+
+    def draw(rng: np.random.Generator, m: int) -> FloatArray:
+        r = rng.choice(pool, size=(m, len(mu)))
+        return np.asarray(mu[None, :] + sd[None, :] * r, float)
+
+    return draw
+
+
 def gaussian_sampler(mean: ArrayLike, sigma: ArrayLike) -> Sampler:
     """Spend from a per-customer normal predictive distribution."""
     mu = np.asarray(mean, float)

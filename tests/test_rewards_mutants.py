@@ -97,3 +97,14 @@ def test_tier_shares_when_the_top_tier_is_never_reached():
 
     out = simulate_liability(np.arange(2), [50.0, 50.0], sampler, schedule, 5)
     assert np.allclose(out.tier_shares, [0.0, 1.0, 0.0, 0.0])
+
+
+def test_scaled_residual_sampler_keeps_shape_and_scales_by_member():
+    from loyalty_spend.business.rewards import scaled_residual_sampler
+
+    pool = np.array([-2.0, 0.0, 2.0])
+    draw = scaled_residual_sampler([100.0, 50.0], [1.0, 3.0], pool)
+    out = draw(np.random.default_rng(0), 2000)
+    assert set(np.unique(out[:, 0])) == {98.0, 100.0, 102.0}
+    assert set(np.unique(out[:, 1])) == {44.0, 50.0, 56.0}
+    assert out[:, 1].std() == pytest.approx(3 * out[:, 0].std(), rel=0.1)

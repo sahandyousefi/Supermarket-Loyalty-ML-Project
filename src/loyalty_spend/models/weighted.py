@@ -163,3 +163,11 @@ def predictive_comparison(
             }
         )
     return pd.DataFrame(rows)
+
+
+def standardized_residuals(
+    model: GroupWeightedRegression, X: pd.DataFrame, y: ArrayLike
+) -> FloatArray:
+    """Residuals divided by the error SD of each member's group."""
+    resid = np.asarray(y, float) - model.predict(X)
+    return np.asarray(resid / model.predict_sd(X), float)

@@ -105,7 +105,6 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 
 The residual bootstrap of phase 3 draws every member's error from the same pool, although errors are five times larger for some joining months than for others.
 
-- [ ] 28.1 Sampler from the weighted model with a per-member error SD
 - [ ] 28.2 Cost, tail risk and tier shares under month-dependent noise
 - [ ] 28.3 `rewards --uncertainty month`
 - [ ] 28.4 Documentation
@@ -370,3 +369,4 @@ The residual bootstrap of phase 3 draws every member's error from the same pool,
 - [x] 2025-11-25: 27.1 Consistency check of version, changelog and citation before a release
 - [x] 2025-11-25: 27.2 Dependency audit in CI
 - [x] 2025-11-29: 27.3 Container build and smoke test in CI
+- [x] 2025-11-29: 28.1 Sampler from the weighted model with a per-member error SD

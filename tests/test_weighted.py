@@ -64,3 +64,14 @@ def test_weighted_intervals_are_calibrated_within_groups():
     assert result.loc["ols", "months_flagged"] == 2
     assert result.loc["wls", "months_flagged"] == 0
     assert result.loc["wls", "crps"] < 0.8 * result.loc["ols", "crps"]
+
+
+def test_standardized_residuals_have_unit_scale_in_every_group():
+    from loyalty_spend.models.weighted import standardized_residuals
+
+    X, y, _ = _data(np.random.default_rng(6), 3000)
+    model = GroupWeightedRegression(shrinkage=0.0).fit(X, y)
+    r = standardized_residuals(model, X, y)
+    for month in ("Jan", "Aug"):
+        sel = (X["joining_month"] == month).to_numpy()
+        assert np.sqrt(np.mean(r[sel] ** 2)) == pytest.approx(1.0, rel=0.05)
