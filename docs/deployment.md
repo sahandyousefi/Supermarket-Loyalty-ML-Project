@@ -51,6 +51,8 @@ loyalty-spend serve --model artifacts/model.joblib --host 0.0.0.0 --port 8000
 
 Requests are validated against the data dictionary; unknown levels, negative amounts and duplicated customer ids return 422, and batches larger than `LOYALTY_MAX_BATCH` (default 10,000) return 413. The container runs as a non-root user and reads the model from `LOYALTY_MODEL`.
 
+In CI, a model trained on the runner is mounted read-only into a freshly built service image, and the job waits for `/health` and then calls `/version` and `/predict`, so a broken image or start command fails the build rather than the first deployment.
+
 Every response carries an `X-Request-ID` header, echoed from the request when the caller sends a printable identifier of up to 128 characters and generated otherwise. Each request is logged as one JSON line with the identifier, method, path, status, latency in milliseconds, model name and package version.
 
 **Latency.** `python scripts/benchmark_service.py artifacts/model.joblib` times `/predict` in process, through validation, cleaning, the model and serialisation but without network time. For the OLS champion on one CPU core, 20 requests per batch size after a warm-up:

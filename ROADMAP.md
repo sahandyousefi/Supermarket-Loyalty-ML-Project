@@ -100,7 +100,6 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 
 ## Phase 27: Release hygiene
 
-- [ ] 27.3 Container build and smoke test in CI
 
 ## Completed
 - [x] 2025-05-05: 1.1 Add a changelog that records the 1.0.0 release
@@ -349,3 +348,4 @@ The coverage audit of phase 19 shows that forecast errors are larger for members
 - [x] 2025-11-25: 26.3 Intake section in the report
 - [x] 2025-11-25: 27.1 Consistency check of version, changelog and citation before a release
 - [x] 2025-11-25: 27.2 Dependency audit in CI
+- [x] 2025-11-29: 27.3 Container build and smoke test in CI

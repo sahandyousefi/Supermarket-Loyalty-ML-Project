@@ -96,3 +96,36 @@ jobs:
           python -m pip install --upgrade pip pip-audit
           pip install ".[gbm,tune,explain,serve,parquet]"
           pip-audit --skip-editable --desc
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Train a model to serve
+        run: |
+          python -m pip install .
+          loyalty-spend train --model ols --output artifacts/model.joblib
+          chmod -R a+rX artifacts
+      - name: Build the service image
+        run: docker build --target serve -t loyalty-spend-api:ci .
+      - name: Start the container and score a member
+        run: |
+          docker run -d --name api -p 8000:8000 \
+            -v "$PWD/artifacts:/app/artifacts:ro" loyalty-spend-api:ci
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && break
+            sleep 1
+          done
+          curl -sf http://localhost:8000/version
+          curl -sf -X POST http://localhost:8000/predict \
+            -H "Content-Type: application/json" \
+            -d '{"customers": [{"customer_id": 1, "first_month": 20.5,
+                 "items_in_first_month": 10, "region": "Europe",
+                 "loyalty_years": "1-3", "joining_month": "Jan",
+                 "promotion": "No"}]}'
+      - name: Show the container log
+        if: always()
+        run: docker logs api || true
