@@ -13,10 +13,19 @@ All notable changes to this project are recorded here. The format follows
 - Games-Howell pairwise comparisons, a Freedman-Lane permutation test of the partial tenure effect and noncentral F intervals for omega squared, reported in the driver section.
 - Localised conformal intervals with Gower kernel weights, bandwidth selection by interval score, and an audit of cross-fitted interval coverage by subgroup; `loyalty-spend intervals --audit`.
 - A Gaussian process model with a linear plus ARD kernel, restart diagnostics for the marginal likelihood and calibration of its predictive intervals.
+- Error variance by joining month: tests of equal variance that keep their level without normal errors, a variance profile against attribute spread, feasible weighted least squares with log-scale shrinkage (`wls_month`), and month variances pooled through a learned prior scale in the Gibbs sampler (`bayes --pool-variances`).
+- Reward cost under month-dependent noise with a scaled residual bootstrap and a comparison of noise models (`rewards --uncertainty month`, `--compare-noise`), and a month-noise scenario in the simulation study.
+- Intake checks for repeated ids, duplicate and near-duplicate records and outlying amounts, with a report section.
+- Reproducibility: reference values of 17 reported results, `loyalty-spend reproduce` with a record of the run environment, and a test that results do not depend on hash seeds or thread counts.
+- Parquet input and output for batch scoring, request identifiers and JSON request logs in the service, a latency benchmark and a snapshot of the OpenAPI schema.
+- A documentation site built with MkDocs, with an API reference generated from docstrings.
+- Strict type checking for the business, evaluation, synthetic, robustness and causal packages, property-based tests of the sorted-draw costing, and a mutation testing script.
+- CI jobs for the documentation, a dependency audit, the service container and the consistency of release metadata.
 
 ### Fixed
 
 - The interacted regression estimator drops interactions and collinear columns in small samples, where its standard error could be undefined.
+- Sorted-draw costing searched one flattened array with each draw shifted by an offset, which misplaced thresholds closer to a spend value than the rounding error of the offset; it now runs an exact binary search per draw.
 
 ## [1.4.0] - 2025-10-12
 
