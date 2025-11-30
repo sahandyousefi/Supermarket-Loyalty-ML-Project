@@ -385,6 +385,8 @@ Even with 250 batches, almost half of the charts set up in practice would raise 
 
 The point forecasts barely change, but the intervals become 9% narrower on average while covering every month, and the probability integral transform is much closer to uniform. Months are flagged by the audit of section 7.
 
+**In simulation.** The scenario "month noise" of the simulation study keeps the linear signal and scales Student-t noise in each joining month by that month's residual SD relative to the pooled one in `train.csv`, with the average noise variance of the linear scenario. With 2,000 simulated members, WLS and OLS reach the same RMSE (1.325 against 1.327, both at the Bayes error), so the weighting does not buy point accuracy at this sample size. It does buy calibrated intervals: on 2,000 new members, 90% intervals from WLS cover 86.5% of the worst month against 68.0% for split conformal, with the lowest interval score of the five methods compared (5.39 against 6.22; normalized conformal 5.67).
+
 **Bayesian model.** The hierarchical model of section 10a can give each month its own variance. With independent $\mathrm{IG}(1, 1)$ priors the prior scale of 1 is ten times the typical residual variance and inflates the variances of small months; letting the scale be unknown, $\sigma_k^2 \sim \mathrm{IG}(a_0, b)$ with $b \sim \mathrm{Gamma}(1, 1)$, and drawing $b$ from its conjugate conditional in every sweep pools the month variances towards a common scale learned from the data. WAIC, four chains of 1,000 kept draws each, all $\hat R \le 1.005$:
 
 | Error model | WAIC | $p_{\mathrm{WAIC}}$ |

@@ -60,3 +60,12 @@ def test_study_ranks_linear_first_in_linear_scenario(train_df):
     assert best["linear"] == "ols"
     assert best["interactions"] == "hist_gbm"
     assert (table["rmse"] >= 0.9 * table["bayes_rmse"]).all()
+
+
+def test_weighted_model_matches_ols_accuracy_under_month_noise(train_df):
+    table = run_study(
+        train_df, ["ols", "wls_month"], ["month noise"], n=600, n_splits=3
+    ).set_index("model")
+    assert table.loc["wls_month", "rmse"] == pytest.approx(
+        table.loc["ols", "rmse"], rel=0.02
+    )

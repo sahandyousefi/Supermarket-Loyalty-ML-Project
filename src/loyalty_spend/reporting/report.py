@@ -68,7 +68,15 @@ DEFAULT_MODELS = (
     "mlp_plr",
     "ft_transformer",
 )
-STUDY_MODELS = ("ols", "spline_ridge", "hist_gbm", "lightgbm", "mlp", "mlp_plr")
+STUDY_MODELS = (
+    "ols",
+    "wls_month",
+    "spline_ridge",
+    "hist_gbm",
+    "lightgbm",
+    "mlp",
+    "mlp_plr",
+)
 
 
 @dataclass(frozen=True)
