@@ -6,6 +6,8 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.0] - 2025-11-30
+
 ### Added
 
 - Control charts for model monitoring: EWMA with exact limits, tabular CUSUM with Siegmund's run length approximation, HWMA and multivariate HWMA, vectorised run length simulation with limit calibration, zero- and steady-state comparisons, and the Brook-Evans Markov chain for the effect of estimated parameters; `loyalty-spend control-chart`.
