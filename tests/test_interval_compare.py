@@ -25,3 +25,17 @@ def test_adaptive_methods_balance_coverage_across_groups(table):
     spread = table["best_group_coverage"] - table["worst_group_coverage"]
     assert spread["normalized conformal"] < spread["split conformal"]
     assert spread["Mondrian (prediction bins)"] < spread["split conformal"]
+
+
+def test_month_noise_scenario_rewards_month_aware_intervals(train_df):
+    df = simulate(train_df, SCENARIOS["month noise"], n=4000, seed=52).frame
+    fit, new = df.iloc[:2000], df.iloc[2000:]
+    table = compare_intervals(
+        fit[FEATURES], fit["spend"], new[FEATURES], new["spend"]
+    ).set_index("method")
+    worst = table["worst_month_coverage"]
+    assert worst["weighted least squares by month"] > worst["split conformal"] + 0.05
+    assert (
+        table.loc["weighted least squares by month", "interval_score"]
+        < table.loc["split conformal", "interval_score"]
+    )

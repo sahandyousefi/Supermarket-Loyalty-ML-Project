@@ -52,11 +52,22 @@ def interval_methods(
         m = ConformalizedQuantileRegressor(alpha, calibration_size, seed)
         return m.fit(X, y).predict_interval(X_new)
 
+    def weighted(X: pd.DataFrame, y: ArrayLike, X_new: pd.DataFrame) -> Intervals:
+        from scipy.stats import norm
+
+        from loyalty_spend.models.weighted import GroupWeightedRegression
+
+        m = GroupWeightedRegression().fit(X, y)
+        half = norm.ppf(1 - alpha / 2) * m.predict_sd(X_new)
+        pred = m.predict(X_new)
+        return Intervals(pred - half, pred + half)
+
     return {
         "split conformal": split,
         "Mondrian (prediction bins)": mondrian,
         "normalized conformal": normalized,
         "CQR": cqr,
+        "weighted least squares by month": weighted,
     }
 
 
@@ -73,22 +84,27 @@ def compare_intervals(
     """Coverage, width, interval score and the worst group coverage per method.
 
     Groups are quantiles of the OLS forecast for the new rows, the same for
-    every method, so the conditional coverage columns are comparable.
+    every method, so the conditional coverage columns are comparable;
+    coverage is also reported for the worst and best joining month.
     """
     y_new = np.asarray(y_new, float)
     point = build_model("ols").fit(X, y).predict(X_new)
     groups = pd.qcut(point, n_groups, labels=False, duplicates="drop")
+    months = X_new["joining_month"].astype(str).to_numpy()
     rows = []
     for name, method in interval_methods(alpha, calibration_size, seed).items():
         iv = method(X, y, X_new)
         covered = (y_new >= iv.lower) & (y_new <= iv.upper)
         by_group = pd.Series(covered).groupby(groups).mean()
+        by_month = pd.Series(covered).groupby(months).mean()
         rows.append(
             {
                 "method": name,
                 **interval_summary(y_new, iv.lower, iv.upper, alpha),
                 "worst_group_coverage": float(by_group.min()),
                 "best_group_coverage": float(by_group.max()),
+                "worst_month_coverage": float(by_month.min()),
+                "best_month_coverage": float(by_month.max()),
             }
         )
     return pd.DataFrame(rows)

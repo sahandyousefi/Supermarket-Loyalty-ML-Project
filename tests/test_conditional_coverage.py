@@ -12,7 +12,7 @@ def result(train_df):
 
 def test_every_method_is_audited_on_every_member(result, train_df):
     summary, audit = result
-    assert len(summary) == 7
+    assert len(summary) == 8
     counts = audit.groupby(["method", "attribute"])["n"].sum()
     assert (counts == len(train_df)).all()
 

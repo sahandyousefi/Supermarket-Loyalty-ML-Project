@@ -214,7 +214,7 @@ def _intervals(args: argparse.Namespace) -> int:
         "mean_width",
         "interval_score",
         "worst_group_coverage",
-        "best_group_coverage",
+        "worst_month_coverage",
     ]
     print(f"scenario '{args.scenario}', target coverage {1 - cfg.conformal.alpha:.0%}")
     print(table[cols].to_string(index=False, float_format=lambda v: f"{v:.3f}"))
