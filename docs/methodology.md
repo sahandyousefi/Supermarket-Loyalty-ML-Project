@@ -176,6 +176,16 @@ Costing the current schedule is one question; choosing a schedule is another.
 
 **Risk.** The 95% value at risk of total cost is the budget exceeded with probability 5%; the expected shortfall is the mean cost when it is exceeded (Acerbi and Tasche, 2002). Monte Carlo standard errors are reported for the mean (sample standard deviation over draws) and for quantiles (batch means). For Gaussian predictive distributions, scrambled Sobol points replace independent draws and lower the variance of the estimated mean (Owen, 2003).
 
+**Noise that depends on the joining month.** The residual bootstrap draws every member's error from one pool, although the error scale differs fivefold between joining months (section 12d). The scaled residual bootstrap divides each out-of-fold residual of the weighted model by the error SD of its month, resamples these standardized residuals, which keep the heavy tails of the errors, and multiplies each member's draw by the SD of that member's month. For `test.csv` under the default schedule:
+
+| Noise model | Expected total | 5th percentile | 95th percentile | Expected shortfall, 95% |
+| --- | --- | --- | --- | --- |
+| Residual bootstrap | 1,219.69 | 1,215.29 | 1,223.88 | 1,224.88 |
+| Gaussian, fitted variance function | 1,218.42 | 1,212.58 | 1,223.47 | 1,224.36 |
+| Scaled residuals by month | 1,220.44 | 1,215.56 | 1,224.21 | 1,225.78 |
+
+The three agree on the expected cost within 0.2% and on the width of the 90% interval within a quarter. The month model shifts the tail up by about one unit: its members near a threshold are concentrated in the noisy months, so their chance of crossing is larger than the pooled residuals imply. `loyalty-spend rewards test.csv --compare-noise` reproduces the table and `--uncertainty month` uses the month model.
+
 ## 10. Effect of the sign-up promotion
 
 Members who joined through the promotion could spend more or less than other members for two reasons: the promotion changed their behaviour, or different people took it up. Only the first is an effect of the promotion.
