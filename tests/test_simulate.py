@@ -24,6 +24,23 @@ def test_heteroscedastic_noise_grows_with_signal(train_df):
     assert np.corrcoef(data.signal, data.noise_sd)[0, 1] > 0.99
 
 
+def test_month_noise_follows_the_real_month_pattern(train_df):
+    from loyalty_spend.data.simulate import month_noise_ratios
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.linear import ols
+
+    data = simulate(train_df, SCENARIOS["month noise"], n=20000, seed=1)
+    base = simulate(train_df, SCENARIOS["linear"], n=20000, seed=1)
+    assert data.bayes_rmse == pytest.approx(base.bayes_rmse, rel=1e-9)
+    X, y = split_xy(train_df)
+    real = month_noise_ratios(X, y.to_numpy() - ols().fit(X, y).predict(X))
+    months = data.frame["joining_month"].astype(str)
+    sd = data.frame.assign(sd=data.noise_sd).groupby(months)["sd"].first()
+    ratio = sd / sd.mean()
+    assert ratio["Aug"] / ratio["Jun"] == pytest.approx(real["Aug"] / real["Jun"])
+    assert ratio["Aug"] / ratio["Jun"] > 4
+
+
 def test_reproducible(train_df):
     a = simulate(train_df, SCENARIOS["interactions"], n=100, seed=5).frame
     b = simulate(train_df, SCENARIOS["interactions"], n=100, seed=5).frame

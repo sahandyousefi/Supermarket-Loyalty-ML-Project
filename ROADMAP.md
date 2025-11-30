@@ -108,7 +108,6 @@ The residual bootstrap of phase 3 draws every member's error from the same pool,
 
 ## Phase 29: Simulation scenarios with month-dependent noise
 
-- [ ] 29.1 Scenario whose noise differs by joining month
 - [ ] 29.2 Interval methods under that scenario
 - [ ] 29.3 Weighted model in the simulation study
 
@@ -370,3 +369,4 @@ The residual bootstrap of phase 3 draws every member's error from the same pool,
 - [x] 2025-11-29: 28.2 Cost, tail risk and tier shares under month-dependent noise
 - [x] 2025-11-29: 28.3 `rewards --uncertainty month`
 - [x] 2025-11-30: 28.4 Documentation
+- [x] 2025-11-30: 29.1 Scenario whose noise differs by joining month

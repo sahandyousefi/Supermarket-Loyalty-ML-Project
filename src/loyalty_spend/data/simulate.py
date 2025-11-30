@@ -37,6 +37,11 @@ class Scenario:
         standard deviation.
     interaction : float
         Weight of the interaction terms, in the same units.
+    month_noise : bool
+        Scale the noise of each joining month by the ratio of that month's
+        residual SD to the pooled residual SD of the reference fit on the
+        real data, keeping the mean noise variance, so the fivefold spread
+        between months seen in ``train.csv`` carries over.
     """
 
     name: str
@@ -44,6 +49,7 @@ class Scenario:
     heteroscedastic: bool = False
     nonlinear: float = 0.0
     interaction: float = 0.0
+    month_noise: bool = False
 
 
 SCENARIOS: dict[str, Scenario] = {
@@ -53,7 +59,18 @@ SCENARIOS: dict[str, Scenario] = {
     "interactions": Scenario(
         "interactions", noise=0.05, nonlinear=0.25, interaction=0.25
     ),
+    "month noise": Scenario("month noise", noise=0.05, month_noise=True),
 }
+
+
+def month_noise_ratios(X: pd.DataFrame, residuals: np.ndarray) -> dict[str, float]:
+    """Residual SD of each joining month over the pooled residual SD."""
+    months = X["joining_month"].astype(str).to_numpy()
+    pooled = float(np.sqrt(np.mean(residuals**2)))
+    return {
+        m: float(np.sqrt(np.mean(residuals[months == m] ** 2)) / pooled)
+        for m in np.unique(months)
+    }
 
 
 def _standardize(x: pd.Series) -> np.ndarray:
@@ -126,6 +143,10 @@ def simulate(
     sd = np.full(n, scenario.noise * scale)
     if scenario.heteroscedastic:
         sd = sd * signal / signal.mean()
+    if scenario.month_noise:
+        ratios = month_noise_ratios(X_ref, y_ref.to_numpy() - reference.predict(X_ref))
+        factor = X["joining_month"].astype(str).map(ratios).fillna(1.0).to_numpy()
+        sd = sd * factor / np.sqrt(np.mean(factor**2))
     t = rng.standard_t(df=5, size=n) / np.sqrt(5 / 3)
     spend = np.clip(signal + sd * t, 0.01, None).round(2)
 
