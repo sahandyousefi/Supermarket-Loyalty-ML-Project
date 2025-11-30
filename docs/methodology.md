@@ -184,7 +184,7 @@ Costing the current schedule is one question; choosing a schedule is another.
 | Gaussian, fitted variance function | 1,218.42 | 1,212.58 | 1,223.47 | 1,224.36 |
 | Scaled residuals by month | 1,220.44 | 1,215.56 | 1,224.21 | 1,225.78 |
 
-The three agree on the expected cost within 0.2% and on the width of the 90% interval within a quarter. The month model shifts the tail up by about one unit: its members near a threshold are concentrated in the noisy months, so their chance of crossing is larger than the pooled residuals imply. `loyalty-spend rewards test.csv --compare-noise` reproduces the table and `--uncertainty month` uses the month model.
+The three agree on the expected cost within 0.2%. The month model moves the whole distribution up by about 0.75, because the weighted fit gives slightly different point forecasts; under both bootstrap models the same five members, who joined in January, February or November, have at least a 5% chance of changing tier and carry most of the uncertainty. The Gaussian variance function widens the interval by a quarter and adds five September joiners to that group, because it lets the spread grow with predicted spend rather than with the month. `loyalty-spend rewards test.csv --compare-noise` reproduces the table and `--uncertainty month` uses the month model.
 
 ## 10. Effect of the sign-up promotion
 

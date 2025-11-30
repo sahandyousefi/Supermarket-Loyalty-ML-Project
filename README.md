@@ -151,7 +151,7 @@ With the illustrative schedule in `configs/default.yaml` (2% from 100, 3% from 1
 
 The distribution is lumpy because a handful of customers sit close to a tier threshold, and each of them moves the total by a discrete amount when they cross it. `loyalty-spend rewards` lists these customers with their probability of changing tier.
 
-The forecast errors are larger for some joining months than for others. Drawing each member's error at the scale of their month (`--uncertainty month`) leaves the expected cost within 0.1% of the residual bootstrap and moves the 95% expected shortfall from 1,224.88 to 1,225.78.
+The forecast errors are larger for some joining months than for others. Drawing each member's error at the scale of their month (`--uncertainty month`) leaves the expected cost within 0.1% of the residual bootstrap; the same five members near a threshold carry most of the uncertainty either way.
 
 <img src="reports/figures/liability.png" width="60%" alt="Distribution of total reward cost">
 
