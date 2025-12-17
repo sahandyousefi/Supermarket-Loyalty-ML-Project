@@ -111,7 +111,6 @@ The residual bootstrap of phase 3 draws every member's error from the same pool,
 
 ## Phase 30: Champion choice on interval quality
 
-- [ ] 30.1 Champion-challenger rule that weighs the interval score
 - [ ] 30.2 Decision between OLS and the weighted model
 - [ ] 30.3 Model card for the champion
 
@@ -385,3 +384,4 @@ Across joining months the error SD follows the within-month SD of first-month sp
 - [x] 2025-11-30: 29.1 Scenario whose noise differs by joining month
 - [x] 2025-11-30: 29.2 Interval methods under that scenario
 - [x] 2025-11-30: 29.3 Weighted model in the simulation study
+- [x] 2025-12-17: 30.1 Champion-challenger rule that weighs the interval score

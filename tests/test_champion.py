@@ -34,3 +34,30 @@ def test_identical_predictions(outcome):
     _, y = outcome
     result = compare_predictions(y, y + 1.0, y + 1.0, n_boot=100)
     assert result.rmse_difference == 0.0 and result.p_value == 1.0
+
+
+def test_interval_comparison_and_promotion_rule():
+    import numpy as np
+
+    from loyalty_spend.ops.champion import (
+        compare_intervals,
+        compare_predictions,
+        promotion_decision,
+    )
+
+    rng = np.random.default_rng(0)
+    n = 2000
+    noisy = rng.random(n) < 0.3
+    sd = np.where(noisy, 3.0, 0.5)
+    y = rng.normal(0, sd)
+    point = np.zeros(n)
+    pooled = 1.645 * np.sqrt(np.mean(sd**2))
+    champion = (point - pooled, point + pooled)
+    challenger = (point - 1.645 * sd, point + 1.645 * sd)
+    iv = compare_intervals(y, champion, challenger)
+    assert iv.score_difference < 0 and iv.ci_upper < 0
+    same = compare_predictions(y, point, point)
+    decision = promotion_decision(same, iv)
+    assert decision.promote and "interval" in decision.reason
+    worse = compare_predictions(y, point, point + 0.5)
+    assert not promotion_decision(worse, iv).promote
