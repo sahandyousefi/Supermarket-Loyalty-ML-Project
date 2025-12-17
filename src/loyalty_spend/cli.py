@@ -1053,6 +1053,68 @@ def _reproduce(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def _challenge_args(p: argparse.ArgumentParser) -> None:
+    _config_arg(p)
+    p.add_argument(
+        "--rmse-margin", type=float, default=0.01, help="non-inferiority margin"
+    )
+    p.add_argument(
+        "--score-margin", type=float, default=0.0, help="required interval gain"
+    )
+
+
+@command(
+    "challenge",
+    "decide between OLS and the month-weighted model on cross-fitted forecasts",
+    _challenge_args,
+)
+def _challenge(args: argparse.Namespace) -> int:
+    from scipy.stats import norm
+
+    from loyalty_spend.data.io import load_clean
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.weighted import cross_fitted_predictive
+    from loyalty_spend.ops.champion import (
+        compare_intervals,
+        compare_predictions,
+        promotion_decision,
+    )
+
+    cfg = load_config(args.config)
+    train, _ = load_clean(cfg.paths.raw(cfg.paths.train_file), impute=False)
+    X, y = split_xy(train)
+    t = cross_fitted_predictive(X, y, cfg.cv.n_splits, cfg.cv.seed)
+    alpha = cfg.conformal.alpha
+    z = norm.ppf(1 - alpha / 2)
+
+    def bounds(name: str) -> tuple[Any, Any]:
+        mu, sd = t[f"{name}_mean"], t[f"{name}_sd"]
+        return mu - z * sd, mu + z * sd
+
+    point = compare_predictions(t["y"], t["ols_mean"], t["wls_mean"], seed=cfg.cv.seed)
+    iv = compare_intervals(
+        t["y"], bounds("ols"), bounds("wls"), alpha, seed=cfg.cv.seed
+    )
+    decision = promotion_decision(point, iv, args.rmse_margin, args.score_margin)
+    print(
+        f"RMSE: OLS {point.champion_rmse:.4f}, weighted {point.challenger_rmse:.4f}, "
+        f"difference {point.rmse_difference:+.4f} "
+        f"[{point.ci_lower:+.4f}, {point.ci_upper:+.4f}]"
+    )
+    print(
+        f"interval score: OLS {iv.champion_score:.4f}, weighted "
+        f"{iv.challenger_score:.4f}, difference {iv.score_difference:+.4f} "
+        f"[{iv.ci_lower:+.4f}, {iv.ci_upper:+.4f}]"
+    )
+    print(
+        f"coverage: OLS {iv.champion_coverage:.3f}, weighted "
+        f"{iv.challenger_coverage:.3f}"
+    )
+    verdict = "promote the weighted model" if decision.promote else "keep OLS"
+    print(f"decision: {verdict} ({decision.reason})")
+    return 0
+
+
 def _drivers_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
     p.add_argument("--group", default="loyalty_years")

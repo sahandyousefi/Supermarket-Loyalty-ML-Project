@@ -321,3 +321,9 @@ def test_rewards_with_month_noise(cfg, raw_dir, capsys):
     assert "expected_total" in capsys.readouterr().out
     assert main(["rewards", "--config", str(cfg), test, "--compare-noise"]) == 0
     assert "scaled residuals by month" in capsys.readouterr().out
+
+
+def test_challenge_command(cfg, capsys):
+    assert main(["challenge", "--config", str(cfg)]) == 0
+    out = capsys.readouterr().out
+    assert "interval score" in out and "decision:" in out
