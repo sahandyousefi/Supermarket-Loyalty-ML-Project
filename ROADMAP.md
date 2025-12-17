@@ -50,7 +50,7 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 ## Phase 15: Documentation and release
 
-These items close the year and come after phases 16 to 30.
+These items close the year and come after phases 16 to 32.
 
 - [ ] 15.1 Walkthrough notebook for the promotion analysis
 - [ ] 15.2 Walkthrough notebook for reward programme design
@@ -114,6 +114,21 @@ The residual bootstrap of phase 3 draws every member's error from the same pool,
 - [ ] 30.1 Champion-challenger rule that weighs the interval score
 - [ ] 30.2 Decision between OLS and the weighted model
 - [ ] 30.3 Model card for the champion
+
+## Phase 31: Error scale of a new joining cohort
+
+Across joining months the error SD follows the within-month SD of first-month spend (phase 24), which is known a month after a cohort joins.
+
+- [ ] 31.1 Error scale of a cohort predicted from its first-month spread
+- [ ] 31.2 Intervals for joining months not seen in training
+- [ ] 31.3 Leave-one-month-out evaluation
+
+## Phase 32: Warnings
+
+- [ ] 32.1 License metadata as an SPDX expression
+- [ ] 32.2 Influence diagnostics for members with a hat value of one
+- [ ] 32.3 Expected warnings handled where they arise
+- [ ] 32.4 Unexpected warnings fail the tests
 
 ## Completed
 - [x] 2025-05-05: 1.1 Add a changelog that records the 1.0.0 release
