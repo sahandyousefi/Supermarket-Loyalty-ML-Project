@@ -219,7 +219,7 @@ Lower WAIC is better: heavy-tailed errors fit the residuals far better than norm
 
 ### Error variance by joining month
 
-Forecast errors are five times larger for August joiners (residual SD 0.551) than for June joiners (0.104); the Brown-Forsythe and Koenker-Breusch-Pagan tests reject equal variances across months at p < 10^-6, while neither finds a difference across regions or the promotion. Across months, the error SD tracks the within-month SD of first-month spend almost one for one (Spearman 0.87), so a new cohort's first month already signals how predictable its annual spend will be.
+Forecast errors are five times larger for August joiners (residual SD 0.551) than for June joiners (0.104); the Brown-Forsythe and Koenker-Breusch-Pagan tests reject equal variances across months at p < 10^-6, while neither finds a difference across regions or the promotion. Across months, the error SD tracks the within-month SD of first-month spend almost one for one (Spearman 0.87), so a new cohort's first month already signals how predictable its annual spend will be: predicting a held-out month's error SD from its first-month spread lowers the mean interval score from 1.43 to 1.23 compared with the pooled SD.
 
 | Cross-fitted on train.csv | RMSE | Mean width of 90% interval | Interval score | Months with coverage off target |
 | --- | --- | --- | --- | --- |
