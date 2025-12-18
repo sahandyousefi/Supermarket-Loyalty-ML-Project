@@ -118,3 +118,19 @@ def test_cohort_scale_recovers_a_power_law():
     assert scale.slope_ == pytest.approx(1.0, abs=0.1)
     assert scale.r2_ > 0.95
     assert scale.predict(rng.normal(20, 0.3, 500)) == pytest.approx(0.36, rel=0.15)
+
+
+def test_unseen_month_gets_the_cohort_scale(train_df):
+    from loyalty_spend.features.preprocess import split_xy
+
+    X, y = split_xy(train_df)
+    held = (X["joining_month"] == "Aug").to_numpy()
+    model = build_model("wls_month").fit(X[~held], y[~held])
+    sd_aug = model.predict_sd(X[held])
+    pooled = np.sqrt(model.pooled_variance_)
+    assert np.allclose(sd_aug, sd_aug[0])
+    # August joiners spread widely in their first month, so their predicted
+    # scale is well above the pooled one, as their true residual SD is.
+    assert sd_aug[0] > 1.2 * pooled
+    few = model.predict_sd(X[held].iloc[:5])
+    assert np.allclose(few, pooled)

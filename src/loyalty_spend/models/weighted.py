@@ -33,6 +33,42 @@ from loyalty_spend.features.preprocess import make_preprocessor
 from loyalty_spend.models.registry import register
 
 
+class CohortScale:
+    r"""Error SD of a joining cohort from the spread of its first-month spend.
+
+    Across joining months the residual SD and the within-month SD of
+    first-month spend move together. The fit is a line on the log scale,
+    :math:`\log\sigma_g = a + b \log s_g`, with :math:`s_g` the SD of
+    first-month spend in month :math:`g`; a cohort that has spent its first
+    month but not yet a year gets :math:`\exp(a + b\log s)` as its error SD.
+    """
+
+    def fit(
+        self, months: ArrayLike, first_month: ArrayLike, residuals: ArrayLike
+    ) -> CohortScale:
+        frame = pd.DataFrame(
+            {
+                "g": np.asarray(months).astype(str),
+                "x": np.asarray(first_month, float),
+                "e": np.asarray(residuals, float),
+            }
+        ).dropna()
+        stats_ = frame.groupby("g").agg(
+            spread=("x", "std"), sigma=("e", lambda e: float(np.sqrt(np.mean(e**2))))
+        )
+        u, v = np.log(stats_["spread"].to_numpy()), np.log(stats_["sigma"].to_numpy())
+        self.slope_, self.intercept_ = (float(c) for c in np.polyfit(u, v, 1))
+        fitted = self.intercept_ + self.slope_ * u
+        self.r2_ = float(1 - np.sum((v - fitted) ** 2) / np.sum((v - v.mean()) ** 2))
+        self.table_ = stats_.assign(fitted=np.exp(fitted)).reset_index()
+        return self
+
+    def predict(self, first_month: ArrayLike) -> float:
+        """Error SD of a cohort with these first-month amounts."""
+        spread = float(np.nanstd(np.asarray(first_month, float), ddof=1))
+        return float(np.exp(self.intercept_ + self.slope_ * np.log(spread)))
+
+
 class GroupWeightedRegression(RegressorMixin, BaseEstimator):
     def __init__(
         self,
@@ -40,11 +76,15 @@ class GroupWeightedRegression(RegressorMixin, BaseEstimator):
         shrinkage: float = 10.0,
         n_iter: int = 3,
         estimator: BaseEstimator | None = None,
+        spread_column: str | None = "first_month",
+        min_cohort: int = 10,
     ) -> None:
         self.group = group
         self.shrinkage = shrinkage
         self.n_iter = n_iter
         self.estimator = estimator
+        self.spread_column = spread_column
+        self.min_cohort = min_cohort
 
     def _base(self) -> Pipeline:
         if self.estimator is not None:
@@ -75,17 +115,31 @@ class GroupWeightedRegression(RegressorMixin, BaseEstimator):
         self.model_ = model
         self.variance_ = var
         self.pooled_variance_ = pooled
+        self.cohort_: CohortScale | None = None
+        if self.spread_column is not None and len(var) >= 3:
+            self.cohort_ = CohortScale().fit(labels, X[self.spread_column], resid)
         return self
 
     def predict(self, X: pd.DataFrame) -> FloatArray:
         return np.asarray(self.model_.predict(X), float)
 
     def predict_sd(self, X: pd.DataFrame) -> FloatArray:
-        """Error standard deviation of each member's group."""
+        """Error standard deviation of each member's group.
+
+        A group not seen in training gets the SD that the cohort model
+        predicts from the spread of its members' first-month spend in ``X``,
+        when at least ``min_cohort`` of them are present; otherwise it gets
+        the pooled SD.
+        """
         labels = self._labels(X)
-        return np.sqrt(
-            np.array([self.variance_.get(lv, self.pooled_variance_) for lv in labels])
-        )
+        sd = {lv: float(np.sqrt(v)) for lv, v in self.variance_.items()}
+        for lv in set(labels) - set(sd):
+            sd[lv] = float(np.sqrt(self.pooled_variance_))
+            if self.cohort_ is not None and self.spread_column is not None:
+                values = X.loc[labels == lv, self.spread_column].dropna()
+                if len(values) >= self.min_cohort:
+                    sd[lv] = self.cohort_.predict(values)
+        return np.array([sd[lv] for lv in labels])
 
 
 @register("wls_month", family="linear")
@@ -190,39 +244,3 @@ def cross_fitted_scaled_residuals(
         model = build_model(name).fit(X.iloc[tr], y[tr])
         out[te] = (y[te] - model.predict(X.iloc[te])) / model.predict_sd(X.iloc[te])
     return out
-
-
-class CohortScale:
-    r"""Error SD of a joining cohort from the spread of its first-month spend.
-
-    Across joining months the residual SD and the within-month SD of
-    first-month spend move together. The fit is a line on the log scale,
-    :math:`\log\sigma_g = a + b \log s_g`, with :math:`s_g` the SD of
-    first-month spend in month :math:`g`; a cohort that has spent its first
-    month but not yet a year gets :math:`\exp(a + b\log s)` as its error SD.
-    """
-
-    def fit(
-        self, months: ArrayLike, first_month: ArrayLike, residuals: ArrayLike
-    ) -> CohortScale:
-        frame = pd.DataFrame(
-            {
-                "g": np.asarray(months).astype(str),
-                "x": np.asarray(first_month, float),
-                "e": np.asarray(residuals, float),
-            }
-        ).dropna()
-        stats_ = frame.groupby("g").agg(
-            spread=("x", "std"), sigma=("e", lambda e: float(np.sqrt(np.mean(e**2))))
-        )
-        u, v = np.log(stats_["spread"].to_numpy()), np.log(stats_["sigma"].to_numpy())
-        self.slope_, self.intercept_ = (float(c) for c in np.polyfit(u, v, 1))
-        fitted = self.intercept_ + self.slope_ * u
-        self.r2_ = float(1 - np.sum((v - fitted) ** 2) / np.sum((v - v.mean()) ** 2))
-        self.table_ = stats_.assign(fitted=np.exp(fitted)).reset_index()
-        return self
-
-    def predict(self, first_month: ArrayLike) -> float:
-        """Error SD of a cohort with these first-month amounts."""
-        spread = float(np.nanstd(np.asarray(first_month, float), ddof=1))
-        return float(np.exp(self.intercept_ + self.slope_ * np.log(spread)))
