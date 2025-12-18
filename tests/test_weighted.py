@@ -75,3 +75,30 @@ def test_standardized_residuals_have_unit_scale_in_every_group():
     for month in ("Jan", "Aug"):
         sel = (X["joining_month"] == month).to_numpy()
         assert np.sqrt(np.mean(r[sel] ** 2)) == pytest.approx(1.0, rel=0.05)
+
+
+def test_weighted_bundle_scores_with_month_scaled_intervals(train_df, tmp_path):
+    from loyalty_spend.evaluation.cv import make_splits
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.persistence import ModelBundle
+    from loyalty_spend.models.weighted import cross_fitted_scaled_residuals
+    from loyalty_spend.ops.batch import score_batch
+
+    X, y = split_xy(train_df)
+    splits = make_splits(len(y), 3, 1, 0)
+    scaled = cross_fitted_scaled_residuals("wls_month", X, y, splits)
+    model = build_model("wls_month").fit(X, y)
+    bundle = ModelBundle(
+        "wls_month",
+        model,
+        residuals=np.zeros(len(y)),
+        metadata={"scaled_residuals": scaled.tolist()},
+    )
+    scores = score_batch(bundle, train_df, alpha=0.1).scores
+    width = (scores["upper"] - scores["lower"]).to_numpy()
+    month = train_df["joining_month"].astype(str).to_numpy()
+    assert width[month == "Aug"].mean() > 3 * width[month == "Jun"].mean()
+    covered = (train_df["spend"] >= scores["lower"]) & (
+        train_df["spend"] <= scores["upper"]
+    )
+    assert covered.mean() == pytest.approx(0.9, abs=0.03)

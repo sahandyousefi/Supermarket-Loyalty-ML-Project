@@ -1197,15 +1197,19 @@ def _train(args: argparse.Namespace) -> int:
     splits = make_splits(len(y), cfg.cv.n_splits, 1, cfg.cv.seed)
     cv = cross_validate(args.model, build_model(args.model), X, y, splits)
     model = build_model(args.model).fit(X, y)
+    metadata = {
+        "cv": cv.summary(),
+        "data": data_fingerprint(train),
+        "first_month_q99": float(X["first_month"].quantile(0.99)),
+    }
+    if hasattr(model, "predict_sd"):
+        from loyalty_spend.models.weighted import cross_fitted_scaled_residuals
+
+        metadata["scaled_residuals"] = cross_fitted_scaled_residuals(
+            args.model, X, y, splits
+        ).tolist()
     bundle = ModelBundle(
-        args.model,
-        model,
-        residuals=y.to_numpy() - cv.oof,
-        metadata={
-            "cv": cv.summary(),
-            "data": data_fingerprint(train),
-            "first_month_q99": float(X["first_month"].quantile(0.99)),
-        },
+        args.model, model, residuals=y.to_numpy() - cv.oof, metadata=metadata
     )
     path = save_bundle(
         bundle, args.output or Path(cfg.paths.output_dir) / "model.joblib"

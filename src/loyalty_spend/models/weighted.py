@@ -28,7 +28,7 @@ from sklearn.base import BaseEstimator, RegressorMixin, clone
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 
-from loyalty_spend.arrays import FloatArray, ObjectArray
+from loyalty_spend.arrays import FloatArray, ObjectArray, Split
 from loyalty_spend.features.preprocess import make_preprocessor
 from loyalty_spend.models.registry import register
 
@@ -171,3 +171,22 @@ def standardized_residuals(
     """Residuals divided by the error SD of each member's group."""
     resid = np.asarray(y, float) - model.predict(X)
     return np.asarray(resid / model.predict_sd(X), float)
+
+
+def cross_fitted_scaled_residuals(
+    name: str, X: pd.DataFrame, y: ArrayLike, splits: list[Split]
+) -> FloatArray:
+    """Out-of-fold residuals divided by the out-of-fold error SD of each member.
+
+    Their absolute values are the scores of normalized split conformal
+    prediction: the ``1 - alpha`` quantile times a member's SD gives an
+    interval half-width that adapts to the member's joining month.
+    """
+    from loyalty_spend.models.registry import build_model
+
+    y = np.asarray(y, float)
+    out = np.empty(len(y))
+    for tr, te in splits:
+        model = build_model(name).fit(X.iloc[tr], y[tr])
+        out[te] = (y[te] - model.predict(X.iloc[te])) / model.predict_sd(X.iloc[te])
+    return out
