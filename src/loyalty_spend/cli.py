@@ -1173,7 +1173,9 @@ def _compare(args: argparse.Namespace) -> int:
 
 def _train_args(p: argparse.ArgumentParser) -> None:
     _config_arg(p)
-    p.add_argument("--model", default="ols")
+    p.add_argument(
+        "--model", default="wls_month", help="registry model; the champion by default"
+    )
     p.add_argument(
         "--output", default=None, help="defaults to <output_dir>/model.joblib"
     )

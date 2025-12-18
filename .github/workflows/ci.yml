@@ -107,7 +107,7 @@ jobs:
       - name: Train a model to serve
         run: |
           python -m pip install .
-          loyalty-spend train --model ols --output artifacts/model.joblib
+          loyalty-spend train --output artifacts/model.joblib
           chmod -R a+rX artifacts
       - name: Build the service image
         run: docker build --target serve -t loyalty-spend-api:ci .

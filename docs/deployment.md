@@ -5,7 +5,7 @@ This note describes how a trained model moves from a laptop to a running scoring
 ## 1. Train and register
 
 ```bash
-loyalty-spend train --model ols --output artifacts/candidate.joblib
+loyalty-spend train --output artifacts/candidate.joblib     # wls_month, the champion
 loyalty-spend model-card --model artifacts/candidate.joblib --output artifacts/MODEL_CARD.md
 ```
 
@@ -22,7 +22,9 @@ promoted, comparison = promote_if_better(
 )
 ```
 
-The challenger replaces the champion only if the whole 95% bootstrap interval of the RMSE difference lies below `-margin`. The replaced version is archived, and `registry.rollback()` restores it.
+The challenger replaces the champion only if the whole 95% bootstrap interval of the RMSE difference lies below `-margin`. The replaced version is archived, and `registry.rollback()` restores it. `loyalty_spend.ops.champion.promotion_decision` adds a second route for a challenger that is as accurate but gives better intervals: its RMSE may not be worse by more than a non-inferiority margin and its interval score must be better beyond sampling error. This is how the month-weighted model replaced OLS.
+
+A bundle of the weighted model also stores out-of-fold residuals divided by each member's error SD. Batch scoring and the service then give normalized conformal intervals, whose width follows the member's joining month.
 
 ## 2. Check every batch before scoring it
 

@@ -5,9 +5,9 @@ Structure follows Mitchell et al. (2019).
 ## Model details
 
 - **Owner:** Sahand Yousefi
-- **Version:** 1.5.0
+- **Version:** 1.5.0, champion changed for the next release
 - **Task:** regression of a loyalty member's total spend over the next full year.
-- **Champion:** feasible weighted least squares with one error variance per joining month (`wls_month` in the registry): the coefficients of ordinary least squares on one-hot encoded categories and standardized numerics, refitted with weights from month variances shrunk towards the pooled variance on the log scale. Its point forecasts are those of OLS to within 0.001 in RMSE; it replaced OLS in version 1.5.0 because its intervals are calibrated within every joining month (see below).
+- **Champion:** feasible weighted least squares with one error variance per joining month (`wls_month` in the registry): the coefficients of ordinary least squares on one-hot encoded categories and standardized numerics, refitted with weights from month variances shrunk towards the pooled variance on the log scale. Its point forecasts are those of OLS to within 0.001 in RMSE; it replaced OLS after version 1.5.0 because its intervals are calibrated within every joining month (see below).
 - **Previous champion:** ordinary least squares (`ols`), kept as the reference model.
 - **Challengers evaluated:** OLS, ridge, elastic net, Huber, Gamma GLM, spline ridge, Gaussian process, random forest, histogram gradient boosting, XGBoost, LightGBM, MLP with entity embeddings, MLP with periodic numeric embeddings, FT-Transformer.
 - **Code:** `src/loyalty_spend/models`. Configuration: `configs/default.yaml`.

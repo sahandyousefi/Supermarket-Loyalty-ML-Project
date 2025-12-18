@@ -417,7 +417,8 @@ loyalty-spend clean --output clean.csv                # Task 1 with a change log
 loyalty-spend drivers                                 # tenure analysis
 loyalty-spend compare --models ols ridge lightgbm mlp_plr
 loyalty-spend tune --model lightgbm --trials 50 --nested
-loyalty-spend train --model ols
+loyalty-spend train                                   # the champion, weighted by joining month
+loyalty-spend challenge                               # OLS against the weighted model
 loyalty-spend predict data/raw/test.csv predictions.csv
 loyalty-spend rewards data/raw/test.csv --output rewards.csv
 loyalty-spend rewards data/raw/test.csv --uncertainty heteroscedastic
