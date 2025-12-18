@@ -116,7 +116,6 @@ The residual bootstrap of phase 3 draws every member's error from the same pool,
 
 Across joining months the error SD follows the within-month SD of first-month spend (phase 24), which is known a month after a cohort joins.
 
-- [ ] 31.1 Error scale of a cohort predicted from its first-month spread
 - [ ] 31.2 Intervals for joining months not seen in training
 - [ ] 31.3 Leave-one-month-out evaluation
 
@@ -385,3 +384,4 @@ Across joining months the error SD follows the within-month SD of first-month sp
 - [x] 2025-12-17: 30.1 Champion-challenger rule that weighs the interval score
 - [x] 2025-12-17: 30.2 Decision between OLS and the weighted model
 - [x] 2025-12-17: 30.3 Model card for the champion
+- [x] 2025-12-18: 31.1 Error scale of a cohort predicted from its first-month spread

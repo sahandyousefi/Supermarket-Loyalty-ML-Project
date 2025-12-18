@@ -190,3 +190,39 @@ def cross_fitted_scaled_residuals(
         model = build_model(name).fit(X.iloc[tr], y[tr])
         out[te] = (y[te] - model.predict(X.iloc[te])) / model.predict_sd(X.iloc[te])
     return out
+
+
+class CohortScale:
+    r"""Error SD of a joining cohort from the spread of its first-month spend.
+
+    Across joining months the residual SD and the within-month SD of
+    first-month spend move together. The fit is a line on the log scale,
+    :math:`\log\sigma_g = a + b \log s_g`, with :math:`s_g` the SD of
+    first-month spend in month :math:`g`; a cohort that has spent its first
+    month but not yet a year gets :math:`\exp(a + b\log s)` as its error SD.
+    """
+
+    def fit(
+        self, months: ArrayLike, first_month: ArrayLike, residuals: ArrayLike
+    ) -> CohortScale:
+        frame = pd.DataFrame(
+            {
+                "g": np.asarray(months).astype(str),
+                "x": np.asarray(first_month, float),
+                "e": np.asarray(residuals, float),
+            }
+        ).dropna()
+        stats_ = frame.groupby("g").agg(
+            spread=("x", "std"), sigma=("e", lambda e: float(np.sqrt(np.mean(e**2))))
+        )
+        u, v = np.log(stats_["spread"].to_numpy()), np.log(stats_["sigma"].to_numpy())
+        self.slope_, self.intercept_ = (float(c) for c in np.polyfit(u, v, 1))
+        fitted = self.intercept_ + self.slope_ * u
+        self.r2_ = float(1 - np.sum((v - fitted) ** 2) / np.sum((v - v.mean()) ** 2))
+        self.table_ = stats_.assign(fitted=np.exp(fitted)).reset_index()
+        return self
+
+    def predict(self, first_month: ArrayLike) -> float:
+        """Error SD of a cohort with these first-month amounts."""
+        spread = float(np.nanstd(np.asarray(first_month, float), ddof=1))
+        return float(np.exp(self.intercept_ + self.slope_ * np.log(spread)))

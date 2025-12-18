@@ -102,3 +102,19 @@ def test_weighted_bundle_scores_with_month_scaled_intervals(train_df, tmp_path):
         train_df["spend"] <= scores["upper"]
     )
     assert covered.mean() == pytest.approx(0.9, abs=0.03)
+
+
+def test_cohort_scale_recovers_a_power_law():
+    from loyalty_spend.models.weighted import CohortScale
+
+    rng = np.random.default_rng(7)
+    spreads = np.linspace(0.1, 0.5, 12)
+    months, first, resid = [], [], []
+    for g, s in enumerate(spreads):
+        months += [str(g)] * 300
+        first += list(rng.normal(20, s, 300))
+        resid += list(rng.normal(0, 1.2 * s, 300))
+    scale = CohortScale().fit(months, first, resid)
+    assert scale.slope_ == pytest.approx(1.0, abs=0.1)
+    assert scale.r2_ > 0.95
+    assert scale.predict(rng.normal(20, 0.3, 500)) == pytest.approx(0.36, rel=0.15)
