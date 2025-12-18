@@ -134,3 +134,15 @@ def test_unseen_month_gets_the_cohort_scale(train_df):
     assert sd_aug[0] > 1.2 * pooled
     few = model.predict_sd(X[held].iloc[:5])
     assert np.allclose(few, pooled)
+
+
+def test_leave_one_month_out_prefers_the_cohort_scale(train_df):
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.weighted import leave_one_month_out
+
+    X, y = split_xy(train_df)
+    table = leave_one_month_out(X, y, n_splits=3)
+    assert len(table) == 12
+    assert table["cohort_score"].mean() < table["pooled_score"].mean()
+    log_err = lambda c: np.abs(np.log(table[c] / table["actual_sd"])).mean()  # noqa: E731
+    assert log_err("cohort_sd") < log_err("pooled_sd")

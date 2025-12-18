@@ -244,3 +244,50 @@ def cross_fitted_scaled_residuals(
         model = build_model(name).fit(X.iloc[tr], y[tr])
         out[te] = (y[te] - model.predict(X.iloc[te])) / model.predict_sd(X.iloc[te])
     return out
+
+
+def leave_one_month_out(
+    X: pd.DataFrame,
+    y: ArrayLike,
+    alpha: float = 0.1,
+    n_splits: int = 5,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """How well the cohort model predicts the error scale of a held-out month.
+
+    Out-of-fold forecasts come from the weighted model with every month in
+    training, so the point forecast of each member is the same in every
+    row. Only the error scale is held out: the cohort model is fitted on
+    the other eleven months and predicts the held-out month's SD from its
+    first-month spread. Normal intervals with that SD are compared with
+    intervals that use the pooled SD of the other months.
+    """
+    from scipy.stats import norm
+    from sklearn.model_selection import KFold
+
+    from loyalty_spend.evaluation.scoring import interval_score
+
+    y = np.asarray(y, float)
+    oof = np.empty(len(y))
+    for tr, te in KFold(n_splits, shuffle=True, random_state=seed).split(X):
+        oof[te] = GroupWeightedRegression().fit(X.iloc[tr], y[tr]).predict(X.iloc[te])
+    resid = y - oof
+    months = X["joining_month"].astype(str).to_numpy()
+    z = norm.ppf(1 - alpha / 2)
+    rows = []
+    for g in np.unique(months):
+        held = months == g
+        if held.sum() < 10:
+            continue
+        scale = CohortScale().fit(months[~held], X["first_month"][~held], resid[~held])
+        predicted = scale.predict(X.loc[held, "first_month"])
+        pooled = float(np.sqrt(np.mean(resid[~held] ** 2)))
+        actual = float(np.sqrt(np.mean(resid[held] ** 2)))
+        row = {"month": g, "n": int(held.sum()), "actual_sd": actual}
+        for name, sd in (("cohort", predicted), ("pooled", pooled)):
+            lo, hi = oof[held] - z * sd, oof[held] + z * sd
+            row[f"{name}_sd"] = sd
+            row[f"{name}_coverage"] = float(np.mean((y[held] >= lo) & (y[held] <= hi)))
+            row[f"{name}_score"] = float(interval_score(y[held], lo, hi, alpha).mean())
+        rows.append(row)
+    return pd.DataFrame(rows)
