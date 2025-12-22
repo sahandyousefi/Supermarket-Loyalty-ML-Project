@@ -7,6 +7,13 @@ Cook's distance is :math:`D_i = r_i^2 h_i / (p(1 - h_i))` and DFBETAS
 measure how much each coefficient moves, in standard errors, when member
 :math:`i` is left out (Belsley, Kuh and Welsch, 1980). The usual flags are
 :math:`h_i > 2p/n`, :math:`D_i > 4/n` and :math:`|\mathrm{DFBETAS}| > 2/\sqrt n`.
+
+A member who is the only one with some category level has :math:`h_i = 1`:
+the fit passes through them, their residual is zero and leaving them out
+removes the coefficient of that level, so the studentized residual, Cook's
+distance and DFBETAS are undefined. They are reported as missing with
+``hat_one`` set, rather than as the result of a division by zero.
+Coefficients of levels absent from the data are left out of DFBETAS.
 """
 
 from __future__ import annotations
@@ -28,18 +35,25 @@ def influence_table(pipeline: Pipeline, X: pd.DataFrame, y: ArrayLike) -> pd.Dat
     h = np.einsum("ij,jk,ik->i", A, inv, A)
     p_eff = int(round(h.sum()))
     s2 = e @ e / (n - p_eff)
-    r = e / np.sqrt(s2 * (1 - h))
-    cooks = r**2 * h / (p_eff * (1 - h))
+    one = h > 1 - 1e-10
+    q = np.where(one, np.nan, 1 - h)
+    r = e / np.sqrt(s2 * q)
+    cooks = r**2 * h / (p_eff * q)
     # Leave-one-out residual variance for the externally studentized DFBETAS.
-    s2_loo = ((n - p_eff) * s2 - e**2 / (1 - h)) / (n - p_eff - 1)
-    delta = (inv @ A.T).T * (e / (1 - h))[:, None]
-    dfbetas = delta / np.sqrt(np.outer(s2_loo, np.diag(inv)))
+    s2_loo = ((n - p_eff) * s2 - e**2 / q) / (n - p_eff - 1)
+    delta = (inv @ A.T).T * (e / q)[:, None]
+    diag = np.diag(inv)
+    present = diag[1:] > 1e-12
+    scale = np.sqrt(np.outer(s2_loo, diag[1:][present]))
+    dfbetas = delta[:, 1:][:, present] / scale
+    max_dfbetas = np.where(one, np.nan, np.abs(np.nan_to_num(dfbetas)).max(axis=1))
     out = pd.DataFrame(
         {
             "hat": h,
             "studentized_residual": r,
             "cooks_distance": cooks,
-            "max_abs_dfbetas": np.abs(dfbetas[:, 1:]).max(axis=1),
+            "max_abs_dfbetas": max_dfbetas,
+            "hat_one": one,
         },
         index=X.index,
     )

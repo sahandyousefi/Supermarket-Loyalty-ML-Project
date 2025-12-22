@@ -37,3 +37,24 @@ def test_dfbetas_match_leave_one_out_refits():
     s_loo = np.sqrt(np.sum((y5 - A5 @ loo) ** 2) / (59 - 2))
     expected = abs(full[1] - loo[1]) / (s_loo * np.sqrt(inv[1, 1]))
     assert table.loc[5, "max_abs_dfbetas"] == pytest.approx(expected, rel=1e-8)
+
+
+def test_member_alone_in_a_level_has_undefined_influence(train_df):
+    import warnings
+
+    from loyalty_spend.features.preprocess import split_xy
+    from loyalty_spend.models.registry import build_model
+    from loyalty_spend.robustness.influence import influence_table
+
+    df = train_df[train_df["joining_month"] != "Dec"].copy()
+    lone = df.index[0]
+    df.loc[lone, "joining_month"] = "Dec"
+    X, y = split_xy(df)
+    model = build_model("ols").fit(X, y)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        table = influence_table(model, X, y)
+    assert table.loc[lone, "hat_one"]
+    assert np.isnan(table.loc[lone, ["cooks_distance", "max_abs_dfbetas"]]).all()
+    others = table.drop(index=lone)
+    assert np.isfinite(others[["cooks_distance", "max_abs_dfbetas"]]).all().all()
