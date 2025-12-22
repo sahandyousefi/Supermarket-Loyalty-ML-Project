@@ -21,9 +21,12 @@ uncertainty of the mean.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import (
     RBF,
@@ -59,8 +62,24 @@ class MixedGaussianProcess(GaussianProcessRegressor):
         )
 
     def fit(self, X, y):  # type: ignore[no-untyped-def]
+        """Fit, recording rather than printing hyperparameters at their bounds.
+
+        On data a linear kernel already explains, the RBF amplitude and many
+        length scales end at a bound, which scikit-learn reports as a
+        convergence warning per parameter. That outcome is expected and
+        informative, so the messages are kept in ``at_bounds_``.
+        """
         self.kernel = mixed_kernel(np.asarray(X).shape[1])
-        return super().fit(X, y)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", ConvergenceWarning)
+            super().fit(X, y)
+        self.at_bounds_ = [
+            str(w.message) for w in caught if issubclass(w.category, ConvergenceWarning)
+        ]
+        for w in caught:
+            if not issubclass(w.category, ConvergenceWarning):
+                warnings.warn_explicit(w.message, w.category, w.filename, w.lineno)
+        return self
 
 
 @register("gp", family="kernel")
@@ -95,7 +114,10 @@ def restart_table(
         theta = rng.uniform(bounds[:, 0], bounds[:, 1]) if start else base.theta
         kernel = base.clone_with_theta(theta)
         gp = GaussianProcessRegressor(kernel, normalize_y=True, random_state=seed)
-        gp.fit(X, y)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", ConvergenceWarning)
+            gp.fit(X, y)
+        at_bounds = sum(issubclass(w.category, ConvergenceWarning) for w in caught)
         k = gp.kernel_
         rows.append(
             {
@@ -105,6 +127,7 @@ def restart_table(
                 "rbf_amplitude": float(np.sqrt(k.k1.k2.k1.constant_value)),
                 "min_length_scale": float(np.min(k.k1.k2.k2.length_scale)),
                 "noise_sd": float(np.sqrt(k.k2.noise_level) * gp._y_train_std),
+                "parameters_at_bounds": at_bounds,
             }
         )
     return pd.DataFrame(rows).sort_values("log_marginal_likelihood", ascending=False)

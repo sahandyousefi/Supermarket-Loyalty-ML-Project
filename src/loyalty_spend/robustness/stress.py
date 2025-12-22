@@ -8,6 +8,7 @@ data shows which failures of an upstream system would hurt and by how much.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
 
 import numpy as np
@@ -73,14 +74,15 @@ def stress_test(
     rows = []
     for name, damage in scenarios.items():
         for s in severities:
-            rmse = float(
-                np.mean(
-                    [
-                        np.sqrt(np.mean((predict(damage(s)) - y) ** 2))
-                        for _ in range(n_reps)
-                    ]
-                )
-            )
+            # Unseen levels are the point of one scenario; the encoder's
+            # warning about them is expected and kept out of the output.
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Found unknown categories")
+                errors = [
+                    np.sqrt(np.mean((predict(damage(s)) - y) ** 2))
+                    for _ in range(n_reps)
+                ]
+            rmse = float(np.mean(errors))
             rows.append(
                 {
                     "scenario": name,

@@ -47,6 +47,7 @@ def test_restarts_reach_the_same_optimum_on_a_simple_problem():
     y = np.sin(2 * X[:, 0]) + rng.normal(0, 0.1, 120)
     table = restart_table(X, y, n_starts=4)
     assert len(table) == 4
+    assert (table["parameters_at_bounds"] >= 0).all()
     best = table["log_marginal_likelihood"].iloc[0]
     assert (table["log_marginal_likelihood"] <= best + 1e-6).all()
     assert table["noise_sd"].iloc[0] == pytest.approx(0.1, rel=0.3)
@@ -72,7 +73,7 @@ def test_cross_fitted_intervals_are_calibrated():
         {
             "first_month": rng.uniform(10, 50, n),
             "items_in_first_month": rng.integers(5, 40, n).astype(float),
-            "region": pd.Categorical(rng.choice(["A", "B"], n)),
+            "region": pd.Categorical(rng.choice(["Americas", "Europe"], n)),
             "loyalty_years": pd.Categorical(rng.choice(["0-1", "1-3"], n)),
             "joining_month": pd.Categorical(rng.choice(["Jan", "Feb"], n)),
             "promotion": pd.Categorical(rng.choice(["Yes", "No"], n)),
