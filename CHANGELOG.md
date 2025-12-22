@@ -6,6 +6,22 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A champion-challenger route for a challenger that is as accurate but gives better intervals: paired bootstrap of the interval score and a non-inferiority rule on RMSE; `loyalty-spend challenge`.
+- Error scale of a joining cohort predicted from the spread of its first-month spend, used for months not seen in training and evaluated by leaving one month out.
+- Normalized conformal intervals in batch scoring and the service for models that give an error SD per member.
+- A runtime benchmark of the main computations.
+
+### Changed
+
+- The month-weighted model replaces OLS as the champion and is what `loyalty-spend train` fits by default. Its point forecasts match those of OLS; its intervals are calibrated within every joining month.
+- The license is declared as an SPDX expression, and warnings raised from the package fail the tests. Warnings that are expected, such as unseen levels in the stress tests and hyperparameters at their bounds in the Gaussian process, are handled where they arise.
+
+### Fixed
+
+- Influence diagnostics divided by zero for a member who is the only one with a category level; their values are now reported as undefined.
+
 ## [1.5.0] - 2025-11-30
 
 ### Added
