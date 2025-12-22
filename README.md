@@ -452,6 +452,23 @@ pip install -e ".[docs]" && mkdocs serve   # documentation site on localhost
 
 The tests check the cleaning rules against the data dictionary, Welch's ANOVA against SciPy's Welch t-test in the two-group case, LMG shares summing to $R^2$, the additivity of attributions, conformal coverage on simulated data, the Jensen gap in the reward forecast, reproducibility of network training and a full train, predict and rewards cycle through the CLI. GitHub Actions runs the pre-commit hooks, lint, type checks and the fast suite on Python 3.10 and 3.12, builds and checks the package after checking that the version and release notes agree, audits the installed dependencies for known vulnerabilities with pip-audit, starts the service image with a trained model and scores a member through it, and builds the documentation site with `mkdocs build --strict`, so a broken link or a docstring that no longer matches its module fails the build. `make reproduce` reruns the report sections behind 17 reference results and fails if any moves beyond its tolerance; `make mutation` measures how many deliberate faults in the reward module the tests catch (87 of 91).
 
+## Runtime
+
+Median wall-clock time on a two-core virtual machine, from `python scripts/benchmark_runtime.py`:
+
+| Task | Seconds |
+| --- | --- |
+| Five-fold cross-validation, OLS | 0.10 |
+| Five-fold cross-validation, weighted by month | 0.36 |
+| Five-fold cross-validation, histogram gradient boosting | 2.6 |
+| Five-fold cross-validation, Gaussian process, one optimiser start | 73 |
+| Reward cost, 5,000 draws for 250 members | 0.03 |
+| Threshold search, 2,000 draws | 0.22 |
+| Gibbs sampler, four chains of 1,500 sweeps | 1.1 |
+| Conditional copula, fit and 1,000 synthetic rows | 0.08 |
+
+Everything except the Gaussian process, whose marginal likelihood needs a Cholesky factorisation of a 800 by 800 matrix in every optimiser step, runs in seconds. The service latency is in [docs/deployment.md](docs/deployment.md).
+
 ## Limitations
 
 - The data come from a certification exercise and are synthetic and nearly noise free. Results on `train.csv` describe that sample; the simulation study exists to compare methods under realistic noise.
