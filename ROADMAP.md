@@ -119,7 +119,6 @@ Across joining months the error SD follows the within-month SD of first-month sp
 
 ## Phase 32: Warnings
 
-- [ ] 32.4 Unexpected warnings fail the tests
 
 ## Completed
 - [x] 2025-05-05: 1.1 Add a changelog that records the 1.0.0 release
@@ -385,3 +384,4 @@ Across joining months the error SD follows the within-month SD of first-month sp
 - [x] 2025-12-18: 32.1 License metadata as an SPDX expression
 - [x] 2025-12-22: 32.2 Influence diagnostics for members with a hat value of one
 - [x] 2025-12-22: 32.3 Expected warnings handled where they arise
+- [x] 2025-12-22: 32.4 Unexpected warnings fail the tests

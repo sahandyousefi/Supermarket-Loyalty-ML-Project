@@ -53,7 +53,11 @@ loyalty_spend = ["py.typed", "llm/prompts/*.yaml", "llm/eval/*.yaml"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: trains neural networks, runs searches or starts fresh processes"]
-filterwarnings = ["ignore::UserWarning:torch.*"]
+filterwarnings = [
+    # Any warning raised from the package itself fails the tests.
+    "error:::loyalty_spend",
+    "ignore::UserWarning:torch.*",
+]
 
 [tool.coverage.run]
 source = ["loyalty_spend"]
