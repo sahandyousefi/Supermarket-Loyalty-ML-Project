@@ -35,7 +35,7 @@ It started as a certification exercise (the original notebook is kept in `notebo
 
 ## Results
 
-All figures below are produced by `loyalty-spend report`; the full tables are in [reports/results.md](reports/results.md).
+Figures and tables come from `loyalty-spend report` and the commands named in each section; the full report is in [reports/results.md](reports/results.md) and the derivations are in [docs/methodology.md](docs/methodology.md). Two notebooks walk through the [promotion analysis](notebooks/02_promotion_effect.ipynb) and the [programme design](notebooks/03_programme_design.ipynb).
 
 ### Spend by tenure (Task 2)
 
@@ -122,6 +122,15 @@ On the real members of `train.csv`, cross-fitted intervals audited by tenure ban
 
 Levels are flagged by an exact binomial test after Benjamini-Hochberg adjustment. Errors depend on the month a member joined, so only methods that can see the month restore coverage within months; normalized conformal does so with the best interval score.
 
+### Error variance by joining month
+
+Forecast errors are five times larger for August joiners (residual SD 0.551) than for June joiners (0.104); the Brown-Forsythe and Koenker-Breusch-Pagan tests reject equal variances across months at p < 10^-6, while neither finds a difference across regions or the promotion. Across months, the error SD tracks the within-month SD of first-month spend almost one for one (Spearman 0.87), so a new cohort's first month already signals how predictable its annual spend will be: predicting a held-out month's error SD from its first-month spread lowers the mean interval score from 1.43 to 1.23 compared with the pooled SD.
+
+| Cross-fitted on train.csv | RMSE | Mean width of 90% interval | Interval score | Months with coverage off target |
+| --- | --- | --- | --- | --- |
+| OLS, one error variance | 0.310 | 0.992 | 1.408 | 4 of 12 |
+| Weighted least squares, variance per month | 0.309 | 0.905 | 1.233 | 0 of 12 |
+
 ### Predictive distributions
 
 Budgeting needs each customer's whole spend distribution, not one interval. Five forecasters are scored on the same heteroscedastic scenario with the continuous ranked probability score (CRPS) on a grid of 19 quantile levels (5-fold CV, 2,000 customers), and the interval methods are compared on 5,000 new customers. Coverage by group uses quintiles of predicted spend.
@@ -159,6 +168,22 @@ The forecast errors are larger for some joining months than for others. Drawing 
 
 <img src="reports/figures/liability.png" width="60%" alt="Distribution of total reward cost">
 
+### Reward programme design
+
+`loyalty-spend design` costs the schedule for the 250 customers in `test.csv` on 5,000 draws from the heteroscedastic Gaussian model, then looks for alternatives.
+
+| Question | Answer |
+| --- | --- |
+| Expected cost of the current schedule | 1,218.42, which is 3.79% of expected spend |
+| 95% value at risk / expected shortfall | 1,223.47 / 1,224.36 |
+| Cost change per unit increase of the 140 threshold | -22.59 (s.e. 0.03) |
+| Cost change per unit increase of the 125 threshold | -0.97 |
+| Same rates applied marginally (tax-bracket style) | 218.59 |
+| Cost if members within 5 of a threshold close half of the gap | +59.97 (+4.9%), with 49.53 of extra spend |
+| Cheapest schedule with the same reach and no more risk | thresholds 100, 135, 150: 917.54 (-24.7%) |
+
+Almost all of the cost sensitivity sits at the top threshold, where many customers are predicted to land. Moving it from 140 to 150 leaves the share of members who earn a reward unchanged (80.8%), because no customer is predicted between 94 and 110, and cuts the expected cost by a quarter. The behavioural scenario is a stress test, not an estimate: the data cannot tell how members respond to a threshold, but it bounds what a whole-spend schedule could cost if they do, and a marginal schedule has no such exposure.
+
 ### Effect of the sign-up promotion
 
 The covariates are the attributes fixed at sign-up (region, joining month, tenure band); first-month spend is measured after joining and is left out because it may itself respond to the promotion. 494 of the 996 members in `train.csv` joined through the promotion.
@@ -191,21 +216,17 @@ An average effect of zero could hide members who gain and members who lose. A DR
 The heterogeneity loading is -0.058 (se 0.164, p = 1.0): the predicted differences between members do not show up in held-out data, and targeting the half with the largest predicted effect is worth -0.014 per member [-0.052, 0.024]. On simulated data where the effect does vary with tenure, the same procedure detects it (p < 0.0001) and the targeted rule beats offering the promotion to everyone. An earlier version that cross-fitted the proxy and the scores on the full sample reported significant heterogeneity here; the effect was an artefact of shared training data and disappears with sample splitting.
 
 
-### Reward programme design
+### Designing a randomised test of the promotion
 
-`loyalty-spend design` costs the schedule for the 250 customers in `test.csv` on 5,000 draws from the heteroscedastic Gaussian model, then looks for alternatives.
+The observational estimate of the promotion effect rests on unconfoundedness; a randomised test does not. `loyalty-spend experiment` sizes it and checks the design by simulation on members drawn from `train.csv`.
 
-| Question | Answer |
+| Analysis | Members per arm to detect 0.1 with 80% power |
 | --- | --- |
-| Expected cost of the current schedule | 1,218.42, which is 3.79% of expected spend |
-| 95% value at risk / expected shortfall | 1,223.47 / 1,224.36 |
-| Cost change per unit increase of the 140 threshold | -22.59 (s.e. 0.03) |
-| Cost change per unit increase of the 125 threshold | -0.97 |
-| Same rates applied marginally (tax-bracket style) | 218.59 |
-| Cost if members within 5 of a threshold close half of the gap | +59.97 (+4.9%), with 49.53 of extra spend |
-| Cheapest schedule with the same reach and no more risk | thresholds 100, 135, 150: 917.54 (-24.7%) |
+| Difference in means | 1,129,414 |
+| CUPED with first-month spend | 1,123,020 |
+| Regression adjustment for all attributes | 152 |
 
-Almost all of the cost sensitivity sits at the top threshold, where many customers are predicted to land. Moving it from 140 to 150 leaves the share of members who earn a reward unchanged (80.8%), because no customer is predicted between 94 and 110, and cuts the expected cost by a quarter. The behavioural scenario is a stress test, not an estimate: the data cannot tell how members respond to a threshold, but it bounds what a whole-spend schedule could cost if they do, and a marginal schedule has no such exposure.
+Spend varies by 26.8 between members, but tenure band, joining month and region, all known at sign-up, explain 99.99% of that, so an adjusted analysis needs a seven-thousandth of the members. First-month spend alone explains almost nothing, and CUPED on it does not help. Randomisation is stratified by tenure band and region. With four looks and O'Brien-Fleming spending, the trial needs at most 318 members, keeps a type I error of 0.048 in 5,000 simulated trials, and stops at 250 members on average when the effect is real; estimates from trials that stop early overstate the effect by about 11%.
 
 ### Hierarchical Bayesian model
 
@@ -220,15 +241,6 @@ Almost all of the cost sensitivity sits at the top threshold, where many custome
 | Student-t errors, variance by joining month, pooled scale | 55.4 | 33.3 | |
 
 Lower WAIC is better: heavy-tailed errors fit the residuals far better than normal ones, but most of that gain comes from the joining months with larger errors. Giving each month its own variance, pooled towards a scale learned from the data, does more, and combined with Student-t errors it fits best. Every region effect lies within 0.06 of the average of the four, and all four 90% intervals include zero. Because only four regions inform the between-region scale, its posterior is set by the prior, which the prior sensitivity analysis makes explicit. With parameter uncertainty included, the reward cost of `test.csv` has a mean of 1,219.32 and a 90% interval of 1,215.03 to 1,223.91.
-
-### Error variance by joining month
-
-Forecast errors are five times larger for August joiners (residual SD 0.551) than for June joiners (0.104); the Brown-Forsythe and Koenker-Breusch-Pagan tests reject equal variances across months at p < 10^-6, while neither finds a difference across regions or the promotion. Across months, the error SD tracks the within-month SD of first-month spend almost one for one (Spearman 0.87), so a new cohort's first month already signals how predictable its annual spend will be: predicting a held-out month's error SD from its first-month spread lowers the mean interval score from 1.43 to 1.23 compared with the pooled SD.
-
-| Cross-fitted on train.csv | RMSE | Mean width of 90% interval | Interval score | Months with coverage off target |
-| --- | --- | --- | --- | --- |
-| OLS, one error variance | 0.310 | 0.992 | 1.408 | 4 of 12 |
-| Weighted least squares, variance per month | 0.309 | 0.905 | 1.233 | 0 of 12 |
 
 ### Explanations and what would change a tier
 
@@ -271,18 +283,6 @@ The best partition (8 segments) is essentially the grid of region by promotion u
 | Change in mean forecast spend on `loyalty.csv` when imputed first-month amounts shift by 6 | 0.04 on 127.8 |
 
 Accuracy differs by joining month and by little else, and no combination of attributes is forecast worse than chance alone would explain. The model degrades gracefully when amounts are noisy or missing, but a missing or unrecognised tenure band removes almost all of the signal for that member, so the contract check on that column matters more than any modelling choice. No single member drives the fit, the learning curve is flat beyond about 300 members, and the imputation of missing first-month spend does not affect conclusions even if the gaps are not random.
-
-### Designing a randomised test of the promotion
-
-The observational estimate of the promotion effect rests on unconfoundedness; a randomised test does not. `loyalty-spend experiment` sizes it and checks the design by simulation on members drawn from `train.csv`.
-
-| Analysis | Members per arm to detect 0.1 with 80% power |
-| --- | --- |
-| Difference in means | 1,129,414 |
-| CUPED with first-month spend | 1,123,020 |
-| Regression adjustment for all attributes | 152 |
-
-Spend varies by 26.8 between members, but tenure band, joining month and region, all known at sign-up, explain 99.99% of that, so an adjusted analysis needs a seven-thousandth of the members. First-month spend alone explains almost nothing, and CUPED on it does not help. Randomisation is stratified by tenure band and region. With four looks and O'Brien-Fleming spending, the trial needs at most 318 members, keeps a type I error of 0.048 in 5,000 simulated trials, and stops at 250 members on average when the effect is real; estimates from trials that stop early overstate the effect by about 11%.
 
 ### Monitoring with control charts
 
