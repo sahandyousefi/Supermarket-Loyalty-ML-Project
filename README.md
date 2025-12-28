@@ -6,7 +6,9 @@
 
 International Essentials, an international supermarket chain, pays loyalty rewards that grow with a member's annual spend. To budget for those rewards, the business needs a forecast of each member's spend, an honest statement of its uncertainty, and the resulting distribution of total reward cost.
 
-This project answers that question end to end. It cleans and validates the raw extract, tests the business hypothesis that tenure drives spend, compares thirteen models from linear regression to an FT-Transformer under a common statistical protocol, uses a calibrated simulation study to show when each model family is worth its cost, builds distribution-free prediction intervals, and turns forecasts into a Monte Carlo estimate of reward cost. It started as a certification exercise (the original notebook is kept in `notebooks/`) and is now a tested Python package with a command line interface.
+This project answers that question end to end. It cleans and validates the raw extracts, tests the business hypothesis that tenure drives spend, compares fourteen models from linear regression to an FT-Transformer and a Gaussian process under a common statistical protocol, and uses a calibrated simulation study to show when each model family is worth its cost. It then builds prediction intervals that are checked for coverage within every subgroup, turns forecasts into a Monte Carlo distribution of reward cost, searches the tier thresholds, estimates the effect of the sign-up promotion and designs the randomised test that would settle it. Around the model sit the pieces a team would need to run it: data contracts and intake checks, drift tests and control charts, a scoring service, a model registry with a champion-challenger rule, reproducibility checks and a documentation site.
+
+It started as a certification exercise (the original notebook is kept in `notebooks/`) and is now a typed, tested Python package with a command line interface.
 
 ## Contents
 
@@ -16,6 +18,7 @@ This project answers that question end to end. It cleans and validates the raw e
 - [Project structure](#project-structure)
 - [Getting started](#getting-started)
 - [Testing and CI](#testing-and-ci)
+- [Runtime](#runtime)
 - [Limitations](#limitations)
 - [References](#references)
 
@@ -26,8 +29,9 @@ This project answers that question end to end. It cleans and validates the raw e
 3. **On the supplied data, a linear model is the right choice.** OLS reaches a cross-validated RMSE of 0.308 against a target standard deviation of 26.8 (R squared 0.9999). Every non-linear model, including gradient boosting and three neural networks, is significantly worse (corrected resampled t-test, p < 0.001).
 4. **Flexible models win only when the data demand them.** In a simulation calibrated to the real feature distribution, gradient boosting cuts the excess error over the irreducible noise from 2.6 times to 0.11 times the Bayes error once interactions are present. A plain MLP trails, and periodic numeric embeddings close most of that gap.
 5. **Point forecasts misstate reward cost.** Rewards jump at tier thresholds, so the expected cost differs from the cost of the expected spend. For the 250 customers in `test.csv` the Monte Carlo forecast gives an expected total of 1,219.7 with a 90% interval of [1,215.3, 1,223.9], against 1,221.0 from plugging in point forecasts.
-
 6. **The sign-up promotion has no detectable effect on spend.** Members who joined through the promotion spend 0.99 less on average, but the difference disappears once region, joining month and tenure are accounted for: augmented IPW gives -0.015 with a 95% interval of [-0.056, 0.026], on a mean spend of about 120. Effects larger than 0.06 in either direction are ruled out under unconfoundedness.
+7. **Uncertainty depends on when a member joined, and the champion now models it.** Forecast errors are five times larger for August joiners than for June joiners, and the spread of a cohort's first-month spend predicts how large they will be. A weighted least squares model with one error variance per joining month forecasts as well as OLS but gives 90% intervals that are on target in all twelve months instead of eight, with a 12% lower interval score; it replaced OLS as the champion under a rule that promotes a model for better intervals only if its accuracy is not worse.
+8. **A randomised test of the promotion would be cheap.** Because the attributes known at sign-up explain 99.99% of the variance in spend, an adjusted analysis detects an effect of 0.1 with about 150 members per arm, where a raw comparison would need more than a million. A four-look group-sequential design keeps the type I error at 5% and stops early in most trials when the effect is real.
 
 ## Results
 
