@@ -1,6 +1,17 @@
 # Methodology
 
-This document states the statistical design of the project: how the data are cleaned and checked, how the business question about tenure is tested, how models are compared, why a simulation study is needed, how prediction intervals and full predictive distributions are built and scored, and how reward cost is forecast. Implementation details are in the docstrings under `src/loyalty_spend`.
+This document states the statistical design of the project and the results each method gives on the supplied data. Implementation details are in the docstrings under `src/loyalty_spend` and in the API reference of the documentation site.
+
+| Sections | Question |
+| --- | --- |
+| 1 to 3 | What the data are, how they are cleaned and checked at intake, and whether tenure drives spend |
+| 4 to 6 | Which model forecasts spend best, on the real data and in a simulation where the truth is known |
+| 7 and 8 | How uncertain each forecast is: conformal intervals, their coverage within subgroups, and full predictive distributions |
+| 9 | What the reward programme costs, how risky that cost is and how the thresholds could be set |
+| 10 to 10c | Whether the sign-up promotion works, a Bayesian view of the same data, explanations of single forecasts, and the design of a randomised test |
+| 11 | Whether members form natural segments |
+| 12 to 12d | Data contracts, robustness checks, synthetic data, control charts for monitoring, and the error variance by joining month |
+| 13 | Assumptions and limitations |
 
 ## 1. Problem and notation
 
@@ -408,6 +419,10 @@ Most of what the Student-t errors gained over the normal model came from the mon
 - The reward schedule in `configs/default.yaml` is an illustrative assumption; the brief does not state the real one.
 - Conformal guarantees are marginal and assume exchangeability between calibration and scoring customers. Under a change in the customer mix that leaves the relation between features and spend intact, weighted conformal prediction restores coverage only as far as the density ratio is estimated well; a change in that relation itself is not covered by any of the methods.
 - Shapley decompositions of $R^2$ describe a linear model's explained variance, not causal effects. Tenure is associated with spend; whether extending a customer's tenure would raise spend is a different, causal question.
+- The promotion analysis assumes that region, joining month and tenure band capture everything that drove both the choice of the promotion and spend. The sensitivity analysis bounds how much an omitted factor could change the estimate but cannot rule one out; the randomised design of section 10c can.
+- The month variances behind the champion's intervals are estimated from 35 to 124 members per month. They describe the joining cohorts of this sample; a new year's cohorts should be checked against them, which the cohort scale of section 12d makes possible after their first month.
+- The synthetic member file is not anonymous: a distance-based attack identifies members slightly better than chance, and no differential privacy guarantee is given.
+- Control chart limits assume a known in-control mean and spread. With estimated values the in-control run length varies widely between samples (section 12c), so limits should be revised once enough scored batches exist.
 
 ## References
 
