@@ -52,7 +52,6 @@ The point models treat region and tenure as fixed effects. A hierarchical model 
 
 These items close the year and come after phases 16 to 32.
 
-- [ ] 15.1 Walkthrough notebook for the promotion analysis
 - [ ] 15.2 Walkthrough notebook for reward programme design
 - [ ] 15.4 Methodology and model card updates
 - [ ] 15.5 README rewrite
@@ -385,3 +384,4 @@ Across joining months the error SD follows the within-month SD of first-month sp
 - [x] 2025-12-22: 32.3 Expected warnings handled where they arise
 - [x] 2025-12-22: 32.4 Unexpected warnings fail the tests
 - [x] 2025-12-22: 15.3 Runtime benchmarks of the main commands
+- [x] 2025-12-28: 15.1 Walkthrough notebook for the promotion analysis
