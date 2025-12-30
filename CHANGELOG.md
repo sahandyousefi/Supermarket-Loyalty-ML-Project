@@ -18,6 +18,8 @@ All notable changes to this project are recorded here. The format follows
 - The month-weighted model replaces OLS as the champion and is what `loyalty-spend train` fits by default. Its point forecasts match those of OLS; its intervals are calibrated within every joining month.
 - The license is declared as an SPDX expression, and warnings raised from the package fail the tests. Warnings that are expected, such as unseen levels in the stress tests and hyperparameters at their bounds in the Gaussian process, are handled where they arise.
 
+- The README, the methodology overview and limitations, the model card and the documentation home page describe the month-weighted champion, the notebooks and the test suite as they now stand.
+
 ### Fixed
 
 - Influence diagnostics divided by zero for a member who is the only one with a category level; their values are now reported as undefined.
