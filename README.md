@@ -372,12 +372,15 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 
 ```
 .
-├── configs/default.yaml        paths, CV, network, reward and interval settings
+├── .github/workflows/          CI: hooks, tests on 3.10 and 3.12, package, docs, audit, container
+├── configs/                    default.yaml with all settings, reference.yaml with reproduction targets
 ├── data/raw/                   loyalty.csv, train.csv, test.csv (see data/README.md)
 ├── docs/                       methodology, model card, deployment, language model design, API reference
-├── notebooks/                  original exam notebook
+├── notebooks/                  original exam notebook, promotion analysis, programme design
 ├── reports/                    results.md, summary.json and figures from a full run
+├── scripts/                    release check, runtime and service benchmarks, mutation check
 ├── src/loyalty_spend/
+│   ├── arrays.py               typed array aliases
 │   ├── cli.py                  loyalty-spend command
 │   ├── config.py               typed YAML configuration
 │   ├── tasks.py                the four deliverables of the brief
@@ -401,7 +404,8 @@ $$t = \frac{\bar d}{\sqrt{\left(\frac1J + \frac{n_{\text{test}}}{n_{\text{train}
 │   ├── serving/                FastAPI scoring service
 │   ├── llm/                    fact sheets, grounding checks, retrieval, cited answers, guardrails
 │   └── reporting/              figures and the results report
-└── tests/                      unit and integration tests
+├── tests/                      unit, property, integration and notebook tests
+└── mkdocs.yml                  documentation site
 ```
 
 ## Getting started
