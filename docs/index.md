@@ -6,7 +6,7 @@ The project answers four questions from the original brief and then asks what a 
 
 - Which attributes drive spend, and how strongly, with intervals and tests that do not assume equal variances or normal errors.
 - How well spend can be forecast, comparing linear, tree, kernel and neural models under repeated cross-validation with a corrected resampled t-test.
-- How uncertain each forecast is, with conformal intervals audited for coverage within subgroups and full predictive distributions.
+- How uncertain each forecast is, with conformal intervals audited for coverage within subgroups and full predictive distributions. The error variance differs by joining month, so the deployed model weights members by month and its intervals are on target in every month.
 - What the promotion does, from observational data with doubly robust estimators and sensitivity analysis, and how a randomised test of it should be designed.
 
 ## Pages
@@ -22,6 +22,9 @@ The project answers four questions from the original brief and then asks what a 
 ```bash
 pip install -e ".[dev,all]"
 loyalty-spend report
+make reproduce      # checks 17 reference results against their tolerances
 ```
+
+Two executed notebooks in the repository, on the promotion effect and on the programme design, show the main analyses step by step from the package functions.
 
 The command line reference is available with `loyalty-spend --help`, and every command used in the documentation lists its options with `loyalty-spend <command> --help`.
