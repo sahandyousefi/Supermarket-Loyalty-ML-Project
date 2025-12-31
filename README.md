@@ -325,6 +325,7 @@ $$\phi_j = \sum_{S \subseteq F\setminus\{j\}} \frac{|S|!\,(p-|S|-1)!}{p!}\big[R^
 | Family | Models |
 | --- | --- |
 | Linear | OLS, ridge (leave-one-out penalty), elastic net, Huber, Gamma GLM with log link, spline ridge (additive model) |
+| Weighted and kernel | Feasible weighted least squares with one error variance per joining month (the champion), Gaussian process with ARD kernel |
 | Trees | Random forest, histogram gradient boosting with native categorical splits, XGBoost, LightGBM |
 | Deep (PyTorch) | MLP with entity embeddings and residual blocks, MLP with periodic (PLR) numeric embeddings, FT-Transformer, deep ensemble of Gaussian MLPs |
 
@@ -475,7 +476,7 @@ Median wall-clock time on a two-core virtual machine, from `python scripts/bench
 | Gibbs sampler, four chains of 1,500 sweeps | 1.1 |
 | Conditional copula, fit and 1,000 synthetic rows | 0.08 |
 
-Everything except the Gaussian process, whose marginal likelihood needs a Cholesky factorisation of a 800 by 800 matrix in every optimiser step, runs in seconds. The service latency is in [docs/deployment.md](docs/deployment.md).
+Everything except the Gaussian process, whose marginal likelihood needs a Cholesky factorisation of an 800 by 800 matrix in every optimiser step, runs in seconds. The service latency is in [docs/deployment.md](docs/deployment.md).
 
 ## Limitations
 
