@@ -12,10 +12,15 @@ keywords:
   - customer analytics
   - loyalty programme
   - conformal prediction
+  - heteroscedastic regression
+  - causal inference
+  - experiment design
   - tabular deep learning
   - Monte Carlo simulation
 abstract: >-
   Spend forecasting for supermarket loyalty members with a statistical
-  comparison of linear, tree and deep tabular models, distribution-free
-  prediction intervals, and a Monte Carlo forecast of total reward cost
-  under a tiered reward schedule.
+  comparison of linear, kernel, tree and deep tabular models, prediction
+  intervals calibrated within joining cohorts, a Monte Carlo forecast of
+  total reward cost under a tiered reward schedule, an observational
+  estimate of the sign-up promotion effect and the design of a randomised
+  test, with monitoring, synthetic data and a scoring service.
