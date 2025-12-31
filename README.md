@@ -486,6 +486,8 @@ Everything except the Gaussian process, whose marginal likelihood needs a Choles
 - Conformal coverage is marginal and assumes exchangeable customers. It does not hold after a change in the membership mix.
 - The driver analysis is associational. It shows how spend differs across tenure bands, not what would happen to a member's spend if their tenure changed.
 - The synthetic member file is not anonymous. A distance-based attack has a membership advantage of 0.12, and no differential privacy guarantee is given.
+- The champion's month variances come from 35 to 124 members per joining month in one year. A new year's cohorts may differ; the cohort scale estimated from first-month spread covers this for months without training data, and the interval audit should be repeated once their outcomes are known.
+- The promotion estimate assumes that region, joining month and tenure capture everything that drove both the choice of promotion and spend. A randomised test, designed in the results above, would remove that assumption.
 
 ## References
 
