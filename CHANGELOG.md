@@ -6,6 +6,8 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.0.0] - 2025-12-31
+
 ### Added
 
 - A champion-challenger route for a challenger that is as accurate but gives better intervals: paired bootstrap of the interval score and a non-inferiority rule on RMSE; `loyalty-spend challenge`.
@@ -128,7 +130,10 @@ First complete release.
 - `loyalty-spend` command line interface, results report, model card and Dockerfile.
 - CI with ruff and pytest on Python 3.10 and 3.12.
 
-[Unreleased]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.5.0...v2.0.0
+[1.5.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/sahandyousefi/Supermarket-Loyalty-ML-Project/compare/v1.0.0...v1.1.0
