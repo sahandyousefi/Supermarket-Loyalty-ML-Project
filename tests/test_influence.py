@@ -55,6 +55,6 @@ def test_member_alone_in_a_level_has_undefined_influence(train_df):
         warnings.simplefilter("error")
         table = influence_table(model, X, y)
     assert table.loc[lone, "hat_one"]
-    assert np.isnan(table.loc[lone, ["cooks_distance", "max_abs_dfbetas"]]).all()
+    assert table.loc[lone, ["cooks_distance", "max_abs_dfbetas"]].isna().all()
     others = table.drop(index=lone)
     assert np.isfinite(others[["cooks_distance", "max_abs_dfbetas"]]).all().all()
