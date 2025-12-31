@@ -57,16 +57,16 @@ In CI, a model trained on the runner is mounted read-only into a freshly built s
 
 Every response carries an `X-Request-ID` header, echoed from the request when the caller sends a printable identifier of up to 128 characters and generated otherwise. Each request is logged as one JSON line with the identifier, method, path, status, latency in milliseconds, model name and package version.
 
-**Latency.** `python scripts/benchmark_service.py artifacts/model.joblib` times `/predict` in process, through validation, cleaning, the model and serialisation but without network time. For the OLS champion on one CPU core, 20 requests per batch size after a warm-up:
+**Latency.** `python scripts/benchmark_service.py artifacts/model.joblib` times `/predict` in process, through validation, cleaning, the model and serialisation but without network time. For the month-weighted champion on one CPU core, 20 requests per batch size after a warm-up:
 
 | Customers per request | Median (ms) | 95th percentile (ms) | Median per customer (ms) |
 | --- | --- | --- | --- |
-| 1 | 34.3 | 48.6 | 34.3 |
-| 10 | 30.6 | 39.5 | 3.1 |
-| 100 | 34.6 | 49.7 | 0.35 |
-| 1,000 | 54.7 | 80.5 | 0.055 |
+| 1 | 28.2 | 34.9 | 28.2 |
+| 10 | 27.8 | 32.1 | 2.8 |
+| 100 | 28.0 | 29.8 | 0.28 |
+| 1,000 | 47.2 | 52.5 | 0.047 |
 
-A request costs about 30 ms whatever its size, mostly fixed work in validation and the preprocessing pipeline, so callers with many members should send them in batches of hundreds rather than one at a time.
+A request costs about 28 ms whatever its size up to a few hundred members, mostly fixed work in validation and the preprocessing pipeline, so callers with many members should send them in batches of hundreds rather than one at a time.
 
 ## 4. Record what ran
 
